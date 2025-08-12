@@ -1,0 +1,125 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  flashcardSets FlashcardSet[]
+  studySessions StudySession[]
+  chatSessions  ChatSession[]
+
+  @@map("users")
+}
+
+model FlashcardSet {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  theme       String
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcards Flashcard[]
+
+  @@map("flashcard_sets")
+}
+
+model Flashcard {
+  id              String   @id @default(cuid())
+  chineseWord     String
+  englishTranslation String
+  exampleSentence String?
+  flashcardSetId  String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  flashcardSet FlashcardSet @relation(fields: [flashcardSetId], references: [id], onDelete: Cascade)
+  studyCards   StudyCard[]
+
+  @@map("flashcards")
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  userId    String
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  totalCards Int      @default(20)
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyCards StudyCard[]
+
+  @@map("study_sessions")
+}
+
+model StudyCard {
+  id            String   @id @default(cuid())
+  flashcardId   String
+  studySessionId String
+  
+  // Spaced repetition data
+  easeFactor    Float    @default(2.5)
+  interval      Int      @default(0)
+  repetitions   Int      @default(0)
+  nextReviewDate DateTime @default(now())
+  
+  // Response tracking
+  wasCorrect    Boolean?
+  responseTime  Int? // milliseconds
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  flashcard    Flashcard    @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+  studySession StudySession @relation(fields: [studySessionId], references: [id], onDelete: Cascade)
+
+  @@map("study_cards")
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  theme     String
+  targetWords Json   // Array of words to practice
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+
+  // Relations
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id            String   @id @default(cuid())
+  chatSessionId String
+  role          String   // 'user' or 'assistant'
+  content       String
+  translation   String?  // English/Chinese translation
+  createdAt     DateTime @default(now())
+
+  // Relations
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
