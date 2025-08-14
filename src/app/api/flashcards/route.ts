@@ -7,10 +7,10 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 
 // Handle GET requests to fetch user's flashcard sets
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions) as any
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },

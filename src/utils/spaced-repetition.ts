@@ -76,7 +76,7 @@ export function isCardDue(nextReviewDate: Date): boolean {
 /**
  * Get cards that are due for review from a set of study cards
  */
-export function getDueCards(studyCards: any[]): any[] {
+export function getDueCards(studyCards: { nextReviewDate: string | Date }[]): { nextReviewDate: string | Date }[] {
   return studyCards.filter(card => isCardDue(new Date(card.nextReviewDate)))
 }
 

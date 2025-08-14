@@ -18,7 +18,7 @@ const studyResponseSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions) as any
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },

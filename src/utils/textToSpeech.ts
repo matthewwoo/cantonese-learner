@@ -98,7 +98,7 @@ class TextToSpeechService {
     // Wait for voices to load
     try {
       await this.waitForVoices()
-    } catch (error) {
+    } catch {
       console.warn('Voice loading timeout, proceeding with available voices')
     }
 

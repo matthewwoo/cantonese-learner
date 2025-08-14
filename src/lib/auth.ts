@@ -1,13 +1,13 @@
 // src/lib/auth.ts
 // This file configures NextAuth.js for our authentication system
 
-import { NextAuthOptions } from "next-auth"
+import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 
 // NextAuth configuration object - this tells NextAuth how to handle authentication
-export const authOptions: NextAuthOptions = {
+export const authOptions: any = {
   // Session configuration
   session: {
     // Use JWT tokens instead of database sessions (simpler for our app)

@@ -17,7 +17,7 @@ const startStudySchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions) as any
     console.log('API Session:', session) // Debug log
     if (!session || !session.user?.id) {
       console.log('Authentication failed - session:', session) // Debug log

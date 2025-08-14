@@ -28,8 +28,8 @@ const flashcardSetSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check if user is authenticated
-    const session = await getServerSession(authOptions)
-    if (!session || !(session.user as any)?.id) {
+    const session = await getServerSession(authOptions) as any
+    if (!session || !session.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         name: validatedData.name,
         description: validatedData.description || null,
         theme: validatedData.theme,
-        userId: (session.user as any).id,
+        userId: session.user.id,
         // Create all flashcards at the same time
         flashcards: {
           create: validatedData.flashcards.map(card => ({

@@ -12,12 +12,29 @@ import StudySession from "@/components/flashcards/StudySession"
 import { toast } from "react-hot-toast"
 
 // Types for study session data
+interface StudyCard {
+  id: string
+  position: number
+  flashcard: {
+    id: string
+    chineseWord: string
+    englishTranslation: string
+    pronunciation?: string
+    exampleSentence?: string
+  }
+  easeFactor: number
+  interval: number
+  repetitions: number
+  nextReviewDate: string
+  wasCorrect: boolean | null
+}
+
 interface StudySessionData {
   id: string
   totalCards: number
   flashcardSetName: string
   theme: string
-  studyCards: any[]
+  studyCards: StudyCard[]
 }
 
 export default function StudyPage() {
@@ -123,7 +140,7 @@ export default function StudyPage() {
             🎯 開始學習 Start Study Session
           </h1>
           <p className="text-gray-600">
-            Ready to practice your Cantonese flashcards? Let's set up your study session!
+            Ready to practice your Cantonese flashcards? Let&apos;s set up your study session!
           </p>
         </div>
 
@@ -157,8 +174,8 @@ export default function StudyPage() {
               <h3 className="font-medium text-blue-900 mb-2">📚 How it works:</h3>
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>1. You'll see Chinese characters - try to recall the meaning</li>
-                <li>2. Click "Show Answer" to reveal the English translation</li>
-                <li>3. Rate how well you knew the answer (from "Blackout" to "Easy")</li>
+                <li>2. Click &quot;Show Answer&quot; to reveal the English translation</li>
+                <li>3. Rate how well you knew the answer (from &quot;Blackout&quot; to &quot;Easy&quot;)</li>
                 <li>4. Cards you find difficult will appear more frequently</li>
                 <li>5. Easy cards will have longer intervals between reviews</li>
               </ul>
@@ -168,7 +185,7 @@ export default function StudyPage() {
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <h3 className="font-medium text-green-900 mb-2">💡 Study Tips:</h3>
               <ul className="text-sm text-green-800 space-y-1">
-                <li>• Take your time - there's no rush!</li>
+                <li>• Take your time - there&apos;s no rush!</li>
                 <li>• Be honest about your responses for better learning</li>
                 <li>• Try to recall the meaning before showing the answer</li>
                 <li>• Focus on understanding, not just memorizing</li>
@@ -205,7 +222,7 @@ export default function StudyPage() {
         {/* Motivational Message */}
         <div className="text-center mt-8">
           <p className="text-gray-600 italic">
-            "The best time to plant a tree was 20 years ago. The second best time is now." <br/>
+            &quot;The best time to plant a tree was 20 years ago. The second best time is now.&quot; <br/>
             加油！ Keep going! 💪
           </p>
         </div>

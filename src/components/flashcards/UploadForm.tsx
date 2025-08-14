@@ -203,6 +203,7 @@ export default function UploadForm({ onUploadSuccess }: UploadFormProps) {
 
   return (
     <Card className="p-6">
+      <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">上傳閃卡 Upload Flashcards</h2>
         <p className="text-gray-600">
           Upload a CSV file with your Cantonese flashcards. Required columns: Chinese Word, English Translation

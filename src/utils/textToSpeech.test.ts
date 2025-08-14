@@ -19,7 +19,7 @@ export const testTTS = async () => {
   try {
     await ttsService.waitForVoices(5000)
     console.log('Voices loaded successfully')
-  } catch (error) {
+  } catch {
     console.log('Voice loading timed out, continuing with available voices')
   }
   
@@ -50,8 +50,8 @@ export const testTTS = async () => {
       
       // Wait a bit between words
       await new Promise(resolve => setTimeout(resolve, 1000))
-    } catch (error) {
-      console.error(`Error speaking ${word}:`, error)
+    } catch {
+      console.error(`Error speaking ${word}`)
     }
   }
   
