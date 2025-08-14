@@ -42,13 +42,15 @@ model FlashcardSet {
 }
 
 model Flashcard {
-  id              String   @id @default(cuid())
-  chineseWord     String
-  englishTranslation String
-  exampleSentence String?
-  flashcardSetId  String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  chineseWord           String
+  englishTranslation    String
+  pronunciation         String?
+  exampleSentenceEnglish String?
+  exampleSentenceChinese String?
+  flashcardSetId        String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   // Relations
   flashcardSet FlashcardSet @relation(fields: [flashcardSetId], references: [id], onDelete: Cascade)

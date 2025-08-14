@@ -59,8 +59,8 @@ export default function SignInForm() {
     <Card className="w-full max-w-md mx-auto p-6">
       {/* Header section with bilingual title */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">歡迎回來</h1>
-        <p className="text-gray-600 mt-1">Welcome back</p>
+        <h1 className="text-2xl font-bold text-black">歡迎回來</h1>
+        <p className="text-black mt-1">Welcome back</p>
       </div>
 
       {/* Form element - handleSubmit runs when form is submitted */}
@@ -99,7 +99,7 @@ export default function SignInForm() {
       </form>
 
       {/* Link to sign up page for new users */}
-      <p className="text-center mt-4 text-sm text-gray-600">
+      <p className="text-center mt-4 text-sm text-black">
         Don&apos;t have an account?{" "}
         <Link href="/auth/signup" className="text-blue-600 hover:underline">
           Sign up

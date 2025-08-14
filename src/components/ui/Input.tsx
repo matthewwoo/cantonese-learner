@@ -14,7 +14,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         type={type} // Input type: text, email, password, etc.
         className={cn(
           // Base input styles - consistent look and feel
-          "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
           className // Allow custom styles to override defaults
         )}
         ref={ref}    // Forward ref for parent component access
