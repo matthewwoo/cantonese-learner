@@ -173,7 +173,7 @@ export default function StudyPage() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="font-medium text-blue-900 mb-2">📚 How it works:</h3>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>1. You'll see Chinese characters - try to recall the meaning</li>
+                <li>1. You&apos;ll see Chinese characters - try to recall the meaning</li>
                 <li>2. Click &quot;Show Answer&quot; to reveal the English translation</li>
                 <li>3. Rate how well you knew the answer (from &quot;Blackout&quot; to &quot;Easy&quot;)</li>
                 <li>4. Cards you find difficult will appear more frequently</li>

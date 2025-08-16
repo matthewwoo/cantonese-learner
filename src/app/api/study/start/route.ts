@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { createInitialReviewData } from "@/utils/spaced-repetition"
 import { z } from "zod"
+import { Session } from "next-auth"
 
 // Validation schema for starting a study session
 const startStudySchema = z.object({
@@ -17,7 +18,7 @@ const startStudySchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions) as any
+    const session = await getServerSession(authOptions) as Session | null
     console.log('API Session:', session) // Debug log
     if (!session || !session.user?.id) {
       console.log('Authentication failed - session:', session) // Debug log
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid request data", details: (error as any).errors },
+        { error: "Invalid request data" },
         { status: 400 }
       )
     }

@@ -1,16 +1,17 @@
 // src/app/api/flashcards/route.ts
 // This API endpoint gets all flashcard sets for the authenticated user
 
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { Session } from "next-auth"
 
 // Handle GET requests to fetch user's flashcard sets
 export async function GET() {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions) as any
+    const session = await getServerSession(authOptions) as Session | null
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },

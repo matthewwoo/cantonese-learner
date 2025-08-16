@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         content: audio.content
       },
       config: {
-        encoding: config.encoding || 'WEBM_OPUS',
+        encoding: (config.encoding || 'WEBM_OPUS') as 'WEBM_OPUS',
         // Don't specify sampleRateHertz for WEBM_OPUS - let Google Cloud detect it from the audio header
         languageCode: config.languageCode || 'yue-Hant-HK', // Cantonese (Hong Kong) with Traditional Chinese
         alternativeLanguageCodes: config.alternativeLanguageCodes || ['zh-HK', 'zh-TW', 'zh-CN'],
@@ -100,8 +100,7 @@ export async function POST(request: NextRequest) {
     console.log('Google STT: Request config:', {
       encoding: speechRequest.config.encoding,
       languageCode: speechRequest.config.languageCode,
-      alternativeLanguageCodes: speechRequest.config.alternativeLanguageCodes,
-      model: speechRequest.config.model
+      alternativeLanguageCodes: speechRequest.config.alternativeLanguageCodes
     })
 
     // Call Google Cloud Speech-to-Text API

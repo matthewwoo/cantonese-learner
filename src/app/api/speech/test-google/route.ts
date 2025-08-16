@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         content: '' // Empty content to test API access
       },
       config: {
-        encoding: 'WEBM_OPUS',
+        encoding: 'WEBM_OPUS' as const,
         // Don't specify sampleRateHertz for WEBM_OPUS
         languageCode: 'yue-Hant-HK'
         // Don't specify model - use default which supports yue-Hant-HK
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     console.log('Google API Test: Testing with empty audio...')
     
     try {
-      const [response] = await speechClient.recognize(testRequest)
+      const response = await speechClient.recognize(testRequest)
       console.log('Google API Test: Response received:', response)
       
       return NextResponse.json({

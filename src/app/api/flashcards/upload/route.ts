@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { z } from "zod"
+import { Session } from "next-auth"
 
 // Validation schema for flashcard data
 const flashcardSchema = z.object({
@@ -28,7 +29,7 @@ const flashcardSetSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check if user is authenticated
-    const session = await getServerSession(authOptions) as any
+    const session = await getServerSession(authOptions) as Session | null
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     // Handle validation errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid data format", details: (error as any).errors },
+        { error: "Invalid data format" },
         { status: 400 }
       )
     }

@@ -1,17 +1,16 @@
 // src/lib/auth.ts
 // This file configures NextAuth.js for our authentication system
 
-import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 
 // NextAuth configuration object - this tells NextAuth how to handle authentication
-export const authOptions: any = {
+export const authOptions = {
   // Session configuration
   session: {
     // Use JWT tokens instead of database sessions (simpler for our app)
-    strategy: "jwt",
+    strategy: "jwt" as const,
   },
   
   // Custom pages for authentication (instead of NextAuth's default pages)
@@ -74,7 +73,7 @@ export const authOptions: any = {
   // Callbacks allow us to customize what happens during authentication
   callbacks: {
     // JWT callback: runs whenever a JWT token is created/updated
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: any; user: any }) {
       // If we have a user object (during sign in), add user ID to token
       if (user) {
         token.id = user.id
@@ -83,7 +82,7 @@ export const authOptions: any = {
     },
     
     // Session callback: runs whenever a session is accessed
-    async session({ session, token }) {
+    async session({ session, token }: { session: any; token: any }) {
       // Add user ID from token to session object
       // This makes user.id available in our React components
       if (token && session.user) {

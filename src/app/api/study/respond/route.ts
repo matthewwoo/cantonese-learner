@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { calculateNextReview, ResponseQuality } from "@/utils/spaced-repetition"
 import { z } from "zod"
+import { Session } from "next-auth"
 
 // Validation schema for study responses
 const studyResponseSchema = z.object({
@@ -18,7 +19,7 @@ const studyResponseSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions) as any
+    const session = await getServerSession(authOptions) as Session | null
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid request data", details: (error as any).errors },
+        { error: "Invalid request data" },
         { status: 400 }
       )
     }
