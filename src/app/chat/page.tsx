@@ -12,10 +12,9 @@ import { Card } from '@/components/ui/Card'
 import ChatMessage from '@/components/chat/ChatMessage'
 import ChatInput from '@/components/chat/ChatInput'
 import ThemeSelector from '@/components/chat/ThemeSelector'
+import TTSDebugger from '@/components/chat/TTSDebugger'
 import { stopSpeech, isTTSSupported, speakCantonese } from '@/utils/textToSpeech'
-import { isSTTSupported } from '@/utils/speechToText'
 import { isOpenAISTTSupported } from '@/utils/openaiSpeechToText'
-import { isGoogleSTTSupported } from '@/utils/googleSpeechToText'
 
 // Define types for our chat data structures
 interface Message {
@@ -49,11 +48,10 @@ export default function ChatPage() {
   const [selectedTheme, setSelectedTheme] = useState('daily_conversation')
   const [showTranslations, setShowTranslations] = useState(false)
   const [autoTTS, setAutoTTS] = useState(true) // Auto-play TTS for AI responses
+  const [showTTSDebugger, setShowTTSDebugger] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ttsSupported = isTTSSupported()
-  const sttSupported = isSTTSupported()
   const openaiSTTSupported = isOpenAISTTSupported()
-  const googleSTTSupported = isGoogleSTTSupported()
   
   // Reference to the messages container for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -374,11 +372,27 @@ export default function ChatPage() {
               🔊 AI responses are automatically spoken aloud. Toggle "Auto TTS" to control this feature
             </p>
           )}
-          {(sttSupported || openaiSTTSupported || googleSTTSupported) && (
+          {openaiSTTSupported && (
             <p className="text-sm text-gray-500 mt-1">
-              🎤 Click the microphone button to speak in Cantonese (廣東話) and convert to text
-              {(openaiSTTSupported || googleSTTSupported) && ' (Enhanced options available with translation)'}
+              🎤 Click the microphone button to speak in Cantonese (廣東話) and convert to text (Enhanced with translation)
             </p>
+          )}
+        </div>
+
+        {/* TTS Debugger */}
+        <div className="mt-4">
+          <Button
+            onClick={() => setShowTTSDebugger(!showTTSDebugger)}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            {showTTSDebugger ? '🔽 Hide' : '🔼 Show'} TTS Debugger
+          </Button>
+          {showTTSDebugger && (
+            <div className="mt-2">
+              <TTSDebugger />
+            </div>
           )}
         </div>
       </div>

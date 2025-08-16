@@ -4,9 +4,7 @@
 
 import React, { useState, KeyboardEvent, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
-import { startListening, stopListening, isSTTSupported, isListening } from '@/utils/speechToText'
 import { startOpenAIRecording, stopOpenAIRecording, isOpenAISTTSupported } from '@/utils/openaiSpeechToText'
-import { startGoogleRecording, stopGoogleRecording, isGoogleSTTSupported } from '@/utils/googleSpeechToText'
 import { toast } from 'react-hot-toast'
 
 // Props interface - defines what properties this component accepts
@@ -25,12 +23,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
   const [isListening, setIsListening] = useState(false)
   const [interimTranscript, setInterimTranscript] = useState('')
   const [timeLeft, setTimeLeft] = useState(15)
-  const [useOpenAI, setUseOpenAI] = useState(false)
-  const [useGoogle, setUseGoogle] = useState(false)
-  const [showSTTOptions, setShowSTTOptions] = useState(false)
-  const sttSupported = isSTTSupported()
   const openaiSTTSupported = isOpenAISTTSupported()
-  const googleSTTSupported = isGoogleSTTSupported()
 
   // Function to handle sending a message
   const handleSend = () => {
@@ -55,13 +48,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
   // Handle speech-to-text
   const handleSpeechStart = () => {
     if (isListening) {
-      if (useOpenAI) {
-        stopOpenAIRecording()
-      } else if (useGoogle) {
-        stopGoogleRecording()
-      } else {
-        stopListening()
-      }
+      stopOpenAIRecording()
       setIsListening(false)
       setInterimTranscript('')
       setTimeLeft(15)
@@ -72,111 +59,41 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
     setInterimTranscript('')
     setTimeLeft(15)
 
-    if (useOpenAI) {
-      // Use OpenAI Whisper with translation
-      startOpenAIRecording(
-        (result) => {
-          if (result.isFinal) {
-            // Final result - add to input
-            setInputValue(prev => prev + (prev ? ' ' : '') + result.transcript)
-            setInterimTranscript('')
-            
-            // Show translation if available
-            if (result.translation) {
-              toast.success(`Translation: ${result.translation}`)
-            }
-          } else {
-            // Interim result - show preview
-            setInterimTranscript(result.transcript)
+    // Use OpenAI Whisper with translation
+    startOpenAIRecording(
+      (result) => {
+        if (result.isFinal) {
+          // Final result - add to input
+          setInputValue(prev => prev + (prev ? ' ' : '') + result.transcript)
+          setInterimTranscript('')
+          
+          // Show translation if available
+          if (result.translation) {
+            toast.success(`Translation: ${result.translation}`)
           }
-        },
-        (error) => {
-          toast.error(error)
-          setIsListening(false)
-          setInterimTranscript('')
-          setTimeLeft(15)
-        },
-        () => {
-          // Speech ended
-          setIsListening(false)
-          setInterimTranscript('')
-          setTimeLeft(15)
-        },
-        {
-          lang: 'zh', // Chinese - Enhanced with Cantonese-specific prompts and parameters
-          translateTo: 'en', // Translate to English
-          timeout: 15000 // 15 seconds timeout
+        } else {
+          // Interim result - show preview
+          setInterimTranscript(result.transcript)
         }
-      )
-    } else if (useGoogle) {
-      // Use Google Cloud Speech-to-Text with translation
-      startGoogleRecording(
-        (result) => {
-          if (result.isFinal) {
-            // Final result - add to input
-            setInputValue(prev => prev + (prev ? ' ' : '') + result.transcript)
-            setInterimTranscript('')
-            
-            // Show translation if available
-            if (result.translation) {
-              toast.success(`Translation: ${result.translation}`)
-            }
-          } else {
-            // Interim result - show preview
-            setInterimTranscript(result.transcript)
-          }
-        },
-        (error) => {
-          toast.error(error)
-          setIsListening(false)
-          setInterimTranscript('')
-          setTimeLeft(15)
-        },
-        () => {
-          // Speech ended
-          setIsListening(false)
-          setInterimTranscript('')
-          setTimeLeft(15)
-        },
-        {
-          lang: 'yue-Hant-HK', // Cantonese (Hong Kong) with Traditional Chinese
-          translateTo: 'en', // Translate to English
-          timeout: 15000 // 15 seconds timeout
-        }
-      )
-    } else {
-      // Use Web Speech API
-      startListening(
-        (result) => {
-          if (result.isFinal) {
-            // Final result - add to input
-            setInputValue(prev => prev + (prev ? ' ' : '') + result.transcript)
-            setInterimTranscript('')
-          } else {
-            // Interim result - show preview
-            setInterimTranscript(result.transcript)
-          }
-        },
-        (error) => {
-          toast.error(error)
-          setIsListening(false)
-          setInterimTranscript('')
-          setTimeLeft(15)
-        },
-        () => {
-          // Speech ended
-          setIsListening(false)
-          setInterimTranscript('')
-          setTimeLeft(15)
-        },
-        {
-          lang: 'zh-HK', // Cantonese
-          continuous: false,
-          interimResults: true,
-          timeout: 15000 // 15 seconds timeout
-        }
-      )
-    }
+      },
+      (error) => {
+        toast.error(error)
+        setIsListening(false)
+        setInterimTranscript('')
+        setTimeLeft(15)
+      },
+      () => {
+        // Speech ended
+        setIsListening(false)
+        setInterimTranscript('')
+        setTimeLeft(15)
+      },
+      {
+        lang: 'zh', // Chinese - Enhanced with Cantonese-specific prompts and parameters
+        translateTo: 'en', // Translate to English
+        timeout: 15000 // 15 seconds timeout
+      }
+    )
   }
 
   // Countdown timer effect
@@ -188,7 +105,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
         setTimeLeft(prev => {
           if (prev <= 1) {
             // Time's up, stop listening
-            stopListening()
+            stopOpenAIRecording()
             setIsListening(false)
             setInterimTranscript('')
             return 15
@@ -209,85 +126,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
   useEffect(() => {
     return () => {
       if (isListening) {
-        if (useOpenAI) {
-          stopOpenAIRecording()
-        } else if (useGoogle) {
-          stopGoogleRecording()
-        } else {
-          stopListening()
-        }
+        stopOpenAIRecording()
       }
     }
-  }, [isListening, useOpenAI, useGoogle])
+  }, [isListening])
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
-      {/* STT Options Toggle */}
-      {(sttSupported || openaiSTTSupported || googleSTTSupported) && (
-        <div className="mb-3">
-          <button
-            onClick={() => setShowSTTOptions(!showSTTOptions)}
-            className="text-xs text-blue-600 hover:text-blue-800"
-          >
-            {showSTTOptions ? 'Hide STT Options' : 'Show STT Options'}
-          </button>
-        </div>
-      )}
-
-      {/* STT Options Panel */}
-      {showSTTOptions && (sttSupported || openaiSTTSupported || googleSTTSupported) && (
-        <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
-          <div className="flex items-center space-x-4 flex-wrap">
-            <label className="flex items-center space-x-1">
-              <input
-                type="radio"
-                checked={!useOpenAI && !useGoogle}
-                onChange={() => {
-                  setUseOpenAI(false)
-                  setUseGoogle(false)
-                }}
-                disabled={!sttSupported}
-                className="text-blue-600"
-              />
-              <span>Web Speech {!sttSupported && '(Not supported)'}</span>
-            </label>
-            
-            <label className="flex items-center space-x-1">
-              <input
-                type="radio"
-                checked={useOpenAI}
-                onChange={() => {
-                  setUseOpenAI(true)
-                  setUseGoogle(false)
-                }}
-                disabled={!openaiSTTSupported}
-                className="text-blue-600"
-              />
-              <span>OpenAI Whisper {!openaiSTTSupported && '(Not supported)'}</span>
-            </label>
-            
-            <label className="flex items-center space-x-1">
-              <input
-                type="radio"
-                checked={useGoogle}
-                onChange={() => {
-                  setUseOpenAI(false)
-                  setUseGoogle(true)
-                }}
-                disabled={!googleSTTSupported}
-                className="text-blue-600"
-              />
-              <span>Google Cloud STT {!googleSTTSupported && '(Not supported)'}</span>
-            </label>
-          </div>
-          <div className="text-gray-600 mt-1">
-            {useOpenAI ? 'Optimized for Cantonese + English translation' : 
-             useGoogle ? 'Best Cantonese support + English translation' :
-             'Works offline, limited Cantonese support'}
-          </div>
-        </div>
-      )}
-
       <div className="flex space-x-4">
         {/* Text input area */}
         <div className="flex-1">
@@ -306,7 +151,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
             <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
               <div className="flex justify-between items-center mb-1">
                 <div className="text-sm text-blue-600 font-medium">
-                  Listening... {useOpenAI ? '(OpenAI)' : useGoogle ? '(Google)' : '(Web)'}
+                  Listening... (OpenAI Whisper)
                 </div>
                 <div className="text-sm text-blue-600 font-mono">
                   {timeLeft}s
@@ -320,7 +165,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
         {/* Action buttons */}
         <div className="flex flex-col space-y-2">
           {/* Speech-to-text button */}
-          {(sttSupported || openaiSTTSupported || googleSTTSupported) ? (
+          {openaiSTTSupported ? (
             <Button
               onClick={handleSpeechStart}
               disabled={disabled}
@@ -330,7 +175,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
                   ? 'bg-red-100 border-red-300 text-red-600 hover:bg-red-200' 
                   : 'hover:bg-gray-50'
               }`}
-              title={isListening ? `Stop listening (${timeLeft}s left)` : `Start voice input (${useOpenAI ? 'OpenAI Whisper' : useGoogle ? 'Google Cloud STT' : 'Web Speech API'})`}
+              title={isListening ? `Stop listening (${timeLeft}s left)` : `Start voice input (OpenAI Whisper)`}
             >
               <span className="text-lg">
                 {isListening ? '🔴' : '🎤'}
@@ -373,9 +218,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
       {/* Help text */}
       <div className="mt-2 text-xs text-gray-500">
         Press Enter to send, Shift+Enter for new line
-        {(sttSupported || openaiSTTSupported || googleSTTSupported) && (
+        {openaiSTTSupported && (
           <span className="ml-2">
-            • Click 🎤 to speak in Cantonese ({useOpenAI ? 'OpenAI Whisper' : useGoogle ? 'Google Cloud STT' : 'Web Speech API'})
+            • Click 🎤 to speak in Cantonese (OpenAI Whisper with translation)
           </span>
         )}
       </div>

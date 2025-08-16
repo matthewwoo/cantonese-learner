@@ -7,11 +7,6 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { 
-  startListening, 
-  stopListening, 
-  isSTTSupported as isWebSTTSupported 
-} from '@/utils/speechToText'
-import { 
   startOpenAIRecording, 
   stopOpenAIRecording, 
   isOpenAISTTSupported 
@@ -36,12 +31,9 @@ export default function SpeechToTextInput({
   disabled = false 
 }: SpeechToTextInputProps) {
   const [isRecording, setIsRecording] = useState(false)
-  const [useOpenAI, setUseOpenAI] = useState(false)
   const [currentTranscript, setCurrentTranscript] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
-  const [showOptions, setShowOptions] = useState(false)
   
-  const webSTTSupported = isWebSTTSupported()
   const openaiSTTSupported = isOpenAISTTSupported()
 
   // Handle speech recognition results
@@ -76,7 +68,7 @@ export default function SpeechToTextInput({
     setIsProcessing(false)
   }
 
-  // Start recording with selected method
+  // Start recording
   const startRecording = () => {
     if (disabled) return
 
@@ -84,40 +76,22 @@ export default function SpeechToTextInput({
     setIsProcessing(true)
     setCurrentTranscript('')
 
-    if (useOpenAI) {
-      // Use OpenAI Whisper with translation
-      startOpenAIRecording(
-        handleSTTResult,
-        handleSTTError,
-        handleSTTEnd,
-        {
-          lang: 'zh', // Chinese
-          translateTo: 'en', // Translate to English
-          timeout: 15000 // 15 seconds
-        }
-      )
-    } else {
-      // Use Web Speech API
-      startListening(
-        handleSTTResult,
-        handleSTTError,
-        handleSTTEnd,
-        {
-          lang: 'zh-HK',
-          interimResults: true,
-          timeout: 15000
-        }
-      )
-    }
+    // Use OpenAI Whisper with translation
+    startOpenAIRecording(
+      handleSTTResult,
+      handleSTTError,
+      handleSTTEnd,
+      {
+        lang: 'zh', // Chinese
+        translateTo: 'en', // Translate to English
+        timeout: 15000 // 15 seconds
+      }
+    )
   }
 
   // Stop recording
   const stopRecording = () => {
-    if (useOpenAI) {
-      stopOpenAIRecording()
-    } else {
-      stopListening()
-    }
+    stopOpenAIRecording()
     setIsRecording(false)
     setIsProcessing(false)
     setCurrentTranscript('')
@@ -138,7 +112,7 @@ export default function SpeechToTextInput({
       return 'Processing...'
     }
     if (isRecording) {
-      return useOpenAI ? 'Recording (OpenAI)...' : 'Recording (Web)...'
+      return 'Recording (OpenAI Whisper)...'
     }
     return 'Ready to record'
   }
@@ -154,10 +128,7 @@ export default function SpeechToTextInput({
     return 'Start Recording'
   }
 
-  // Check if any STT method is supported
-  const isAnySTTSupported = webSTTSupported || openaiSTTSupported
-
-  if (!isAnySTTSupported) {
+  if (!openaiSTTSupported) {
     return (
       <Card className="p-4">
         <p className="text-red-500 text-sm">
@@ -169,57 +140,6 @@ export default function SpeechToTextInput({
 
   return (
     <Card className="p-4 space-y-4">
-      {/* Options Toggle */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => setShowOptions(!showOptions)}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
-          {showOptions ? 'Hide Options' : 'Show Options'}
-        </button>
-      </div>
-
-      {/* Options Panel */}
-      {showOptions && (
-        <div className="space-y-2 p-3 bg-gray-50 rounded">
-          <div className="flex items-center space-x-4">
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                checked={!useOpenAI}
-                onChange={() => setUseOpenAI(false)}
-                disabled={!webSTTSupported}
-                className="text-blue-600"
-              />
-              <span className="text-sm">
-                Web Speech API {!webSTTSupported && '(Not supported)'}
-              </span>
-            </label>
-            
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                checked={useOpenAI}
-                onChange={() => setUseOpenAI(true)}
-                disabled={!openaiSTTSupported}
-                className="text-blue-600"
-              />
-              <span className="text-sm">
-                OpenAI Whisper {!openaiSTTSupported && '(Not supported)'}
-              </span>
-            </label>
-          </div>
-          
-          <div className="text-xs text-gray-600">
-            {useOpenAI ? (
-              <p>OpenAI Whisper provides better accuracy and real-time translation to English.</p>
-            ) : (
-              <p>Web Speech API works offline but may have limited Cantonese support.</p>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Recording Controls */}
       <div className="flex items-center space-x-4">
         <Button
@@ -264,7 +184,7 @@ export default function SpeechToTextInput({
       {/* Instructions */}
       <div className="text-xs text-gray-500">
         <p>• Speak clearly in Cantonese (廣東話)</p>
-        <p>• {useOpenAI ? 'Audio optimized for Cantonese recognition with English translation' : 'Audio is processed locally by your browser'}</p>
+        <p>• Audio optimized for Cantonese recognition with English translation</p>
         <p>• Recording will automatically stop after 15 seconds</p>
       </div>
     </Card>
