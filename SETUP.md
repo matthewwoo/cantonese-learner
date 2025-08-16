@@ -11,6 +11,12 @@ DATABASE_URL="postgresql://username:password@localhost:5432/cantonese_learner"
 # NextAuth.js
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your-secret-key-here-make-it-long-and-random"
+
+# OpenAI (Optional - for enhanced speech-to-text and translation)
+OPENAI_API_KEY="your-openai-api-key-here"
+
+# Google Cloud (Optional - for best Cantonese speech recognition)
+GOOGLE_APPLICATION_CREDENTIALS="./summer-health-prod-4cfa9958cb62.json"
 ```
 
 ## Quick Setup
@@ -60,5 +66,31 @@ NEXTAUTH_SECRET="your-secret-key-here-make-it-long-and-random"
 1. Visit `http://localhost:3000` - you should see the homepage
 2. Click "Sign Up" or visit `http://localhost:3000/auth/signup`
 3. Try creating an account with a test email and password
+
+## Speech-to-Text Features
+
+The app now supports three speech-to-text methods:
+
+### Web Speech API (Default)
+- Works offline
+- Limited Cantonese support
+- No translation
+
+### OpenAI Whisper (Enhanced)
+- Better accuracy for Cantonese
+- Real-time English translation
+- Requires `OPENAI_API_KEY` environment variable
+
+### Google Cloud Speech-to-Text (Best Cantonese Support)
+- Excellent Cantonese dialect recognition
+- Real-time English translation
+- Requires Google Cloud service account JSON file
+
+To test the enhanced options:
+1. Add your API keys to `.env.local`
+2. Go to the chat page
+3. Click "Show STT Options" in the input area
+4. Select "OpenAI Whisper" or "Google Cloud STT"
+5. Click the microphone button and speak in Cantonese
 
 If you encounter any specific errors, please share the error message for further assistance.

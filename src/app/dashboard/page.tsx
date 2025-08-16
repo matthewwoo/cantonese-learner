@@ -94,10 +94,10 @@ export default function DashboardPage() {
                 Practice conversations with AI tutor. Speech recognition and pronunciation help included.
               </p>
               <Button 
-                disabled
-                className="w-full opacity-50 cursor-not-allowed"
+              onClick={() => router.push('/chat')}
+              className="w-full bg-green-600 hover:bg-green-700"
               >
-                Coming Soon
+              Start Chat
               </Button>
             </div>
           </Card>
@@ -162,8 +162,8 @@ export default function DashboardPage() {
               📝 Create New Flashcard Set
             </Button>
             <Button 
-              disabled
-              className="opacity-50 cursor-not-allowed"
+              onClick={() => router.push('/chat')}
+              className="bg-green-600 hover:bg-green-700"
             >
               💬 Start AI Conversation
             </Button>
