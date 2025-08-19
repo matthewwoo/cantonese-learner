@@ -45,3 +45,8 @@ summer-health-prod-4cfa9958cb62.json
 next-env.d.ts
 
 /src/generated/prisma
+
+# Test files that might contain API keys
+test-*.js
+debug-*.js
+*-test.js
