@@ -17,6 +17,9 @@ OPENAI_API_KEY="your-openai-api-key-here"
 
 # Google Cloud (Optional - for best Cantonese speech recognition)
 GOOGLE_APPLICATION_CREDENTIALS="./summer-health-prod-4cfa9958cb62.json"
+
+# Google Translate (Optional - for article translation)
+GOOGLE_TRANSLATE_API_KEY="your-google-translate-api-key-here"
 ```
 
 ## Quick Setup

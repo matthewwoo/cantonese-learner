@@ -59,7 +59,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Main Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Flashcards Section */}
           <Card className="p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
             <div className="text-center">
@@ -98,6 +98,27 @@ export default function DashboardPage() {
               className="w-full bg-green-600 hover:bg-green-700"
               >
               Start Chat
+              </Button>
+            </div>
+          </Card>
+
+          {/* Articles Section */}
+          <Card className="p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📖</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                Articles
+              </h2>
+              <p className="text-gray-600 mb-4 text-sm">
+                Read English articles with Traditional Chinese translations. Interactive TTS included.
+              </p>
+              <Button 
+                onClick={() => router.push('/articles')}
+                className="w-full bg-cyan-600 hover:bg-cyan-700"
+              >
+                Browse Articles
               </Button>
             </div>
           </Card>
@@ -146,6 +167,10 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold text-orange-600">0</div>
               <div className="text-sm text-gray-600">AI Conversations</div>
             </div>
+            <div className="p-3 bg-cyan-50 rounded-lg">
+              <div className="text-2xl font-bold text-cyan-600">0</div>
+              <div className="text-sm text-gray-600">Articles Read</div>
+            </div>
           </div>
         </Card>
 
@@ -166,6 +191,12 @@ export default function DashboardPage() {
               className="bg-green-600 hover:bg-green-700"
             >
               💬 Start AI Conversation
+            </Button>
+            <Button 
+              onClick={() => router.push('/articles')}
+              className="bg-cyan-600 hover:bg-cyan-700"
+            >
+              📚 Add New Article
             </Button>
             <Button 
               onClick={handleSignOut}

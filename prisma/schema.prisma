@@ -21,6 +21,9 @@ model User {
   flashcardSets FlashcardSet[]
   studySessions StudySession[]
   chatSessions  ChatSession[]
+  articles      Article[]
+  readingSessions ReadingSession[]
+  readingSessionsV2 ReadingSessionV2[]
 
   @@map("users")
 }
@@ -124,4 +127,83 @@ model ChatMessage {
   chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
 
   @@map("chat_messages")
+}
+
+// Article Reading Feature Models
+model Article {
+  id                String   @id @default(cuid())
+  userId            String
+  title             String
+  sourceUrl         String?
+  originalContent   Json     // Array of paragraphs/lines in English
+  translatedContent Json     // Array of paragraphs/lines in Traditional Chinese
+  wordDefinitions   Json?    // Dictionary of words and their definitions
+  
+  // Add new fields for sentence-based reading
+  sentences         Json?    // Array of sentence objects: [{chinese: "", english: "", audioUrl?: ""}]
+  sentenceCount     Int?     // Total number of sentences
+  difficulty        String?  // 'beginner', 'intermediate', 'advanced'
+  estimatedMinutes  Int?     // Estimated reading time
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readingSessions  ReadingSession[]
+  readingSessionsV2 ReadingSessionV2[]
+
+  @@map("articles")
+}
+
+model ReadingSession {
+  id                String   @id @default(cuid())
+  userId            String
+  articleId         String
+  currentPosition   Int      @default(0) // Current line/paragraph index
+  readingSpeed      Float    @default(1.0) // Speed multiplier (0.5x, 1x, 1.5x, 2x)
+  showTranslation   Boolean  @default(true)
+  startedAt         DateTime @default(now())
+  lastReadAt        DateTime @updatedAt
+  completedAt       DateTime?
+  totalReadingTime  Int      @default(0) // Total time spent reading in seconds
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("reading_sessions")
+}
+
+// New model for sentence-based reading sessions
+model ReadingSessionV2 {
+  id                String   @id @default(cuid())
+  userId            String
+  articleId         String
+  
+  // Session state
+  currentCardIndex  Int      @default(0)
+  totalCards        Int      // Total number of sentence cards
+  completedCards    Int[]    @default([]) // Array of completed card indices
+  
+  // Session settings
+  autoPlayTTS       Boolean  @default(true)
+  ttsSpeed          Float    @default(1.0)
+  showTranslation   Boolean  @default(false) // Start with Chinese only
+  
+  // Progress tracking
+  startedAt         DateTime @default(now())
+  lastActiveAt      DateTime @updatedAt
+  completedAt       DateTime?
+  
+  // Performance metrics
+  cardsFlipped      Int[]    @default([]) // Cards where user needed translation
+  audioReplays      Json?    // Track replay count per card: {cardIndex: count}
+  timePerCard       Json?    // Time spent on each card: {cardIndex: seconds}
+  
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article           Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  
+  @@map("reading_sessions_v2")
 }

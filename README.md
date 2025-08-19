@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cantonese Learner App
+
+A comprehensive language learning platform for mastering Cantonese through AI-powered conversations, smart flashcards, and article reading with automatic translation.
+
+## Features
+
+### 🎯 Core Learning Tools
+- **Smart Flashcards**: Spaced repetition learning with Traditional Chinese support
+- **AI Conversations**: Practice real conversations with AI tutor
+- **Article Reading**: English articles automatically translated to Traditional Chinese
+- **Progress Tracking**: Monitor your learning journey with detailed analytics
+
+### 📚 Article Translation Feature
+- **Automatic Translation**: English articles translated to Traditional Chinese line by line
+- **Interactive Reading**: Click Chinese characters for definitions and pronunciation
+- **TTS Support**: Text-to-speech for proper pronunciation practice
+- **Reading Progress**: Track your position and reading speed
+
+### 🤖 AI-Powered Features
+- **Speech-to-Text**: Multiple options (Web Speech API, OpenAI Whisper, Google Cloud STT)
+- **Text-to-Speech**: Natural pronunciation for Cantonese learning
+- **Smart Corrections**: AI-powered feedback on conversations
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+ 
+- PostgreSQL database
+- Translation API key (Google Translate or OpenAI)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Quick Setup
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. **Clone and install dependencies:**
+   ```bash
+   git clone <repository-url>
+   cd cantonese-app
+   npm install
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. **Set up environment variables:**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your configuration
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Set up the database:**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
 
-## Learn More
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+5. **Open [http://localhost:3000](http://localhost:3000)** to see the app
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment Variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See [SETUP.md](./SETUP.md) for detailed environment variable configuration.
 
-## Deploy on Vercel
+Required variables:
+- `DATABASE_URL`: PostgreSQL connection string
+- `NEXTAUTH_URL`: Your app URL
+- `NEXTAUTH_SECRET`: Authentication secret key
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Optional (for enhanced features):
+- `OPENAI_API_KEY`: For AI conversations and translation
+- `GOOGLE_TRANSLATE_API_KEY`: For article translation
+- `GOOGLE_APPLICATION_CREDENTIALS`: For speech recognition
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Documentation
+
+- [Setup Guide](./SETUP.md) - Complete setup instructions
+- [Article Translation Feature](./TRANSLATION_FEATURE.md) - Detailed translation feature documentation
+- [Articles Feature](./ARTICLES_FEATURE.md) - Article reading functionality
+- [TTS Troubleshooting](./TTS_TROUBLESHOOTING.md) - Speech synthesis help
+
+## Tech Stack
+
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL
+- **Authentication**: NextAuth.js
+- **AI Services**: OpenAI API, Google Cloud APIs
+- **Translation**: Google Translate API, OpenAI GPT
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
