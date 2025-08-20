@@ -1,6 +1,8 @@
 # Cantonese Learner App
 
-A comprehensive language learning platform for mastering Cantonese through AI-powered conversations, smart flashcards, and article reading with automatic translation.
+<!-- Deployment test - checking environment variables -->
+
+Learn Cantonese through flashcards and AI conversations.
 
 ## Features
 

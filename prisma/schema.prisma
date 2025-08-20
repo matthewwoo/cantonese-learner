@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -10,200 +9,163 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  flashcardSets FlashcardSet[]
-  studySessions StudySession[]
-  chatSessions  ChatSession[]
-  articles      Article[]
-  readingSessions ReadingSession[]
+  id                String             @id @default(cuid())
+  email             String             @unique
+  password          String
+  name              String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  articles          Article[]
+  chatSessions      ChatSession[]
+  flashcardSets     FlashcardSet[]
+  readingSessions   ReadingSession[]
   readingSessionsV2 ReadingSessionV2[]
+  studySessions     StudySession[]
 
   @@map("users")
 }
 
 model FlashcardSet {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
   description String?
   theme       String
   userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  flashcards Flashcard[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcards  Flashcard[]
 
   @@map("flashcard_sets")
 }
 
 model Flashcard {
-  id                    String   @id @default(cuid())
-  chineseWord           String
-  englishTranslation    String
-  pronunciation         String?
+  id                     String       @id @default(cuid())
+  chineseWord            String
+  englishTranslation     String
+  flashcardSetId         String
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
   exampleSentenceEnglish String?
   exampleSentenceChinese String?
-  flashcardSetId        String
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  // Relations
-  flashcardSet FlashcardSet @relation(fields: [flashcardSetId], references: [id], onDelete: Cascade)
-  studyCards   StudyCard[]
+  pronunciation          String?
+  flashcardSet           FlashcardSet @relation(fields: [flashcardSetId], references: [id], onDelete: Cascade)
+  studyCards             StudyCard[]
 
   @@map("flashcards")
 }
 
 model StudySession {
-  id        String   @id @default(cuid())
-  userId    String
-  startedAt DateTime @default(now())
+  id          String      @id @default(cuid())
+  userId      String
+  startedAt   DateTime    @default(now())
   completedAt DateTime?
-  totalCards Int      @default(20)
-
-  // Relations
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyCards StudyCard[]
+  totalCards  Int         @default(20)
+  studyCards  StudyCard[]
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("study_sessions")
 }
 
 model StudyCard {
-  id            String   @id @default(cuid())
-  flashcardId   String
+  id             String       @id @default(cuid())
+  flashcardId    String
   studySessionId String
-  
-  // Spaced repetition data
-  easeFactor    Float    @default(2.5)
-  interval      Int      @default(0)
-  repetitions   Int      @default(0)
-  nextReviewDate DateTime @default(now())
-  
-  // Response tracking
-  wasCorrect    Boolean?
-  responseTime  Int? // milliseconds
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  flashcard    Flashcard    @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
-  studySession StudySession @relation(fields: [studySessionId], references: [id], onDelete: Cascade)
+  easeFactor     Float        @default(2.5)
+  interval       Int          @default(0)
+  repetitions    Int          @default(0)
+  nextReviewDate DateTime     @default(now())
+  wasCorrect     Boolean?
+  responseTime   Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  flashcard      Flashcard    @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+  studySession   StudySession @relation(fields: [studySessionId], references: [id], onDelete: Cascade)
 
   @@map("study_cards")
 }
 
 model ChatSession {
-  id        String   @id @default(cuid())
-  userId    String
-  theme     String
-  targetWords Json   // Array of words to practice
-  startedAt DateTime @default(now())
-  endedAt   DateTime?
-
-  // Relations
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages ChatMessage[]
+  id          String        @id @default(cuid())
+  userId      String
+  theme       String
+  targetWords Json
+  startedAt   DateTime      @default(now())
+  endedAt     DateTime?
+  messages    ChatMessage[]
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("chat_sessions")
 }
 
 model ChatMessage {
-  id            String   @id @default(cuid())
+  id            String      @id @default(cuid())
   chatSessionId String
-  role          String   // 'user' or 'assistant'
+  role          String
   content       String
-  translation   String?  // English/Chinese translation
-  createdAt     DateTime @default(now())
-
-  // Relations
-  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  translation   String?
+  createdAt     DateTime    @default(now())
+  chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
 
   @@map("chat_messages")
 }
 
-// Article Reading Feature Models
 model Article {
-  id                String   @id @default(cuid())
+  id                String             @id @default(cuid())
   userId            String
   title             String
   sourceUrl         String?
-  originalContent   Json     // Array of paragraphs/lines in English
-  translatedContent Json     // Array of paragraphs/lines in Traditional Chinese
-  wordDefinitions   Json?    // Dictionary of words and their definitions
-  
-  // Add new fields for sentence-based reading
-  sentences         Json?    // Array of sentence objects: [{chinese: "", english: "", audioUrl?: ""}]
-  sentenceCount     Int?     // Total number of sentences
-  difficulty        String?  // 'beginner', 'intermediate', 'advanced'
-  estimatedMinutes  Int?     // Estimated reading time
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Relations
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  readingSessions  ReadingSession[]
+  originalContent   Json
+  translatedContent Json
+  wordDefinitions   Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  difficulty        String?
+  estimatedMinutes  Int?
+  sentenceCount     Int?
+  sentences         Json?
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readingSessions   ReadingSession[]
   readingSessionsV2 ReadingSessionV2[]
 
   @@map("articles")
 }
 
 model ReadingSession {
-  id                String   @id @default(cuid())
-  userId            String
-  articleId         String
-  currentPosition   Int      @default(0) // Current line/paragraph index
-  readingSpeed      Float    @default(1.0) // Speed multiplier (0.5x, 1x, 1.5x, 2x)
-  showTranslation   Boolean  @default(true)
-  startedAt         DateTime @default(now())
-  lastReadAt        DateTime @updatedAt
-  completedAt       DateTime?
-  totalReadingTime  Int      @default(0) // Total time spent reading in seconds
-
-  // Relations
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           String
+  articleId        String
+  currentPosition  Int       @default(0)
+  readingSpeed     Float     @default(1.0)
+  showTranslation  Boolean   @default(true)
+  startedAt        DateTime  @default(now())
+  lastReadAt       DateTime  @updatedAt
+  completedAt      DateTime?
+  totalReadingTime Int       @default(0)
+  article          Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("reading_sessions")
 }
 
-// New model for sentence-based reading sessions
 model ReadingSessionV2 {
-  id                String   @id @default(cuid())
-  userId            String
-  articleId         String
-  
-  // Session state
-  currentCardIndex  Int      @default(0)
-  totalCards        Int      // Total number of sentence cards
-  completedCards    Int[]    @default([]) // Array of completed card indices
-  
-  // Session settings
-  autoPlayTTS       Boolean  @default(true)
-  ttsSpeed          Float    @default(1.0)
-  showTranslation   Boolean  @default(false) // Start with Chinese only
-  
-  // Progress tracking
-  startedAt         DateTime @default(now())
-  lastActiveAt      DateTime @updatedAt
-  completedAt       DateTime?
-  
-  // Performance metrics
-  cardsFlipped      Int[]    @default([]) // Cards where user needed translation
-  audioReplays      Json?    // Track replay count per card: {cardIndex: count}
-  timePerCard       Json?    // Time spent on each card: {cardIndex: seconds}
-  
-  // Relations
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  article           Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  
+  id               String    @id @default(cuid())
+  userId           String
+  articleId        String
+  currentCardIndex Int       @default(0)
+  totalCards       Int
+  completedCards   Int[]     @default([])
+  autoPlayTTS      Boolean   @default(true)
+  ttsSpeed         Float     @default(1.0)
+  showTranslation  Boolean   @default(false)
+  startedAt        DateTime  @default(now())
+  lastActiveAt     DateTime  @updatedAt
+  completedAt      DateTime?
+  cardsFlipped     Int[]     @default([])
+  audioReplays     Json?
+  timePerCard      Json?
+  article          Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("reading_sessions_v2")
 }
