@@ -192,17 +192,7 @@ async function translateWithService(
 ): Promise<string> {
   console.log('Translation service: Checking available APIs...');
   
-  // Check if Google Cloud Translation API key exists
-  const googleApiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-  console.log('Google Translate API key exists:', !!googleApiKey);
-  
-  if (googleApiKey) {
-    console.log('Using Google Translate API');
-    // Use Google Translate API
-    return translateWithGoogle(text, targetLanguage, sourceLanguage, googleApiKey);
-  }
-  
-  // Check if OpenAI API key exists
+  // Check if OpenAI API key exists (Primary)
   const openaiApiKey = process.env.OPENAI_API_KEY;
   console.log('OpenAI API key exists:', !!openaiApiKey);
   
@@ -210,6 +200,16 @@ async function translateWithService(
     console.log('Using OpenAI API for translation');
     // Use OpenAI for translation
     return translateWithOpenAI(text, targetLanguage, sourceLanguage, openaiApiKey);
+  }
+  
+  // Check if Google Cloud Translation API key exists (Fallback)
+  const googleApiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+  console.log('Google Translate API key exists:', !!googleApiKey);
+  
+  if (googleApiKey) {
+    console.log('Using Google Translate API');
+    // Use Google Translate API
+    return translateWithGoogle(text, targetLanguage, sourceLanguage, googleApiKey);
   }
   
   // If no translation service configured, return mock translation
