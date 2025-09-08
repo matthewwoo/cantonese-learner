@@ -98,9 +98,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
           {/* Speech button for AI messages */}
           {!isUser && ttsSupported && (
             <Button
+              variant="Secondary"
+              text=""
               onClick={handleSpeak}
-              variant="ghost"
-              size="sm"
               className={`flex-shrink-0 p-1 h-auto min-w-0 transition-all duration-200 ${
                 isSpeaking 
                   ? 'bg-red-100 hover:bg-red-200 text-red-600' 

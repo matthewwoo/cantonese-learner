@@ -209,57 +209,48 @@ export default function ChatPage() {
             </div>
             <div className="flex items-center gap-4">
               <Button
+                variant="Secondary"
+                text={`${showTranslations ? '隱藏翻譯 Hide' : '顯示翻譯 Show'} Translations`}
                 onClick={() => setShowTranslations(!showTranslations)}
-                variant="outline"
-                size="sm"
                 className="flex items-center gap-2"
               >
                 <span className="text-sm">
                   {showTranslations ? '🔇' : '🔊'}
                 </span>
-                <span>
-                  {showTranslations ? '隱藏翻譯 Hide' : '顯示翻譯 Show'} Translations
-                </span>
               </Button>
               {ttsSupported && (
                 <Button
+                  variant="Secondary"
+                  text={autoTTS ? 'Auto TTS On' : 'Auto TTS Off'}
                   onClick={() => setAutoTTS(!autoTTS)}
-                  variant="outline"
-                  size="sm"
                   className={`flex items-center gap-2 ${autoTTS ? 'bg-green-50 border-green-200' : ''}`}
                 >
                   <span className="text-sm">
                     {autoTTS ? '🔊' : '🔇'}
                   </span>
-                  <span>
-                    {autoTTS ? 'Auto TTS On' : 'Auto TTS Off'}
-                  </span>
                 </Button>
               )}
               {ttsSupported && (
                 <Button
+                  variant="Secondary"
+                  text="Stop Speech"
                   onClick={stopSpeech}
-                  variant="outline"
-                  size="sm"
                   className="flex items-center gap-2"
                   title="Stop all speech"
                 >
                   <span className="text-sm">🔇</span>
-                  <span>Stop Speech</span>
                 </Button>
               )}
               <Button
+                variant="Secondary"
+                text="← Back to Dashboard"
                 onClick={() => router.push('/dashboard')}
-                variant="outline"
-              >
-                ← Back to Dashboard
-              </Button>
+              />
               <Button
+                variant="Secondary"
+                text="🆕 New Chat"
                 onClick={startNewChat}
-                variant="outline"
-              >
-                🆕 New Chat
-              </Button>
+              />
             </div>
           </div>
         </div>
@@ -300,13 +291,11 @@ export default function ChatPage() {
           <Card className="mb-4 p-4 bg-red-50 border-red-200">
             <p className="text-red-700">Error: {error}</p>
             <Button
+              variant="Secondary"
+              text="Dismiss"
               onClick={() => setError(null)}
-              variant="outline"
-              size="sm"
               className="mt-2"
-            >
-              Dismiss
-            </Button>
+            />
           </Card>
         )}
 
@@ -382,13 +371,11 @@ export default function ChatPage() {
         {/* TTS Debugger */}
         <div className="mt-4">
           <Button
+            variant="Secondary"
+            text={`${showTTSDebugger ? '🔽 Hide' : '🔼 Show'} TTS Debugger`}
             onClick={() => setShowTTSDebugger(!showTTSDebugger)}
-            variant="outline"
-            size="sm"
             className="w-full"
-          >
-            {showTTSDebugger ? '🔽 Hide' : '🔼 Show'} TTS Debugger
-          </Button>
+          />
           {showTTSDebugger && (
             <div className="mt-2">
               <TTSDebugger />

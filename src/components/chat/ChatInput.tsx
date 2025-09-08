@@ -167,9 +167,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
           {/* Speech-to-text button */}
           {openaiSTTSupported ? (
             <Button
+              variant="Secondary"
+              text=""
               onClick={handleSpeechStart}
               disabled={disabled}
-              variant="outline"
               className={`flex items-center justify-center px-4 py-2 transition-all duration-200 ${
                 isListening 
                   ? 'bg-red-100 border-red-300 text-red-600 hover:bg-red-200' 
@@ -188,8 +189,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
             </Button>
           ) : (
             <Button
+              variant="Secondary"
+              text=""
               disabled={true}
-              variant="outline"
               className="flex items-center justify-center px-4 py-2 opacity-50 cursor-not-allowed"
               title="Speech recognition not supported in this browser"
             >
@@ -199,17 +201,16 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
           
           {/* Send button */}
           <Button
+            variant="Primary"
+            text={disabled ? "Sending..." : "發送 Send"}
             onClick={handleSend}
             disabled={disabled || !inputValue.trim()}
             className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 px-6"
           >
-            {disabled ? (
+            {disabled && (
               <div className="flex items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Sending...
               </div>
-            ) : (
-              '發送 Send'
             )}
           </Button>
         </div>

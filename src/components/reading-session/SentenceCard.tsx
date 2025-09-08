@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ttsService, speakCantonese, stopSpeech } from '@/utils/textToSpeech';
 import { speakAndPlayCantonese as speakWithOpenAI, stopOpenAITTS, isOpenAITTSAvailable } from '@/utils/openaiTTS';
 
@@ -43,19 +43,8 @@ export default function SentenceCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const gradientIndex = (cardNumber - 1) % gradientColors.length;
 
-  // Auto-play TTS when card loads
-  useEffect(() => {
-    if (autoPlayTTS && !isFlipped) {
-      const timer = setTimeout(() => {
-        playAudio();
-      }, 500); // Small delay to let card animation complete
-      
-      return () => clearTimeout(timer);
-    }
-  }, [autoPlayTTS, isFlipped]);
-
   // Play audio function
-  const playAudio = async () => {
+  const playAudio = useCallback(async () => {
     if (isPlaying) return;
     
     setIsPlaying(true);
@@ -95,18 +84,49 @@ export default function SentenceCard({
       setIsLoading(false);
       setIsPlaying(false);
     }
-  };
+  }, [chinese, ttsSpeed, isPlaying, onReplay]);
+
+  // Auto-play TTS when card loads or when card is reset to Chinese side
+  useEffect(() => {
+    if (autoPlayTTS && !isFlipped) {
+      const timer = setTimeout(() => {
+        playAudio();
+      }, 500); // Small delay to let card animation complete
+      
+      return () => {
+        clearTimeout(timer);
+        // Stop any playing audio when component unmounts or dependencies change
+        stopSpeech();
+        stopOpenAITTS();
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+        }
+      };
+    }
+  }, [autoPlayTTS, isFlipped, chinese, cardNumber, playAudio]); // Added playAudio as dependency
+
+  // Stop TTS when card changes
+  useEffect(() => {
+    return () => {
+      // Stop any playing audio when card changes
+      stopSpeech();
+      stopOpenAITTS();
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [cardNumber]);
 
   // Handle card flip
-  const handleFlip = () => {
+  const handleFlip = useCallback(() => {
     setIsFlipped(!isFlipped);
     onFlip(!isFlipped);
     
     // Don't auto-play TTS when flipped - let user manually replay if needed
-  };
+  }, [isFlipped, onFlip]);
 
   // Handle card completion
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     // Stop any playing audio
     stopSpeech();
     stopOpenAITTS();
@@ -118,7 +138,7 @@ export default function SentenceCard({
     setIsFlipped(false);
     
     onComplete();
-  };
+  }, [onComplete]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -140,7 +160,7 @@ export default function SentenceCard({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isFlipped, onComplete]);
+  }, [isFlipped, onComplete, handleFlip, playAudio, handleComplete]);
 
   return (
     <div className="w-full max-w-2xl mx-auto">

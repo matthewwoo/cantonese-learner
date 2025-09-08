@@ -2,6 +2,7 @@
 // Homepage for the Cantonese learning app
 
 import Link from "next/link"
+import { Button } from "@/components/ui/Button"
 
 export default function Home() {
   return (
@@ -49,18 +50,21 @@ export default function Home() {
           
           {/* CTA Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/auth/signup"
-              className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+            <Button
+              variant="Primary"
+              text="🚀 開始學習 Get Started Free"
+              asChild
+              className="transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
-              🚀 開始學習 Get Started Free
-            </Link>
-            <Link
-              href="/auth/signin"
-              className="inline-flex items-center justify-center px-8 py-3 border-2 border-indigo-600 text-base font-medium rounded-lg text-indigo-600 bg-white hover:bg-indigo-50 transition-all duration-200"
+              <Link href="/auth/signup" />
+            </Button>
+            <Button
+              variant="Secondary"
+              text="已有帳戶 Sign In"
+              asChild
             >
-              已有帳戶 Sign In
-            </Link>
+              <Link href="/auth/signin" />
+            </Button>
           </div>
         </div>
 

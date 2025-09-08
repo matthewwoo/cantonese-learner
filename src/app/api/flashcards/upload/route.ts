@@ -20,9 +20,8 @@ const flashcardSchema = z.object({
 // Schema for the entire flashcard set
 const flashcardSetSchema = z.object({
   name: z.string().min(1, "Set name is required"),
-  description: z.string().optional(),
-  theme: z.string().min(1, "Theme is required"),
   flashcards: z.array(flashcardSchema).min(1, "At least one flashcard is required"),
+  imageUrl: z.string().url().optional().nullable(),
 })
 
 // This function handles POST requests for uploading flashcard sets
@@ -47,9 +46,8 @@ export async function POST(request: NextRequest) {
     const flashcardSet = await db.flashcardSet.create({
       data: {
         name: validatedData.name,
-        description: validatedData.description || null,
-        theme: validatedData.theme,
         userId: session.user.id,
+        imageUrl: validatedData.imageUrl || null,
         // Create all flashcards at the same time
         flashcards: {
           create: validatedData.flashcards.map(card => ({
@@ -72,8 +70,6 @@ export async function POST(request: NextRequest) {
       flashcardSet: {
         id: flashcardSet.id,
         name: flashcardSet.name,
-        description: flashcardSet.description,
-        theme: flashcardSet.theme,
         flashcardCount: flashcardSet.flashcards.length,
         createdAt: flashcardSet.createdAt,
       }

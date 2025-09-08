@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/Button';
 
 interface Article {
   id: string;
@@ -227,18 +228,17 @@ export default function ArticlesPage() {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <button
+              <Button
+                variant="Secondary"
+                text="Dashboard"
                 onClick={() => router.push('/dashboard')}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Dashboard
-              </button>
-              <button
+              />
+              <Button
+                variant="Primary"
+                text="+ Add New Article"
                 onClick={() => setShowAddModal(true)}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full font-bold hover:scale-105 transition-transform shadow-lg"
-              >
-                + Add New Article
-              </button>
+                className="hover:scale-105 transition-transform shadow-lg"
+              />
             </div>
           </div>
         </div>
@@ -257,12 +257,12 @@ export default function ArticlesPage() {
             <p className="text-gray-500 mb-6">
               Please sign in to access your articles
             </p>
-            <button
+            <Button
+              variant="Primary"
+              text="Sign In"
               onClick={() => router.push('/auth/signin')}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full font-bold hover:scale-105 transition-transform shadow-lg"
-            >
-              Sign In
-            </button>
+              className="hover:scale-105 transition-transform shadow-lg"
+            />
           </div>
         ) : articles.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
@@ -306,12 +306,12 @@ export default function ArticlesPage() {
                   Created on {new Date(article.createdAt).toLocaleDateString('en-US')}
                 </p>
                 
-                <button
+                <Button
+                  variant="Primary"
+                  text="Start Reading"
                   onClick={() => router.push(`/articles/${article.id}`)}
-                  className="w-full bg-gradient-to-r from-blue-400 to-cyan-400 text-white py-2 rounded-lg font-semibold hover:shadow-md transition-all"
-                >
-                  Start Reading
-                </button>
+                  className="w-full hover:shadow-md transition-all"
+                />
               </div>
             ))}
           </div>

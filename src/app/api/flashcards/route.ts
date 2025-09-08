@@ -41,8 +41,7 @@ export async function GET() {
     const setsWithCounts = flashcardSets.map(set => ({
       id: set.id,
       name: set.name,
-      description: set.description,
-      theme: set.theme,
+      imageUrl: set.imageUrl,
       flashcardCount: set.flashcards.length,
       createdAt: set.createdAt,
       updatedAt: set.updatedAt,

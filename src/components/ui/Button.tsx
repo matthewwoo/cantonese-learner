@@ -1,47 +1,59 @@
 // src/components/ui/Button.tsx
-// Reusable button component with different styles and sizes
+// Reusable button component with design system specifications
 
-import { ButtonHTMLAttributes, forwardRef } from "react"
+import React, { ButtonHTMLAttributes, forwardRef } from "react"
 import { cn } from "@/lib/utils" // Utility function for combining CSS classes
 
 // Define the props our Button component accepts
 // We extend ButtonHTMLAttributes to get all standard button props (onClick, disabled, etc.)
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "outline" | "ghost" // Different visual styles
-  size?: "sm" | "md" | "lg"                 // Different sizes
+  variant?: "Primary" | "Secondary" // Button variants from design system
+  text?: string                     // Button text content
+  asChild?: boolean                 // For rendering as different element (e.g., Link)
 }
 
 // forwardRef allows parent components to get a reference to our button element
 // This is useful for focusing, measuring, etc.
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "md", ...props }, ref) => {
+  ({ className, variant = "Primary", text, asChild = false, children, ...props }, ref) => {
     
-    // Define CSS classes for different button variants
+    // Define CSS classes for different button variants based on design system
     const variants = {
-      default: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500", // Solid blue
-      outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50", // White with border  
-      ghost: "text-gray-700 hover:bg-gray-100" // Transparent background
+      Primary: "bg-[#171515] text-white hover:bg-[#2a2a2a] focus:ring-[#171515]", // Dark background
+      Secondary: "bg-[#f5f5f5] text-[#1e1e1e] hover:bg-[#e5e5e5] focus:ring-[#1e1e1e]" // Light background
     }
 
-    // Define CSS classes for different sizes
-    const sizes = {
-      sm: "px-3 py-1.5 text-sm", // Small: less padding, smaller text
-      md: "px-4 py-2",           // Medium: standard size
-      lg: "px-6 py-3 text-lg"    // Large: more padding, bigger text
+    // Base button classes from design system
+    const buttonClasses = cn(
+      // Base styles applied to all buttons
+      "inline-flex items-center justify-center rounded-[8px] font-['Söhne'] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+      "px-5 py-3 text-[14px] leading-[21px]", // Design system padding and typography
+      variants[variant], // Add variant-specific styles
+      className    // Allow custom classes to be added
+    )
+
+    // If asChild is true, we need to clone the child element with our classes
+    if (asChild) {
+      const child = children as React.ReactElement<any>
+      if (!child) {
+        throw new Error("Button with asChild requires a single child element")
+      }
+      
+      return React.cloneElement(child, {
+        className: cn(buttonClasses, child.props?.className),
+        ref: ref,
+        ...props
+      } as any)
     }
 
     return (
       <button
-        className={cn(
-          // Base styles applied to all buttons
-          "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
-          variants[variant], // Add variant-specific styles
-          sizes[size],      // Add size-specific styles  
-          className         // Allow custom classes to be added
-        )}
+        className={buttonClasses}
         ref={ref}    // Forward the ref to the button element
         {...props}   // Spread all other props (onClick, disabled, etc.)
-      />
+      >
+        {text || children}
+      </button>
     )
   }
 )

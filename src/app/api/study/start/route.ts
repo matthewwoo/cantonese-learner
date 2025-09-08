@@ -117,7 +117,6 @@ export async function POST(request: NextRequest) {
         totalCards: completeStudySession!.totalCards,
         startedAt: completeStudySession!.startedAt,
         flashcardSetName: flashcardSet.name,
-        theme: flashcardSet.theme,
         studyCards: completeStudySession!.studyCards.map((studyCard, index) => ({
           id: studyCard.id,
           position: index + 1, // 1-based position for UI

@@ -72,7 +72,7 @@ export default function SignUpForm() {
       {/* Bilingual header */}
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">開始學習</h1>
-        <p className="text-gray-600 mt-1">Start learning</p>
+        <p className="text-gray-600 mt-1">Start lesson</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -112,12 +112,11 @@ export default function SignUpForm() {
 
         {/* Submit button */}
         <Button 
-          type="submit" 
+          variant="Primary"
+          text={isLoading ? "Creating Account..." : "Sign Up"}
           className="w-full"
           disabled={isLoading}
-        >
-          {isLoading ? "Creating Account..." : "Sign Up"}
-        </Button>
+        />
       </form>
 
       {/* Link to sign in page for existing users */}

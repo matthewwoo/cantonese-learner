@@ -172,12 +172,17 @@ export function useReadingSession(sessionId: string) {
           toast.success('Reading session completed! 🎉');
           // Could navigate to completion screen here
         } else {
-          setCurrentCardIndex(data.nextCardIndex);
+          // Reset card state before moving to next card
           setIsCardFlipped(false);
           setCardStartTime(Date.now());
           setAudioReplayCount(0);
           cardStartTimeRef.current = Date.now();
           audioReplayCountRef.current = 0;
+          
+          // Move to next card after a brief delay to ensure state is reset
+          setTimeout(() => {
+            setCurrentCardIndex(data.nextCardIndex);
+          }, 100);
         }
       }
     } catch (err) {

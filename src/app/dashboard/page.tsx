@@ -6,8 +6,12 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
+import { FeatureCard } from "@/components/ui/FeatureCard"
+import { ProgressStats } from "@/components/ui/ProgressStats"
+import { QuickActions } from "@/components/ui/QuickActions"
+import { tokens } from "@/lib/design-tokens"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -23,8 +27,16 @@ export default function DashboardPage() {
   // Show loading while checking authentication
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg text-gray-600">Loading dashboard...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-100">
+        <div className="text-center">
+          <LoadingSpinner size="xl" className="mb-4" />
+          <p className="text-lg text-gray-600 font-medium">
+            Loading your learning dashboard...
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            正在載入您的學習儀表板...
+          </p>
+        </div>
       </div>
     )
   }
@@ -38,174 +50,146 @@ export default function DashboardPage() {
     signOut({ callbackUrl: "/auth/signin" })
   }
 
+  // Feature cards data
+  const featureCards = [
+    {
+      title: "Flashcards",
+      titleChinese: "閃卡",
+      description: "Study vocabulary with smart spaced repetition. Upload your own sets or browse our collection.",
+      icon: "📚",
+      buttonText: "Manage Flashcards",
+      buttonTextChinese: "管理閃卡",
+      onClick: () => router.push('/flashcards'),
+      feature: "flashcards" as const,
+    },
+    {
+      title: "AI Chat",
+      titleChinese: "AI對話",
+      description: "Practice conversations with AI tutor. Speech recognition and pronunciation help included.",
+      icon: "🤖",
+      buttonText: "Start Chat",
+      buttonTextChinese: "開始對話",
+      onClick: () => router.push('/chat'),
+      feature: "chat" as const,
+    },
+    {
+      title: "Articles",
+      titleChinese: "文章",
+      description: "Read English articles with Traditional Chinese translations. Interactive TTS included.",
+      icon: "📖",
+      buttonText: "Browse Articles",
+      buttonTextChinese: "瀏覽文章",
+      onClick: () => router.push('/articles'),
+      feature: "articles" as const,
+    },
+    {
+      title: "Account",
+      titleChinese: "帳戶",
+      description: "Manage your profile, learning preferences, and view your progress analytics.",
+      icon: "⚙️",
+      buttonText: "Coming Soon",
+      buttonTextChinese: "即將推出",
+      onClick: () => {},
+      disabled: true,
+      feature: "account" as const,
+    },
+  ]
+
+  // Progress stats data
+  const progressStats = [
+    { label: "Flashcard Sets", value: 0, color: "flashcards" as const, icon: "📚" },
+    { label: "Words Learned", value: 0, color: "flashcards" as const, icon: "📝" },
+    { label: "Study Sessions", value: 0, color: "chat" as const, icon: "📊" },
+    { label: "AI Conversations", value: 0, color: "chat" as const, icon: "💬" },
+    { label: "Articles Read", value: 0, color: "articles" as const, icon: "📖" },
+  ]
+
+  // Quick actions data
+  const quickActions = [
+    {
+      label: "Create New Flashcard Set",
+      labelChinese: "創建新閃卡組",
+      icon: "📝",
+      onClick: () => router.push('/flashcards'),
+      color: "flashcards" as const,
+    },
+    {
+      label: "Start AI Conversation",
+      labelChinese: "開始AI對話",
+      icon: "💬",
+      onClick: () => router.push('/chat'),
+      color: "chat" as const,
+    },
+    {
+      label: "Add New Article",
+      labelChinese: "添加新文章",
+      icon: "📚",
+      onClick: () => router.push('/articles'),
+      color: "articles" as const,
+    },
+    {
+      label: "Sign Out",
+      labelChinese: "登出",
+      icon: "🚪",
+      onClick: handleSignOut,
+      variant: "Secondary" as const,
+    },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div 
+      className="min-h-screen p-8"
+      style={{
+        background: tokens.colors.background.gradient
+      }}
+    >
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Welcome Header */}
-        <Card className="p-8 mb-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-3">
-              歡迎回來！ Welcome back!
-            </h1>
-            <p className="text-lg text-gray-600 mb-2">
-              Signed in as: <strong className="text-indigo-600">{session.user?.email}</strong>
+        <Card className="p-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+            歡迎回來！ Welcome back!
+          </h1>
+          <p className="text-lg text-gray-600 mb-2">
+            Signed in as: <strong className="text-indigo-600">{session.user?.email}</strong>
+          </p>
+          {session.user?.name && (
+            <p className="text-gray-600">
+              Name: <strong className="text-indigo-600">{session.user.name}</strong>
             </p>
-            {session.user?.name && (
-              <p className="text-gray-600">
-                Name: <strong className="text-indigo-600">{session.user.name}</strong>
-              </p>
-            )}
-          </div>
+          )}
         </Card>
 
         {/* Main Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Flashcards Section */}
-          <Card className="p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">📚</span>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                閃卡 Flashcards
-              </h2>
-              <p className="text-gray-600 mb-4 text-sm">
-                Study vocabulary with smart spaced repetition. Upload your own sets or browse our collection.
-              </p>
-              <Button 
-                onClick={() => router.push('/flashcards')}
-                className="w-full bg-purple-600 hover:bg-purple-700"
-              >
-                Manage Flashcards
-              </Button>
-            </div>
-          </Card>
-
-          {/* AI Chat Section */}
-          <Card className="p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🤖</span>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                AI對話 AI Chat
-              </h2>
-              <p className="text-gray-600 mb-4 text-sm">
-                Practice conversations with AI tutor. Speech recognition and pronunciation help included.
-              </p>
-              <Button 
-              onClick={() => router.push('/chat')}
-              className="w-full bg-green-600 hover:bg-green-700"
-              >
-              Start Chat
-              </Button>
-            </div>
-          </Card>
-
-          {/* Articles Section */}
-          <Card className="p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">📖</span>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Articles
-              </h2>
-              <p className="text-gray-600 mb-4 text-sm">
-                Read English articles with Traditional Chinese translations. Interactive TTS included.
-              </p>
-              <Button 
-                onClick={() => router.push('/articles')}
-                className="w-full bg-cyan-600 hover:bg-cyan-700"
-              >
-                Browse Articles
-              </Button>
-            </div>
-          </Card>
-
-          {/* Account Section */}
-          <Card className="p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">⚙️</span>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                帳戶 Account
-              </h2>
-              <p className="text-gray-600 mb-4 text-sm">
-                Manage your profile, learning preferences, and view your progress analytics.
-              </p>
-              <Button 
-                disabled
-                className="w-full opacity-50 cursor-not-allowed"
-              >
-                Coming Soon
-              </Button>
-            </div>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {featureCards.map((card, index) => (
+            <FeatureCard
+              key={index}
+              title={card.title}
+              titleChinese={card.titleChinese}
+              description={card.description}
+              icon={card.icon}
+              buttonText={card.buttonText}
+              buttonTextChinese={card.buttonTextChinese}
+              onClick={card.onClick}
+              disabled={card.disabled}
+              feature={card.feature}
+            />
+          ))}
         </div>
 
-        {/* Quick Stats */}
-        <Card className="p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-            📊 Learning Progress
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">0</div>
-              <div className="text-sm text-gray-600">Flashcard Sets</div>
-            </div>
-            <div className="p-3 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">0</div>
-              <div className="text-sm text-gray-600">Words Learned</div>
-            </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">0</div>
-              <div className="text-sm text-gray-600">Study Sessions</div>
-            </div>
-            <div className="p-3 bg-orange-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">0</div>
-              <div className="text-sm text-gray-600">AI Conversations</div>
-            </div>
-            <div className="p-3 bg-cyan-50 rounded-lg">
-              <div className="text-2xl font-bold text-cyan-600">0</div>
-              <div className="text-sm text-gray-600">Articles Read</div>
-            </div>
-          </div>
-        </Card>
+        {/* Progress Stats */}
+        <ProgressStats
+          title="Learning Progress"
+          titleChinese="學習進度"
+          stats={progressStats}
+        />
 
         {/* Quick Actions */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-            快速操作 Quick Actions
-          </h3>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Button 
-              onClick={() => router.push('/flashcards')}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              📝 Create New Flashcard Set
-            </Button>
-            <Button 
-              onClick={() => router.push('/chat')}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              💬 Start AI Conversation
-            </Button>
-            <Button 
-              onClick={() => router.push('/articles')}
-              className="bg-cyan-600 hover:bg-cyan-700"
-            >
-              📚 Add New Article
-            </Button>
-            <Button 
-              onClick={handleSignOut}
-              variant="outline"
-            >
-              🚪 Sign Out
-            </Button>
-          </div>
-        </Card>
+        <QuickActions
+          title="Quick Actions"
+          titleChinese="快速操作"
+          actions={quickActions}
+        />
       </div>
     </div>
   )

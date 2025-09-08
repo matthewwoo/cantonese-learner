@@ -89,13 +89,11 @@ export default function SignInForm() {
 
         {/* Submit button */}
         <Button 
-          type="submit"                     // Makes button submit the form
+          variant="Primary"
+          text={isLoading ? "Signing In..." : "Sign In"}
           className="w-full"                // Full width styling
           disabled={isLoading}              // Disable button while loading
-        >
-          {/* Show different text based on loading state */}
-          {isLoading ? "Signing In..." : "Sign In"}
-        </Button>
+        />
       </form>
 
       {/* Link to sign up page for new users */}
