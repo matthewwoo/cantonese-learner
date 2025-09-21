@@ -4,8 +4,25 @@
 
 "use client" // Must be client component since providers use React Context
 
-import { SessionProvider } from "next-auth/react" // Provides authentication state to all components
+import { SessionProvider, useSession } from "next-auth/react" // Provides authentication state to all components
 import { Toaster } from "react-hot-toast" // Provides toast notification system
+import BottomNav from "@/components/ui/BottomNav"
+import TopHeader from "@/components/ui/TopHeader"
+
+// Renders BottomNav only when authenticated and adds spacer to prevent overlap
+function AuthenticatedNavWrapper({ children }: { children: React.ReactNode }) {
+  const { status } = useSession()
+  const isAuthed = status === "authenticated"
+  return (
+    <>
+      {isAuthed && <TopHeader />}
+      {isAuthed && <div style={{ height: "72px" }} />}
+      {children}
+      {isAuthed && <div style={{ height: "84px" }} />}
+      {isAuthed && <BottomNav />}
+    </>
+  )
+}
 
 // This component wraps the entire application
 export default function Providers({
@@ -17,7 +34,9 @@ export default function Providers({
     /* SessionProvider gives all child components access to user session data */
     <SessionProvider>
       {/* Render all our app's pages and components */}
-      {children}
+      <AuthenticatedNavWrapper>
+        {children}
+      </AuthenticatedNavWrapper>
       
       {/* 
         Toaster component renders toast notifications anywhere in the app

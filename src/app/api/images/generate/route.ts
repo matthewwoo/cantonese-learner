@@ -34,31 +34,32 @@ export async function POST(request: NextRequest) {
 
     console.log('Generating image with prompt:', imagePrompt)
 
-    // Generate image using DALL-E 3
+    // Generate image using DALL-E 3 and return base64 for persistence
     const response = await openai.images.generate({
       model: "dall-e-3",
       prompt: imagePrompt,
       n: 1,
       size: "1024x1024",
       quality: "standard",
-      style: "vivid"
+      style: "vivid",
+      response_format: "b64_json",
     })
 
-    console.log('Image generation response:', response)
+    console.log('Image generation response received')
 
-    const imageUrl = response.data[0]?.url
+    const b64 = (response as any).data?.[0]?.b64_json as string | undefined
 
-    if (!imageUrl) {
-      console.error('No image URL in response:', response)
+    if (!b64) {
+      console.error('No base64 image in response:', response)
       return NextResponse.json(
-        { error: 'Failed to generate image - no URL returned' },
+        { error: 'Failed to generate image - no image returned' },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      imageUrl,
+      imageUrl: `data:image/png;base64,${b64}`,
       prompt: response.data[0]?.revised_prompt || imagePrompt
     })
 

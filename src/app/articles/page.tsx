@@ -190,30 +190,6 @@ export default function ArticlesPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 backdrop-blur-md" style={{ background: 'rgba(255,252,249,0.6)', borderBottom: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}>
-        <div className="max-w-md mx-auto px-4 py-4 sm:px-6">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-full bg-center bg-cover bg-no-repeat" />
-            <div className="text-center flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[#FFEFD8]">
-                <span>📖</span>
-                <span className="text-[14px] leading-[21px]" style={{ color: FIGMA_COLORS.textPrimary }}>Articles</span>
-              </div>
-            </div>
-            {/* Add button */}
-            <button 
-              onClick={() => router.push('/articles/new')}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200"
-              style={{ color: FIGMA_COLORS.textPrimary, border: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}
-              aria-label="Add article"
-            >
-              <span className="text-lg font-bold">+</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Main content */}
       <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
         {/* Add panel */}

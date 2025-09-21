@@ -7,7 +7,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import ChatMessage from '@/components/chat/ChatMessage'
 import ChatInput from '@/components/chat/ChatInput'
 import { isTTSSupported, speakCantonese } from '@/utils/textToSpeech'
@@ -189,11 +188,6 @@ export default function ChatPage() {
   // ============ MAIN CHAT UI ============
   return (
     <div className="min-h-screen bg-[#f9f2ec]">
-      {/* Top header with blur and subtle border */}
-      <div className="fixed top-0 left-0 right-0 h-[72px] bg-[rgba(255,252,249,0.6)] backdrop-blur-[10px] border-b border-[#f2e2c4] flex items-center justify-center z-30">
-        <div className="text-2xl">🥟</div>
-      </div>
-
       {/* Messages area */}
       <div className="mx-auto w-full max-w-[480px] px-4 pt-[88px] pb-[220px]">
         {/* Welcome message */}
@@ -229,27 +223,7 @@ export default function ChatPage() {
         />
       </div>
 
-      {/* Bottom navigation */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-5 py-2 backdrop-blur-[10px] bg-[rgba(249,242,236,0.6)] z-30">
-        <div className="flex items-center justify-center gap-2">
-          <Link href="/" className="w-[70px] h-[61px] rounded-[8px] flex flex-col items-center justify-center text-[#6e6c66]">
-            <div className="text-xl">🏠</div>
-            <div className="text-[14px] leading-[21px]">Home</div>
-          </Link>
-          <Link href="/flashcards" className="w-[70px] h-[61px] rounded-[8px] flex flex-col items-center justify-center text-[#6e6c66]">
-            <div className="text-xl">🗂️</div>
-            <div className="text-[14px] leading-[21px]">Cards</div>
-          </Link>
-          <Link href="/chat" className="w-[70px] h-[61px] rounded-[8px] bg-white flex flex-col items-center justify-center text-[#6e6c66]">
-            <div className="text-xl">💬</div>
-            <div className="text-[14px] leading-[21px]">Chat</div>
-          </Link>
-          <Link href="/articles" className="w-[70px] h-[61px] rounded-[8px] flex flex-col items-center justify-center text-[#6e6c66]">
-            <div className="text-xl">📖</div>
-            <div className="text-[14px] leading-[21px]">Read</div>
-          </Link>
-        </div>
-      </div>
+      {/* Bottom navigation removed - using global BottomNav */}
     </div>
   )
 }

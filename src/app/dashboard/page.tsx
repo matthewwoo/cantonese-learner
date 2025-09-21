@@ -8,10 +8,14 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Card } from "@/components/ui/Card"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
-import { FeatureCard } from "@/components/ui/FeatureCard"
-import { ProgressStats } from "@/components/ui/ProgressStats"
 import { QuickActions } from "@/components/ui/QuickActions"
-import { tokens } from "@/lib/design-tokens"
+
+// Figma-derived color tokens used on the Cards page
+const FIGMA_COLORS = {
+  surfaceBackground: '#f9f2ec',
+  textPrimary: '#171515',
+  textSecondary: '#6e6c66',
+}
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -27,13 +31,13 @@ export default function DashboardPage() {
   // Show loading while checking authentication
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-100">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">
           <LoadingSpinner size="xl" className="mb-4" />
-          <p className="text-lg text-gray-600 font-medium">
+          <p className="text-lg font-medium" style={{ color: FIGMA_COLORS.textSecondary }}>
             Loading your learning dashboard...
           </p>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm mt-2" style={{ color: FIGMA_COLORS.textSecondary }}>
             正在載入您的學習儀表板...
           </p>
         </div>
@@ -107,87 +111,36 @@ export default function DashboardPage() {
   // Quick actions data
   const quickActions = [
     {
-      label: "Create New Flashcard Set",
-      labelChinese: "創建新閃卡組",
-      icon: "📝",
-      onClick: () => router.push('/flashcards'),
-      color: "flashcards" as const,
-    },
-    {
-      label: "Start AI Conversation",
-      labelChinese: "開始AI對話",
-      icon: "💬",
-      onClick: () => router.push('/chat'),
-      color: "chat" as const,
-    },
-    {
-      label: "Add New Article",
-      labelChinese: "添加新文章",
-      icon: "📚",
-      onClick: () => router.push('/articles'),
-      color: "articles" as const,
-    },
-    {
       label: "Sign Out",
       labelChinese: "登出",
       icon: "🚪",
       onClick: handleSignOut,
       variant: "Secondary" as const,
-    },
+    }
   ]
 
   return (
     <div 
       className="min-h-screen p-8"
-      style={{
-        background: tokens.colors.background.gradient
-      }}
+      style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}
     >
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Welcome Header */}
         <Card className="p-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            歡迎回來！ Welcome back!
+          <h1 className="text-4xl font-bold mb-3" style={{ color: FIGMA_COLORS.textPrimary }}>
+            Cantonese Learner
           </h1>
-          <p className="text-lg text-gray-600 mb-2">
-            Signed in as: <strong className="text-indigo-600">{session.user?.email}</strong>
-          </p>
           {session.user?.name && (
-            <p className="text-gray-600">
-              Name: <strong className="text-indigo-600">{session.user.name}</strong>
+            <p className="break-words whitespace-normal" style={{ color: FIGMA_COLORS.textSecondary }}>
+              Name: <strong className="break-words" style={{ color: FIGMA_COLORS.textPrimary }}>{session.user.name}</strong>
             </p>
           )}
+        
+          
         </Card>
 
-        {/* Main Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featureCards.map((card, index) => (
-            <FeatureCard
-              key={index}
-              title={card.title}
-              titleChinese={card.titleChinese}
-              description={card.description}
-              icon={card.icon}
-              buttonText={card.buttonText}
-              buttonTextChinese={card.buttonTextChinese}
-              onClick={card.onClick}
-              disabled={card.disabled}
-              feature={card.feature}
-            />
-          ))}
-        </div>
-
-        {/* Progress Stats */}
-        <ProgressStats
-          title="Learning Progress"
-          titleChinese="學習進度"
-          stats={progressStats}
-        />
-
-        {/* Quick Actions */}
         <QuickActions
-          title="Quick Actions"
-          titleChinese="快速操作"
+          title="Account"
           actions={quickActions}
         />
       </div>

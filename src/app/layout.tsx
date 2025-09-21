@@ -31,7 +31,7 @@ export default function RootLayout({
         This generates the <body> tag
         className={inter.className} applies the Inter font to all text
       */}
-      <body className={inter.className}>
+      <body className={inter.className} style={{ backgroundColor: '#f9f2ec' }}>
         {/* 
           Providers component wraps all pages with:
           - NextAuth session management 

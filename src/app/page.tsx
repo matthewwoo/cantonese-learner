@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Navigation */}
-      <nav className="bg-white shadow-sm">
+      <nav className="shadow-sm" style={{ backgroundColor: '#f9f2ec', borderBottom: '1px solid #f2e2c4' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">

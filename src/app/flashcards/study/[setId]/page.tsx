@@ -106,9 +106,9 @@ export default function StudyPage() {
   // Show loading while checking authentication or starting session
   if (status === "loading" || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-100">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9f2ec' }}>
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-200 to-indigo-300 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-2xl">📚</span>
           </div>
           <p className="text-lg text-gray-600 font-medium">

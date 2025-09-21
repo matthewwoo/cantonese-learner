@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Card } from "@/components/ui/Card"
@@ -36,6 +36,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
   const [csvFile, setCsvFile] = useState<File | null>(null) // The uploaded CSV file
   const [isLoading, setIsLoading] = useState(false) // Loading state during upload
   const [previewData, setPreviewData] = useState<Flashcard[]>([]) // Preview of parsed CSV
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   
   // State for image generation
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null)
@@ -142,6 +143,25 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
       setCsvFile(null)
       setPreviewData([])
     }
+  }
+
+  // Trigger native file input
+  const openFilePicker = () => {
+    fileInputRef.current?.click()
+  }
+
+  // Download a sample CSV constructed from the example in the design
+  const downloadSampleCsv = () => {
+    const sample = `Chinese Word,English Translation,Pronunciation,Example Sentence (English),Example Sentence (Chinese)\n你好,Hello,nei5 hou2,Hello! How are you today?,你好！今日點樣？\n多謝,Thank you,do1 ze6,Thank you for your help,多謝你嘅幫助\n再見,Goodbye,zoi3 gin3,Goodbye! See you tomorrow!,再見！聽日見！`
+    const blob = new Blob([sample], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'sample_flashcards.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // Function to generate image for the deck
@@ -257,76 +277,97 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
   }
 
   return (
-    <Card className="bg-white border-0 shadow-lg rounded-2xl overflow-hidden">
+    <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
       <div className="p-6">
-        <div className="text-center mb-6 relative">
+        {/* Header */}
+        <div className="relative mb-4">
           {onClose && (
             <button
               onClick={onClose}
-              className="absolute top-0 right-0 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors duration-200"
+              className="absolute top-0 right-0 w-8 h-8 rounded-full flex items-center justify-center text-[#6e6c66] hover:bg-[#f9f2ec] transition-colors"
+              aria-label="Close"
             >
               ✕
             </button>
           )}
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">📤</span>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">上傳閃卡 Upload Flashcards</h2>
-          <p className="text-gray-600">
-            Upload a CSV file with your Cantonese flashcards. Required columns: Chinese Word, English Translation
-          </p>
+          <h2 className="text-[24px] leading-[1.2] font-semibold text-[#1e1e1e] font-['Inter']">Create new deck</h2>
+          <div className="mt-3 border-t" style={{ borderColor: '#f2e2c4' }} />
         </div>
 
-        {/* CSV Format Instructions */}
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
-          <h3 className="font-semibold text-purple-900 mb-3 flex items-center">
-            <span className="text-lg mr-2">📋</span>
-            CSV Format Example:
-          </h3>
-          <div className="bg-white rounded-lg p-3 border border-purple-100">
-            <pre className="text-xs sm:text-sm text-purple-800 overflow-x-auto whitespace-pre-wrap">
-{`Chinese Word,English Translation,Pronunciation,Example Sentence (English),Example Sentence (Chinese)
-你好,Hello,nei5 hou2,Hello! How are you today?,你好！今日點樣？
-多謝,Thank you,do1 ze6,Thank you for your help,多謝你嘅幫助
-再見,Goodbye,zoi3 gin3,Goodbye! See you tomorrow!,再見！聽日見！`}
-            </pre>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Set Information */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Set Name *
-            </label>
-            <Input
-              type="text"
-              placeholder="e.g., Daily Conversations"
-              value={setName}
-              onChange={(e) => setSetName(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
-            />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Set Name */}
+          <div className="py-5">
+            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Set Name *</label>
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="e.g., Daily Conversations"
+                value={setName}
+                onChange={(e) => setSetName(e.target.value)}
+                required
+                className="h-12 px-3 rounded-[8px] border bg-white text-[#171515] placeholder:text-[#7d7a74] focus:ring-[#171515] focus:border-[#171515]"
+                style={{ borderColor: '#f9f2ec' }}
+              />
+            </div>
           </div>
 
-          {/* Image Generation */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Deck Image (Optional)
-            </label>
-            
+          {/* CSV File - Custom control */}
+          <div className="py-5">
+            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">CSV File *</label>
+            <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
+              <input
+                id="csv-file"
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={openFilePicker}
+                className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
+              >
+                Choose File
+              </button>
+              <div className="px-3 text-[14px] leading-[21px] text-[#171515] truncate">
+                {csvFile ? csvFile.name : 'No file chosen'}
+              </div>
+            </div>
+            <p className="text-xs text-[#7d7a74] mt-2">Maximum file size: 5MB</p>
+          </div>
+
+          {/* Sample CSV download */}
+          <div className="py-5">
+            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Sample CSV</label>
+            <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
+              <button
+                type="button"
+                onClick={downloadSampleCsv}
+                className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
+              >
+                Download
+              </button>
+              <div className="px-3 text-[14px] leading-[21px] text-[#171515]">
+                Get a template to format your cards
+              </div>
+            </div>
+          </div>
+
+          {/* Image Generation (optional) */}
+          <div className="py-2">
+            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Deck Image (Optional)</label>
             {!showImageGeneration ? (
               <Button
                 type="button"
                 variant="Secondary"
-                text={isGeneratingImage ? "Generating..." : "Generate Image for Deck"}
+                text={isGeneratingImage ? 'Generating...' : 'Generate Image for Deck'}
                 onClick={generateImage}
                 disabled={isGeneratingImage || !setName.trim()}
-                className="w-full bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
               />
             ) : (
-              <div className="space-y-4">
-                {/* Close Button */}
+              <div className="space-y-3">
                 <div className="flex justify-end">
                   <Button
                     type="button"
@@ -336,127 +377,90 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                       setShowImageGeneration(false)
                       setGeneratedImage(null)
                     }}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-3 rounded-lg transition-colors duration-200"
+                    className="bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
                   />
                 </div>
 
-
-                {/* Generated Image Preview */}
                 {generatedImage ? (
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-purple-900 flex items-center">
-                        <span className="text-lg mr-2">🖼️</span>
-                        Generated Image
-                      </h4>
+                  <div className="rounded-[12px] p-3" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-[#171515] flex items-center">🖼️ Generated Image</h4>
                       <Button
                         type="button"
                         variant="Secondary"
-                        text={isGeneratingImage ? "Generating..." : "Regenerate"}
+                        text={isGeneratingImage ? 'Generating...' : 'Regenerate'}
                         onClick={regenerateImage}
                         disabled={isGeneratingImage}
-                        className="text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium py-2 px-3 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                        className="text-sm bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
                       />
                     </div>
-                    
                     <div className="relative">
                       <img
                         src={generatedImage.url}
                         alt="Generated deck image"
-                        className="w-full h-48 object-cover rounded-lg border border-purple-100"
+                        className="w-full h-48 object-cover rounded-[8px]"
                         onError={(e) => {
-                          // Show a fallback message
                           e.currentTarget.style.display = 'none'
                           const fallback = document.createElement('div')
-                          fallback.className = 'w-full h-48 bg-purple-100 rounded-lg border border-purple-200 flex items-center justify-center text-purple-600'
+                          fallback.className = 'w-full h-48 rounded-[8px] flex items-center justify-center text-[#7d7a74]'
                           fallback.innerHTML = '🖼️ Image failed to load'
                           e.currentTarget.parentNode?.appendChild(fallback)
                         }}
                       />
-                      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1">
-                        <span className="text-xs text-gray-600">✨</span>
-                      </div>
                     </div>
-                    
-                    <p className="text-xs text-purple-700 mt-2 italic">
-                      "{generatedImage.prompt}"
-                    </p>
+                    <p className="text-xs text-[#6e6c66] mt-2 italic">"{generatedImage.prompt}"</p>
                   </div>
                 ) : (
-                  <div className="bg-gray-100 border border-gray-200 rounded-lg p-4 text-center">
-                    <p className="text-gray-600">No image generated yet</p>
+                  <div className="rounded-[12px] p-4 text-center" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
+                    <p className="text-[#6e6c66]">No image generated yet</p>
                   </div>
                 )}
 
-                {/* Loading State */}
                 {isGeneratingImage && !generatedImage && (
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-purple-200 to-purple-300 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                  <div className="rounded-[12px] p-6 text-center" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
+                    <div className="w-16 h-16 bg-[#FFEFD8] rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
                       <span className="text-2xl">🎨</span>
                     </div>
-                    <p className="text-purple-700 font-medium">Generating your custom image...</p>
-                    <p className="text-sm text-purple-600 mt-1">This may take a few moments</p>
+                    <p className="text-[#171515] font-medium">Generating your custom image...</p>
+                    <p className="text-sm text-[#6e6c66] mt-1">This may take a few moments</p>
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* File Upload */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              CSV File *
-            </label>
-            <div className="relative">
-              <Input
-                id="csv-file"
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-2 flex items-center">
-              <span className="mr-1">📁</span>
-              Maximum file size: 5MB
-            </p>
-          </div>
-
           {/* Preview */}
           {previewData.length > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <h3 className="font-semibold text-green-900 mb-4 flex items-center">
-                <span className="text-lg mr-2">👀</span>
-                Preview (first 3 cards):
-              </h3>
+            <div className="rounded-[12px] p-4" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
+              <h3 className="font-medium text-[#171515] mb-3">Preview (first 3 cards)</h3>
               <div className="space-y-3">
                 {previewData.map((card, index) => (
-                  <div key={index} className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
-                    <div className="grid grid-cols-1 gap-2 text-xs sm:text-sm">
+                  <div key={index} className="bg-white p-3 rounded-[8px]" style={{ border: '1px solid #f2e2c4' }}>
+                    <div className="grid grid-cols-1 gap-2 text-[14px] leading-[21px]">
                       <div className="flex items-center">
-                        <span className="font-semibold text-gray-700 w-20">Chinese:</span>
-                        <span className="text-gray-900">{card.chineseWord}</span>
+                        <span className="text-[#7d7a74] w-24">Chinese:</span>
+                        <span className="text-[#171515]">{card.chineseWord}</span>
                       </div>
                       <div className="flex items-center">
-                        <span className="font-semibold text-gray-700 w-20">English:</span>
-                        <span className="text-gray-900">{card.englishTranslation}</span>
+                        <span className="text-[#7d7a74] w-24">English:</span>
+                        <span className="text-[#171515]">{card.englishTranslation}</span>
                       </div>
                       {card.pronunciation && (
                         <div className="flex items-center">
-                          <span className="font-semibold text-gray-700 w-20">Pronunciation:</span>
-                          <span className="text-gray-900">{card.pronunciation}</span>
+                          <span className="text-[#7d7a74] w-24">Pronunciation:</span>
+                          <span className="text-[#171515]">{card.pronunciation}</span>
                         </div>
                       )}
                       {card.exampleSentenceEnglish && (
                         <div className="flex items-start">
-                          <span className="font-semibold text-gray-700 w-20 mt-1">Example (EN):</span>
-                          <span className="text-gray-900">{card.exampleSentenceEnglish}</span>
+                          <span className="text-[#7d7a74] w-24 mt-1">Example (EN):</span>
+                          <span className="text-[#171515]">{card.exampleSentenceEnglish}</span>
                         </div>
                       )}
                       {card.exampleSentenceChinese && (
                         <div className="flex items-start">
-                          <span className="font-semibold text-gray-700 w-20 mt-1">Example (CN):</span>
-                          <span className="text-gray-900">{card.exampleSentenceChinese}</span>
+                          <span className="text-[#7d7a74] w-24 mt-1">Example (CN):</span>
+                          <span className="text-[#171515]">{card.exampleSentenceChinese}</span>
                         </div>
                       )}
                     </div>
@@ -466,11 +470,11 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
             </div>
           )}
 
-          {/* Submit Button */}
+          {/* Submit */}
           <Button
             variant="Primary"
-            text={isLoading ? "Uploading..." : "Upload Flashcards"}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            text={isLoading ? 'Saving...' : 'Save'}
+            className="w-full"
             disabled={isLoading || !csvFile}
           />
         </form>

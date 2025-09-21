@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
@@ -197,7 +197,15 @@ function Deck({ set, onClick, onDelete }: { set: FlashcardSet; onClick: () => vo
                 className="w-full h-full object-cover rounded-full"
                 onError={(e) => {
                   console.error("Deck image failed to load:", set.imageUrl)
+                  // Hide the broken image and render fallback illustration
                   e.currentTarget.style.display = 'none'
+                  const container = e.currentTarget.parentElement
+                  if (container) {
+                    const fallback = document.createElement('div')
+                    fallback.className = 'w-full h-full flex items-center justify-center bg-white/70'
+                    fallback.innerHTML = '<span class="text-4xl">📚</span>'
+                    container.appendChild(fallback)
+                  }
                 }}
               />
             ) : (
@@ -251,7 +259,8 @@ export default function FlashcardsPage() {
   // Component state
   const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showUploadForm, setShowUploadForm] = useState(false)
+  const searchParams = useSearchParams()
+  const showUploadForm = searchParams.get("upload") === "1"
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
@@ -289,8 +298,8 @@ export default function FlashcardsPage() {
 
   // Handle successful upload - refresh the list and hide form
   const handleUploadSuccess = () => {
-    fetchFlashcardSets() // Refresh the list
-    setShowUploadForm(false) // Hide the upload form
+    fetchFlashcardSets()
+    router.push("/flashcards")
   }
 
   // Handle deck click - navigate directly to study page
@@ -339,28 +348,6 @@ export default function FlashcardsPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
-      {/* Header */}
-      <div className="sticky top-0 z-10 backdrop-blur-md" style={{ background: 'rgba(255,252,249,0.6)', borderBottom: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}>
-        <div className="max-w-md mx-auto px-4 py-4 sm:px-6">
-          <div className="flex items-center justify-between">
-            {/* Center logo placeholder */}
-            <div className="w-10 h-10 rounded-full bg-center bg-cover bg-no-repeat" />
-            <div className="text-center flex-1">
-              <div className="inline-block w-10 h-10 rounded-full bg-[#FFEFD8]" />
-            </div>
-            {/* Upload Button */}
-            <button 
-              onClick={() => setShowUploadForm(!showUploadForm)}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200"
-              style={{ color: FIGMA_COLORS.textPrimary, border: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}
-              aria-label="Upload flashcards"
-            >
-              <span className="text-lg font-bold">+</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
         {/* Upload Form (conditionally shown) */}
@@ -368,7 +355,7 @@ export default function FlashcardsPage() {
           <div className="mb-8">
             <UploadForm 
               onUploadSuccess={handleUploadSuccess} 
-              onClose={() => setShowUploadForm(false)}
+              onClose={() => router.push('/flashcards')}
             />
           </div>
         )}
@@ -389,10 +376,10 @@ export default function FlashcardsPage() {
                   <h2 className="text-xl font-semibold mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>No flashcard sets yet</h2>
                   <p className="mb-8" style={{ color: FIGMA_COLORS.textSecondary }}>Create your first set to start learning Cantonese</p>
                   
-                  <Button 
-                    variant="Primary"
-                    text="Upload First Set"
-                    onClick={() => setShowUploadForm(true)}
+              <Button 
+                variant="Primary"
+                text="Upload First Set"
+                onClick={() => router.push('/flashcards?upload=1')}
                     className="font-medium py-3 px-8 rounded-[8px] transition-colors duration-200"
                     style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
                   />
@@ -419,34 +406,7 @@ export default function FlashcardsPage() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 backdrop-blur-md" style={{ background: 'rgba(249,242,236,0.6)' }}>
-        <div className="max-w-md mx-auto px-4 py-3 sm:px-6">
-          <div className="flex items-center justify-around">
-            <NavItem 
-              icon="🏠" 
-              label="Home" 
-              onClick={() => router.push('/dashboard')}
-            />
-            <NavItem 
-              icon="📚" 
-              label="Cards" 
-              selected={true}
-              onClick={() => {}}
-            />
-            <NavItem 
-              icon="💬" 
-              label="Chat" 
-              onClick={() => router.push('/chat')}
-            />
-            <NavItem 
-              icon="📖" 
-              label="Articles" 
-              onClick={() => router.push('/articles')}
-            />
-          </div>
-        </div>
-      </div>
+      {/* Bottom Navigation removed; now rendered globally in Providers */}
     </div>
   )
 }

@@ -136,65 +136,18 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
   }
 
   return (
-    <div className="min-h-screen bg-[#f9f2ec] relative">
-      {/* Header */}
-      <div className="bg-[rgba(255,252,249,0.6)] backdrop-blur-[10px] h-[72px] relative">
-        <div className="absolute border-[#f2e2c4] border-b inset-0 pointer-events-none" />
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-center bg-cover bg-no-repeat" 
-             style={{ backgroundImage: "url('http://localhost:3845/assets/fdb3a6be3d610c36b9af162f236678b083a346db.png')" }} />
-        <div className="absolute right-3.5 top-6 w-[30px] h-[30px]">
-          <div className="w-full h-full rounded-full border border-gray-300 flex items-center justify-center">
-            <div className="w-4 h-4 bg-gray-400 rounded-sm"></div>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-[#f9f2ec] relative"> 
+    
       {/* Main Content */}
       <div className="flex flex-col items-center justify-center pt-[103px] pb-20">
         <QuestionCard
+          key={currentCard.id}
           flashcard={currentCard.flashcard}
           cardNumber={currentCardIndex + 1}
           totalCards={studySessionData.totalCards}
           onResponse={handleResponse}
           isSubmitting={isSubmitting}
         />
-      </div>
-
-      {/* Bottom Navigation */}
-      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-[393px] bg-[rgba(249,242,236,0.6)] backdrop-blur-[10px] px-5 py-2">
-        <div className="flex gap-2 items-center justify-center w-full">
-          {/* Home */}
-          <div className="flex flex-col items-center justify-center h-[61px] px-5 py-2 rounded-[8px] w-[70px]">
-            <div className="w-6 h-6 mb-1">
-              <div className="w-full h-full bg-gray-400 rounded"></div>
-            </div>
-            <div className="text-[#6e6c66] text-[14px] font-normal">Home</div>
-          </div>
-          
-          {/* Cards (Active) */}
-          <div className="flex flex-col items-center justify-center h-[61px] px-5 py-2 rounded-[8px] w-[70px] bg-white">
-            <div className="w-6 h-6 mb-1">
-              <div className="w-full h-full bg-gray-400 rounded"></div>
-            </div>
-            <div className="text-[#6e6c66] text-[14px] font-normal">Cards</div>
-          </div>
-          
-          {/* Chat */}
-          <div className="flex flex-col items-center justify-center h-[61px] px-5 py-2 rounded-[8px] w-[70px]">
-            <div className="w-6 h-6 mb-1">
-              <div className="w-full h-full bg-gray-400 rounded"></div>
-            </div>
-            <div className="text-[#6e6c66] text-[14px] font-normal">Chat</div>
-          </div>
-          
-          {/* Profile */}
-          <div className="flex flex-col items-center justify-center h-[61px] px-5 py-2 rounded-[8px] w-[70px]">
-            <div className="w-6 h-6 mb-1">
-              <div className="w-full h-full bg-gray-400 rounded"></div>
-            </div>
-            <div className="text-[#6e6c66] text-[14px] font-normal">Profile</div>
-          </div>
-        </div>
       </div>
     </div>
   )
