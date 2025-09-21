@@ -1,154 +1,136 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import toast from 'react-hot-toast'
+import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { IconButton } from '@/components/ui/IconButton'
 
 interface Article {
-  id: string;
-  title: string;
-  sourceUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  title: string
+  sourceUrl?: string
+  createdAt: string
+  updatedAt: string
 }
 
-/**
- * 文章列表頁面
- * 顯示用戶的所有文章，並提供添加新文章的功能
- */
+// Figma-derived colors (aligned with flashcards page)
+const FIGMA_COLORS = {
+  surfaceBackground: '#f9f2ec',
+  surfaceBorder: '#f2e2c4',
+  textPrimary: '#171515',
+  textSecondary: '#6e6c66',
+  buttonBg: '#171515',
+  buttonText: '#ffffff',
+}
+
 export default function ArticlesPage() {
-  const router = useRouter();
-  const { data: session, status } = useSession();
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  
-  // 表單狀態
-  const [articleUrl, setArticleUrl] = useState('');
-  const [articleTitle, setArticleTitle] = useState('');
-  const [articleContent, setArticleContent] = useState('');
-  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const router = useRouter()
+  const { data: session, status } = useSession()
+  const [articles, setArticles] = useState<Article[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showAddPanel, setShowAddPanel] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
 
-  // 檢查認證狀態
+  // Form state
+  const [articleUrl, setArticleUrl] = useState('')
+  const [articleTitle, setArticleTitle] = useState('')
+  const [articleContent, setArticleContent] = useState('')
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false)
+
+  // Auth and data load
   useEffect(() => {
-    if (status === 'loading') return; // 還在載入中
-    
     if (status === 'unauthenticated') {
-      // 如果未認證，導向登入頁面
-      router.push('/auth/signin');
-      return;
+      router.push('/auth/signin')
+      return
     }
-    
-    // 如果已認證，載入文章列表
     if (status === 'authenticated') {
-      fetchArticles();
+      fetchArticles()
     }
-  }, [status, router]);
+  }, [status, router])
 
-  /**
-   * 從 API 獲取文章列表
-   */
   const fetchArticles = async () => {
     try {
-      const response = await fetch('/api/articles');
-      if (!response.ok) throw new Error('獲取文章失敗');
-      
-      const data = await response.json();
-      setArticles(data.articles);
+      const response = await fetch('/api/articles')
+      if (!response.ok) throw new Error('獲取文章失敗')
+      const data = await response.json()
+      setArticles(data.articles)
     } catch (error) {
-      console.error('獲取文章失敗:', error);
-      toast.error('Unable to load articles');
+      console.error('獲取文章失敗:', error)
+      toast.error('Unable to load articles')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
-  /**
-   * 從 URL 獲取文章內容
-   */
   const fetchFromUrl = async () => {
     if (!articleUrl) {
-      toast.error('Please enter an article URL');
-      return;
+      toast.error('Please enter an article URL')
+      return
     }
-
-    setIsFetchingUrl(true);
+    setIsFetchingUrl(true)
     try {
       const response = await fetch('/api/articles/fetch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: articleUrl }),
-      });
-
-      if (!response.ok) throw new Error('無法獲取文章內容');
-
-      const data = await response.json();
-      setArticleTitle(data.title);
-      setArticleContent(data.content);
-      toast.success('Successfully fetched article content!');
+      })
+      if (!response.ok) throw new Error('無法獲取文章內容')
+      const data = await response.json()
+      setArticleTitle(data.title)
+      setArticleContent(data.content)
+      toast.success('Successfully fetched article content!')
     } catch (error) {
-      console.error('獲取文章失敗:', error);
-      toast.error('Unable to fetch article from this URL');
+      console.error('獲取文章失敗:', error)
+      toast.error('Unable to fetch article from this URL')
     } finally {
-      setIsFetchingUrl(false);
+      setIsFetchingUrl(false)
     }
-  };
+  }
 
-  /**
-   * 創建新文章
-   */
   const handleAddArticle = async () => {
     if (!articleTitle) {
-      toast.error('Please fill in article title');
-      return;
+      toast.error('Please fill in article title')
+      return
     }
-
-    // Allow creating article with just URL (content will be fetched automatically)
     if (!articleContent && !articleUrl) {
-      toast.error('Please provide either article content or a URL');
-      return;
+      toast.error('Please provide either article content or a URL')
+      return
     }
-
-    setIsAdding(true);
-    let loadingToast: string | undefined;
-    
+    setIsAdding(true)
+    let loadingToast: string | undefined
     try {
-      // If URL is provided but no content was fetched, try to fetch it automatically
       if (articleUrl && !articleContent.trim()) {
-        loadingToast = toast.loading('Fetching article content from URL...');
+        loadingToast = toast.loading('Fetching article content from URL...')
         try {
           const fetchResponse = await fetch('/api/articles/fetch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: articleUrl }),
-          });
-
+          })
           if (fetchResponse.ok) {
-            const fetchData = await fetchResponse.json();
-            setArticleTitle(fetchData.title);
-            setArticleContent(fetchData.content);
-            toast.dismiss(loadingToast);
-            toast.success('Successfully fetched article content!');
+            const fetchData = await fetchResponse.json()
+            setArticleTitle(fetchData.title)
+            setArticleContent(fetchData.content)
+            toast.dismiss(loadingToast)
+            toast.success('Successfully fetched article content!')
           } else {
-            toast.dismiss(loadingToast);
-            toast.error('Unable to fetch content from URL. Please enter content manually.');
-            setIsAdding(false);
-            return;
+            toast.dismiss(loadingToast)
+            toast.error('Unable to fetch content from URL. Please enter content manually.')
+            setIsAdding(false)
+            return
           }
-        } catch (fetchError) {
-          toast.dismiss(loadingToast);
-          toast.error('Unable to fetch content from URL. Please enter content manually.');
-          setIsAdding(false);
-          return;
+        } catch {
+          toast.dismiss(loadingToast)
+          toast.error('Unable to fetch content from URL. Please enter content manually.')
+          setIsAdding(false)
+          return
         }
       }
-
-      // Show translation loading state
-      loadingToast = toast.loading('Creating article and translating to Traditional Chinese...');
-
+      loadingToast = toast.loading('Creating article and translating to Traditional Chinese...')
       const response = await fetch('/api/articles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,285 +139,176 @@ export default function ArticlesPage() {
           content: articleContent,
           url: articleUrl || undefined,
         }),
-      });
-
-      if (!response.ok) throw new Error('創建文章失敗');
-
-      const data = await response.json();
-      toast.dismiss(loadingToast);
-      toast.success('Article created and translated successfully! 🎉');
-      
-      // 重新載入文章列表
-      await fetchArticles();
-      
-      // 關閉模態框並重置表單
-      setShowAddModal(false);
-      setArticleUrl('');
-      setArticleTitle('');
-      setArticleContent('');
-      
-      // 導航到文章閱讀頁面
-      router.push(`/articles/${data.articleId}`);
+      })
+      if (!response.ok) throw new Error('創建文章失敗')
+      const data = await response.json()
+      toast.dismiss(loadingToast)
+      toast.success('Article created and translated successfully! 🎉')
+      await fetchArticles()
+      setShowAddPanel(false)
+      setArticleUrl('')
+      setArticleTitle('')
+      setArticleContent('')
+      router.push(`/articles/${data.articleId}`)
     } catch (error) {
-      console.error('創建文章失敗:', error);
-      if (loadingToast) {
-        toast.dismiss(loadingToast);
-      }
-      toast.error('Unable to create article. Please check your translation API keys.');
+      console.error('創建文章失敗:', error)
+      if (loadingToast) toast.dismiss(loadingToast)
+      toast.error('Unable to create article. Please check your translation API keys.')
     } finally {
-      setIsAdding(false);
+      setIsAdding(false)
     }
-  };
+  }
 
-  /**
-   * 刪除文章
-   */
   const handleDeleteArticle = async (articleId: string) => {
-    if (!confirm('Are you sure you want to delete this article?')) return;
-
+    if (!confirm('Are you sure you want to delete this article?')) return
     try {
-      const response = await fetch(`/api/articles/${articleId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('刪除文章失敗');
-
-      toast.success('Article deleted');
-      await fetchArticles();
+      const response = await fetch(`/api/articles/${articleId}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error('刪除文章失敗')
+      toast.success('Article deleted')
+      await fetchArticles()
     } catch (error) {
-      console.error('刪除文章失敗:', error);
-      toast.error('Unable to delete article');
+      console.error('刪除文章失敗:', error)
+      toast.error('Unable to delete article')
     }
-  };
+  }
+
+  // Loading state (match flashcards vibe)
+  if (status === 'loading' || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
+        <div className="text-center">
+          <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-2xl">📖</span>
+          </div>
+          <p className="text-lg font-medium" style={{ color: FIGMA_COLORS.textSecondary }}>Loading articles...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* 頁面標題 */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-purple-800 mb-2">
-                📚 Article Reading
-              </h1>
-              <p className="text-gray-600">
-                Learn Traditional Chinese by reading English articles with translations
-              </p>
-              {session?.user && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Welcome back, {session.user.name || session.user.email}!
-                </p>
-              )}
+    <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 backdrop-blur-md" style={{ background: 'rgba(255,252,249,0.6)', borderBottom: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}>
+        <div className="max-w-md mx-auto px-4 py-4 sm:px-6">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-full bg-center bg-cover bg-no-repeat" />
+            <div className="text-center flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[#FFEFD8]">
+                <span>📖</span>
+                <span className="text-[14px] leading-[21px]" style={{ color: FIGMA_COLORS.textPrimary }}>Articles</span>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="Secondary"
-                text="Dashboard"
-                onClick={() => router.push('/dashboard')}
-              />
-              <Button
-                variant="Primary"
-                text="+ Add New Article"
-                onClick={() => setShowAddModal(true)}
-                className="hover:scale-105 transition-transform shadow-lg"
-              />
-            </div>
+            {/* Add button */}
+            <button 
+              onClick={() => router.push('/articles/new')}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200"
+              style={{ color: FIGMA_COLORS.textPrimary, border: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}
+              aria-label="Add article"
+            >
+              <span className="text-lg font-bold">+</span>
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* 文章列表 */}
-        {status === 'loading' || isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-          </div>
-        ) : status === 'unauthenticated' ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <div className="text-6xl mb-4">🔐</div>
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">
-              Authentication Required
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Please sign in to access your articles
-            </p>
-            <Button
-              variant="Primary"
-              text="Sign In"
-              onClick={() => router.push('/auth/signin')}
-              className="hover:scale-105 transition-transform shadow-lg"
-            />
-          </div>
-        ) : articles.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <div className="text-6xl mb-4">📖</div>
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">
-              No Articles Yet
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Click the button above to add your first article
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {articles.map((article) => (
-              <div
-                key={article.id}
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 relative group"
-              >
-                {/* 刪除按鈕 */}
-                <button
-                  onClick={() => handleDeleteArticle(article.id)}
-                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
-                  title="Delete Article"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+      {/* Main content */}
+      <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
+        {/* Add panel */}
+        {false && <div />}
 
-                <h3 className="text-xl font-bold text-gray-800 mb-2 pr-8">
-                  {article.title}
-                </h3>
-                
-                {article.sourceUrl && (
-                  <p className="text-sm text-gray-500 mb-3 truncate">
-                    📎 {new URL(article.sourceUrl).hostname}
-                  </p>
-                )}
-                
-                <p className="text-sm text-gray-400 mb-4">
-                  Created on {new Date(article.createdAt).toLocaleDateString('en-US')}
-                </p>
-                
-                <Button
-                  variant="Primary"
-                  text="Start Reading"
-                  onClick={() => router.push(`/articles/${article.id}`)}
-                  className="w-full hover:shadow-md transition-all"
-                />
+        {/* Empty state or list */}
+        {articles.length === 0 ? (
+          <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="mb-6">
+                <div className="w-32 h-32 bg-white/70 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                  <span className="text-6xl">📖</span>
+                </div>
               </div>
+              <h2 className="text-xl font-semibold mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>No articles yet</h2>
+              <p className="mb-6" style={{ color: FIGMA_COLORS.textSecondary }}>Add your first article to start reading with Cantonese translations.</p>
+              <Button 
+                variant="Primary"
+                text="Add article"
+                onClick={() => router.push('/articles/new')}
+                className="font-medium py-3 px-8 rounded-[8px]"
+                style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
+              />
+            </div>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {articles.map((article) => (
+              <Card key={article.id} className="bg-white border-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.12)] hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 rounded-[20px] overflow-hidden relative">
+                {/* Menu/Delete button */}
+                <div className="absolute top-4 right-4 z-20">
+                  <IconButton 
+                    size="24px"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm('Delete this article?')) handleDeleteArticle(article.id)
+                    }}
+                    className="text-[#6e6c66] hover:bg-white"
+                    aria-label="Delete article"
+                    title="Delete article"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </IconButton>
+                </div>
+
+                <div className="p-6">
+                  <h3 className="text-[16px] leading-[24px] font-medium mb-1" style={{ color: FIGMA_COLORS.textPrimary }}>{article.title}</h3>
+                  {article.sourceUrl && (
+                    <p className="text-[14px] leading-[21px] mb-2 truncate" style={{ color: FIGMA_COLORS.textSecondary }}>
+                      📎 {(() => { try { return new URL(article.sourceUrl!).hostname } catch { return article.sourceUrl } })()}
+                    </p>
+                  )}
+                  <p className="text-[14px] leading-[21px] mb-6" style={{ color: FIGMA_COLORS.textSecondary }}>
+                    Created on {new Date(article.createdAt).toLocaleDateString('en-US')}
+                  </p>
+                  <Button 
+                    variant="Primary"
+                    text="Start reading"
+                    onClick={() => router.push(`/articles/${article.id}`)}
+                    className="w-fit px-5 py-3 rounded-[8px]"
+                    style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
+                  />
+                </div>
+              </Card>
             ))}
           </div>
         )}
       </div>
 
-      {/* 添加文章模態框 */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
-            {/* Loading overlay */}
-            {isAdding && (
-              <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center rounded-2xl z-10">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-500 border-t-transparent mx-auto mb-4"></div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">
-                    Creating Article...
-                  </h3>
-                  <p className="text-gray-600">
-                    Translating to Traditional Chinese
-                  </p>
-                  <div className="mt-4 text-sm text-gray-500">
-                    This may take a few moments depending on the article length
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Add New Article
-                </h2>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  disabled={isAdding}
-                  className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* URL 輸入 */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Article URL (optional - content will be automatically fetched)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={articleUrl}
-                    onChange={(e) => setArticleUrl(e.target.value)}
-                    placeholder="https://example.com/article"
-                    disabled={isAdding}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  <button
-                    onClick={fetchFromUrl}
-                    disabled={isFetchingUrl || !articleUrl || isAdding}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                  >
-                    {isFetchingUrl ? 'Fetching...' : 'Fetch Now'}
-                  </button>
-                </div>
-                {articleUrl && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    💡 Content will be automatically fetched when you create the article, or click "Fetch Now" to preview.
-                  </p>
-                )}
-              </div>
-
-              {/* 標題輸入 */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Article Title *
-                </label>
-                <input
-                  type="text"
-                  value={articleTitle}
-                  onChange={(e) => setArticleTitle(e.target.value)}
-                  placeholder="Enter article title"
-                  disabled={isAdding}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
-              </div>
-
-              {/* 內容輸入 */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Article Content *
-                </label>
-                <textarea
-                  value={articleContent}
-                  onChange={(e) => setArticleContent(e.target.value)}
-                  placeholder="Paste or type English article content..."
-                  rows={10}
-                  disabled={isAdding}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
-              </div>
-
-              {/* 操作按鈕 */}
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  disabled={isAdding}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddArticle}
-                  disabled={isAdding || !articleTitle || (!articleContent && !articleUrl)}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isAdding ? 'Creating...' : 'Create Article'}
-                </button>
-              </div>
-            </div>
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 backdrop-blur-md" style={{ background: 'rgba(249,242,236,0.6)' }}>
+        <div className="max-w-md mx-auto px-4 py-3 sm:px-6">
+          <div className="flex items-center justify-around">
+            <Link href="/dashboard" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] text-[#6e6c66] hover:bg-white/60">
+              <div className="text-2xl mb-1">🏠</div>
+              <span className="text-[14px] leading-[21px]">Home</span>
+            </Link>
+            <Link href="/flashcards" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] text-[#6e6c66] hover:bg-white/60">
+              <div className="text-2xl mb-1">📚</div>
+              <span className="text-[14px] leading-[21px]">Cards</span>
+            </Link>
+            <Link href="/chat" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] text-[#6e6c66] hover:bg-white/60">
+              <div className="text-2xl mb-1">💬</div>
+              <span className="text-[14px] leading-[21px]">Chat</span>
+            </Link>
+            <Link href="/articles" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] bg-white text-[#6e6c66]">
+              <div className="text-2xl mb-1">📖</div>
+              <span className="text-[14px] leading-[21px]">Articles</span>
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </div>
-  );
+  )
 }

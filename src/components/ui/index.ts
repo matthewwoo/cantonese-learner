@@ -4,6 +4,7 @@
 export { Button } from './Button'
 export { Card } from './Card'
 export { Input } from './Input'
+export { IconButton } from './IconButton'
 export { LoadingSpinner } from './LoadingSpinner'
 export { Skeleton, SkeletonText, SkeletonCard } from './Skeleton'
 export { FeatureCard } from './FeatureCard'

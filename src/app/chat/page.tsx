@@ -7,14 +7,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import Link from 'next/link'
 import ChatMessage from '@/components/chat/ChatMessage'
 import ChatInput from '@/components/chat/ChatInput'
-import ThemeSelector from '@/components/chat/ThemeSelector'
-import TTSDebugger from '@/components/chat/TTSDebugger'
-import { stopSpeech, isTTSSupported, speakCantonese } from '@/utils/textToSpeech'
-import { isOpenAISTTSupported } from '@/utils/openaiSpeechToText'
+import { isTTSSupported, speakCantonese } from '@/utils/textToSpeech'
 
 // Define types for our chat data structures
 interface Message {
@@ -46,12 +42,10 @@ export default function ChatPage() {
   // UI state
   const [isLoading, setIsLoading] = useState(false)
   const [selectedTheme, setSelectedTheme] = useState('daily_conversation')
-  const [showTranslations, setShowTranslations] = useState(false)
+  const [showTranslations] = useState(false)
   const [autoTTS, setAutoTTS] = useState(true) // Auto-play TTS for AI responses
-  const [showTTSDebugger, setShowTTSDebugger] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ttsSupported = isTTSSupported()
-  const openaiSTTSupported = isOpenAISTTSupported()
   
   // Reference to the messages container for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -181,8 +175,8 @@ export default function ChatPage() {
   // ============ LOADING STATE ============
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg text-gray-600">Loading chat...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#f9f2ec]">
+        <p className="text-lg text-[#6e6c66]">Loading chat...</p>
       </div>
     )
   }
@@ -194,193 +188,66 @@ export default function ChatPage() {
 
   // ============ MAIN CHAT UI ============
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                🤖 AI對話 Cantonese Chat
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Practice Cantonese with your AI tutor
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button
-                variant="Secondary"
-                text={`${showTranslations ? '隱藏翻譯 Hide' : '顯示翻譯 Show'} Translations`}
-                onClick={() => setShowTranslations(!showTranslations)}
-                className="flex items-center gap-2"
-              >
-                <span className="text-sm">
-                  {showTranslations ? '🔇' : '🔊'}
-                </span>
-              </Button>
-              {ttsSupported && (
-                <Button
-                  variant="Secondary"
-                  text={autoTTS ? 'Auto TTS On' : 'Auto TTS Off'}
-                  onClick={() => setAutoTTS(!autoTTS)}
-                  className={`flex items-center gap-2 ${autoTTS ? 'bg-green-50 border-green-200' : ''}`}
-                >
-                  <span className="text-sm">
-                    {autoTTS ? '🔊' : '🔇'}
-                  </span>
-                </Button>
-              )}
-              {ttsSupported && (
-                <Button
-                  variant="Secondary"
-                  text="Stop Speech"
-                  onClick={stopSpeech}
-                  className="flex items-center gap-2"
-                  title="Stop all speech"
-                >
-                  <span className="text-sm">🔇</span>
-                </Button>
-              )}
-              <Button
-                variant="Secondary"
-                text="← Back to Dashboard"
-                onClick={() => router.push('/dashboard')}
-              />
-              <Button
-                variant="Secondary"
-                text="🆕 New Chat"
-                onClick={startNewChat}
-              />
-            </div>
+    <div className="min-h-screen bg-[#f9f2ec]">
+      {/* Top header with blur and subtle border */}
+      <div className="fixed top-0 left-0 right-0 h-[72px] bg-[rgba(255,252,249,0.6)] backdrop-blur-[10px] border-b border-[#f2e2c4] flex items-center justify-center z-30">
+        <div className="text-2xl">🥟</div>
+      </div>
+
+      {/* Messages area */}
+      <div className="mx-auto w-full max-w-[480px] px-4 pt-[88px] pb-[220px]">
+        {/* Welcome message */}
+        {messages.length === 0 && !isLoading && (
+          <div className="text-center py-10 text-[#6e6c66]">
+            <div className="text-4xl mb-3">👋</div>
+            <p>開始傾計啦！Send a message to start chatting.</p>
           </div>
+        )}
+
+        {/* Message List */}
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <ChatMessage
+              key={message.id}
+              message={message}
+              showTranslation={showTranslations}
+            />
+          ))}
+          {isLoading && (
+            <div className="text-[#6e6c66]">AI is thinking…</div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Theme Selection (only show if no active session) */}
-        {!currentSession && (
-          <Card className="mb-6 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              選擇對話主題 Choose Chat Theme
-            </h3>
-            <ThemeSelector
-              selectedTheme={selectedTheme}
-              onThemeSelect={setSelectedTheme}
-            />
-          </Card>
-        )}
-
-        {/* Chat Session Info */}
-        {currentSession && (
-          <Card className="mb-4 p-4 bg-blue-50 border-blue-200">
-            <div>
-              <span className="font-medium text-blue-900">
-                Theme: {currentSession.theme}
-              </span>
-              {currentSession.targetWords.length > 0 && (
-                <div className="text-sm text-blue-700 mt-1">
-                  Target words: {currentSession.targetWords.join(', ')}
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* Error Display */}
-        {error && (
-          <Card className="mb-4 p-4 bg-red-50 border-red-200">
-            <p className="text-red-700">Error: {error}</p>
-            <Button
-              variant="Secondary"
-              text="Dismiss"
-              onClick={() => setError(null)}
-              className="mt-2"
-            />
-          </Card>
-        )}
-
-        {/* Chat Messages Container */}
-        <Card className="mb-4">
-          <div className="h-96 overflow-y-auto p-4 space-y-4">
-            {/* Welcome message */}
-            {messages.length === 0 && (
-              <div className="text-center py-8">
-                <div className="text-4xl mb-4">👋</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  你好！Hello there!
-                </h3>
-                <p className="text-gray-600">
-                  Ready to practice your Cantonese? Start by sending me a message!
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Try saying: "你好，我想學廣東話" (Hello, I want to learn Cantonese)
-                </p>
-              </div>
-            )}
-
-            {/* Message List */}
-            {messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                showTranslation={showTranslations}
-              />
-            ))}
-
-            {/* Loading indicator */}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-lg px-4 py-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-pulse">🤖</div>
-                    <span className="text-gray-600">AI is thinking...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Scroll target */}
-            <div ref={messagesEndRef} />
-          </div>
-        </Card>
-
-        {/* Chat Input */}
+      {/* Chat input - floating above bottom nav */}
+      <div className="fixed left-1/2 bottom-[88px] -translate-x-1/2 w-full max-w-[480px] px-3 z-30">
         <ChatInput
           onSendMessage={sendMessage}
           disabled={isLoading}
-          placeholder="Type your message in Cantonese or English..."
+          placeholder=""
         />
+      </div>
 
-        {/* Help Text */}
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-500">
-            💡 Tip: Try mixing Cantonese and English - your AI tutor will help you improve!
-          </p>
-          {ttsSupported && (
-            <p className="text-sm text-gray-500 mt-1">
-              🔊 AI responses are automatically spoken aloud. Toggle "Auto TTS" to control this feature
-            </p>
-          )}
-          {openaiSTTSupported && (
-            <p className="text-sm text-gray-500 mt-1">
-              🎤 Click the microphone button to speak in Cantonese (廣東話) and convert to text (Enhanced with translation)
-            </p>
-          )}
-        </div>
-
-        {/* TTS Debugger */}
-        <div className="mt-4">
-          <Button
-            variant="Secondary"
-            text={`${showTTSDebugger ? '🔽 Hide' : '🔼 Show'} TTS Debugger`}
-            onClick={() => setShowTTSDebugger(!showTTSDebugger)}
-            className="w-full"
-          />
-          {showTTSDebugger && (
-            <div className="mt-2">
-              <TTSDebugger />
-            </div>
-          )}
+      {/* Bottom navigation */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-5 py-2 backdrop-blur-[10px] bg-[rgba(249,242,236,0.6)] z-30">
+        <div className="flex items-center justify-center gap-2">
+          <Link href="/" className="w-[70px] h-[61px] rounded-[8px] flex flex-col items-center justify-center text-[#6e6c66]">
+            <div className="text-xl">🏠</div>
+            <div className="text-[14px] leading-[21px]">Home</div>
+          </Link>
+          <Link href="/flashcards" className="w-[70px] h-[61px] rounded-[8px] flex flex-col items-center justify-center text-[#6e6c66]">
+            <div className="text-xl">🗂️</div>
+            <div className="text-[14px] leading-[21px]">Cards</div>
+          </Link>
+          <Link href="/chat" className="w-[70px] h-[61px] rounded-[8px] bg-white flex flex-col items-center justify-center text-[#6e6c66]">
+            <div className="text-xl">💬</div>
+            <div className="text-[14px] leading-[21px]">Chat</div>
+          </Link>
+          <Link href="/articles" className="w-[70px] h-[61px] rounded-[8px] flex flex-col items-center justify-center text-[#6e6c66]">
+            <div className="text-xl">📖</div>
+            <div className="text-[14px] leading-[21px]">Read</div>
+          </Link>
         </div>
       </div>
     </div>

@@ -132,98 +132,52 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
   }, [isListening])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <div className="flex space-x-4">
-        {/* Text input area */}
+    <div className="bg-white rounded-t-[20px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)] border-t border-[#f6f6f6] px-5 pt-3 pb-5">
+      <div className="flex items-start gap-3">
         <div className="flex-1">
+          <div className="w-full h-8 text-[14px] leading-[21px] text-[#757575] flex items-center">
+            {inputValue.length === 0 ? (
+              <span>{placeholder}</span>
+            ) : null}
+          </div>
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={placeholder}
+            placeholder=""
             disabled={disabled}
-            rows={3}
-            className="w-full resize-none border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            rows={1}
+            className="w-full resize-none border-0 outline-none focus:ring-0 text-[14px] text-[#6e6c66] bg-transparent"
           />
-          
-          {/* Interim transcript display */}
           {interimTranscript && (
             <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
               <div className="flex justify-between items-center mb-1">
-                <div className="text-sm text-blue-600 font-medium">
-                  Listening... (OpenAI Whisper)
-                </div>
-                <div className="text-sm text-blue-600 font-mono">
-                  {timeLeft}s
-                </div>
+                <div className="text-sm text-blue-600 font-medium">Listening... (OpenAI Whisper)</div>
+                <div className="text-sm text-blue-600 font-mono">{timeLeft}s</div>
               </div>
               <div className="text-sm text-blue-800 italic">{interimTranscript}</div>
             </div>
           )}
         </div>
-        
-        {/* Action buttons */}
-        <div className="flex flex-col space-y-2">
-          {/* Speech-to-text button */}
-          {openaiSTTSupported ? (
-            <Button
-              variant="Secondary"
-              text=""
-              onClick={handleSpeechStart}
-              disabled={disabled}
-              className={`flex items-center justify-center px-4 py-2 transition-all duration-200 ${
-                isListening 
-                  ? 'bg-red-100 border-red-300 text-red-600 hover:bg-red-200' 
-                  : 'hover:bg-gray-50'
-              }`}
-              title={isListening ? `Stop listening (${timeLeft}s left)` : `Start voice input (OpenAI Whisper)`}
-            >
-              <span className="text-lg">
-                {isListening ? '🔴' : '🎤'}
-              </span>
-              {isListening && (
-                <span className="ml-1 text-xs font-mono">
-                  {timeLeft}s
-                </span>
-              )}
-            </Button>
-          ) : (
-            <Button
-              variant="Secondary"
-              text=""
-              disabled={true}
-              className="flex items-center justify-center px-4 py-2 opacity-50 cursor-not-allowed"
-              title="Speech recognition not supported in this browser"
-            >
-              <span className="text-lg">🎤</span>
-            </Button>
-          )}
-          
-          {/* Send button */}
-          <Button
-            variant="Primary"
-            text={disabled ? "Sending..." : "發送 Send"}
+
+        <div className="relative h-8 w-[76px] shrink-0">
+          <button
+            onClick={handleSpeechStart}
+            disabled={disabled || !openaiSTTSupported}
+            title={isListening ? `Stop listening (${timeLeft}s left)` : `Start voice input`}
+            className={`absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center ${openaiSTTSupported ? 'bg-[#fff1c2]' : 'bg-[#cdcdcd] opacity-60'} ${disabled ? 'cursor-not-allowed' : ''}`}
+          >
+            <span className="text-[16px]">{isListening ? '⏺️' : '🎤'}</span>
+          </button>
+          <button
             onClick={handleSend}
             disabled={disabled || !inputValue.trim()}
-            className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 px-6"
+            className="absolute left-[43px] top-0 w-8 h-8 rounded-full flex items-center justify-center bg-[#5a5a5a] text-white disabled:opacity-50"
+            title="Send"
           >
-            {disabled && (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              </div>
-            )}
-          </Button>
+            <span>➤</span>
+          </button>
         </div>
-      </div>
-      
-      {/* Help text */}
-      <div className="mt-2 text-xs text-gray-500">
-        Press Enter to send, Shift+Enter for new line
-        {openaiSTTSupported && (
-          <span className="ml-2">
-            • Click 🎤 to speak in Cantonese (OpenAI Whisper with translation)
-          </span>
-        )}
       </div>
     </div>
   )

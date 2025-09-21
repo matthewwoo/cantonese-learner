@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ttsService, speakCantonese, stopSpeech } from '@/utils/textToSpeech';
 import { speakAndPlayCantonese as speakWithOpenAI, stopOpenAITTS, isOpenAITTSAvailable } from '@/utils/openaiTTS';
+import ChatMessage from '@/components/chat/ChatMessage';
+import { processArticleIntoSentences, type SentenceCard } from '@/utils/sentenceProcessor';
 
 interface Article {
   id: string;
@@ -35,11 +37,12 @@ export default function ArticleReadingPage() {
   const [article, setArticle] = useState<Article | null>(null);
   const [readingSession, setReadingSession] = useState<ReadingSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sentences, setSentences] = useState<SentenceCard[]>([]);
   
   // 閱讀控制
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const [showTranslation, setShowTranslation] = useState(true);
+  const [showTranslation, setShowTranslation] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   
   // 詞彙定義彈窗
@@ -96,8 +99,26 @@ export default function ArticleReadingPage() {
       setArticle(data.article);
       setReadingSession(data.readingSession);
       setCurrentLineIndex(data.readingSession.currentPosition);
-      setShowTranslation(data.readingSession.showTranslation);
+      // Default to Chinese view for bubbles (do not auto-enable English)
       setPlaybackSpeed(data.readingSession.readingSpeed);
+
+      // Process article into sentence-level cards for chat-style bubbles
+      try {
+        const processed = processArticleIntoSentences(
+          data.article.originalContent ?? [],
+          data.article.translatedContent ?? []
+        );
+        setSentences(processed.sentences);
+      } catch (e) {
+        console.warn('Sentence processing failed, falling back to paragraph-level.', e);
+        // Fallback: map paragraph pairs into pseudo-sentences
+        const fallbackSentences: SentenceCard[] = (data.article.translatedContent ?? []).map((cn: string, i: number) => ({
+          chinese: cn,
+          english: (data.article.originalContent ?? [])[i] ?? '',
+          cardIndex: i,
+        }));
+        setSentences(fallbackSentences);
+      }
     } catch (error) {
       console.error('獲取文章失敗:', error);
       toast.error('Unable to load article');
@@ -434,78 +455,23 @@ export default function ArticleReadingPage() {
         </div>
       </div>
 
-      {/* 文章內容 */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          {article.translatedContent.map((chineseLine, index) => {
-            const englishLine = article.originalContent[index];
-            const isCurrentLine = index === currentLineIndex && isPlaying;
-            
-            return (
-              <div
-                key={index}
-                className={`mb-6 p-4 rounded-lg transition-all cursor-pointer ${
-                  isCurrentLine
-                    ? 'bg-blue-50 border-2 border-blue-400 shadow-md'
-                    : 'hover:bg-gray-50'
-                }`}
-                onClick={() => playLine(index)}
-              >
-                {/* 中文行 */}
-                <div
-                  className={`text-lg leading-relaxed mb-2 ${
-                    isCurrentLine ? 'text-blue-900 font-medium' : 'text-gray-800'
-                  }`}
-                >
-                  {chineseLine.split('').map((char, charIndex) => {
-                    // 檢查是否為中文字符
-                    const isChinese = /[\u4e00-\u9fff]/.test(char);
-                    
-                    return (
-                      <span
-                        key={charIndex}
-                        className={isChinese ? 'hover:bg-yellow-200 cursor-pointer transition-colors' : ''}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isChinese) {
-                            showWordDefinition(char);
-                          }
-                        }}
-                      >
-                        {char}
-                      </span>
-                    );
-                  })}
-                </div>
-                
-                {/* 英文翻譯 */}
-                {showTranslation && englishLine && (
-                  <div className="text-sm text-gray-500 italic">
-                    {englishLine}
-                  </div>
-                )}
-                
-                {/* 行號和播放按鈕 */}
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-gray-400">
-                    Line {index + 1}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      playLine(index);
-                    }}
-                    className="text-blue-500 hover:text-blue-700"
-                    title="Play this line"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+      {/* 文章內容（以聊天氣泡顯示每句） */}
+      <div className="max-w-[480px] mx-auto px-4 py-8">
+        {/* 對齊 chat 頁面的窄寬與留白 */}
+        <div className="space-y-4">
+          {sentences.map((s, idx) => (
+            <ChatMessage
+              key={idx}
+              message={{
+                id: String(idx),
+                role: 'assistant',
+                content: s.chinese,
+                translation: s.english,
+                timestamp: new Date(),
+              }}
+              showTranslation={showTranslation}
+            />
+          ))}
         </div>
       </div>
 

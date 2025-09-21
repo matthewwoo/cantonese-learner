@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
+import { IconButton } from "@/components/ui/IconButton"
 import UploadForm from "@/components/flashcards/UploadForm"
 import { toast } from "react-hot-toast"
 import { featureColors } from "@/lib/design-tokens"
@@ -23,6 +24,19 @@ interface FlashcardSet {
   flashcardCount: number
   createdAt: string
   updatedAt: string
+}
+
+// Figma-derived color tokens used on the Cards page
+const FIGMA_COLORS = {
+  surfaceBackground: '#f9f2ec',
+  surfaceBorder: '#f2e2c4',
+  textPrimary: '#171515',
+  textSecondary: '#6e6c66',
+  deckBlue: '#e8f4ff',
+  deckGreen: '#cff7d3',
+  deckPink: '#fdd3d0',
+  buttonBg: '#171515',
+  buttonText: '#ffffff',
 }
 
 // Illustration component for deck cards
@@ -102,13 +116,80 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
 }
 
 // Deck card component
-function Deck({ set, onClick }: { set: FlashcardSet; onClick: () => void }) {
+function Deck({ set, onClick, onDelete }: { set: FlashcardSet; onClick: () => void; onDelete: (setId: string) => void }) {
+  const [showMenu, setShowMenu] = useState(false)
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu) {
+        setShowMenu(false)
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('click', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showMenu])
+
   return (
-    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl overflow-hidden">
+    <Card className="border-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.12)] hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 rounded-[20px] overflow-hidden relative" style={{ backgroundColor: set.theme }}>
+      {/* Icon button in upper right */}
+      <div className="absolute top-4 right-4 z-20">
+        <div className="relative">
+          <IconButton 
+            size="24px" 
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation() // Prevent deck click when clicking icon
+              setShowMenu(!showMenu)
+            }}
+            className="text-[#6e6c66] hover:bg-white"
+          >
+            <svg 
+              width="16" 
+              height="16" 
+              viewBox="0 0 16 16" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="2" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="14" cy="8" r="1.5" fill="currentColor"/>
+            </svg>
+          </IconButton>
+
+          {/* Dropdown Menu */}
+          {showMenu && (
+            <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[120px] z-30">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (confirm(`Are you sure you want to delete "${set.name}"? This action cannot be undone.`)) {
+                    onDelete(set.id)
+                  }
+                  setShowMenu(false)
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="flex flex-col items-center justify-center p-6">
         {/* Illustration */}
         <div className="mb-6">
-          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-200 to-purple-300 flex items-center justify-center shadow-inner overflow-hidden">
+          <div className="w-32 h-32 rounded-full bg-white/70 flex items-center justify-center shadow-inner overflow-hidden">
             {set.imageUrl ? (
               <img
                 src={set.imageUrl}
@@ -127,15 +208,16 @@ function Deck({ set, onClick }: { set: FlashcardSet; onClick: () => void }) {
         
         {/* Content */}
         <div className="text-center w-full">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{set.name}</h3>
-          <p className="text-sm text-gray-600 mb-6">{set.flashcardCount} cards</p>
+          <h3 className="text-[16px] leading-[24px] font-medium" style={{ color: FIGMA_COLORS.textPrimary }}>{set.name}</h3>
+          <p className="text-[14px] leading-[21px] mb-6" style={{ color: FIGMA_COLORS.textSecondary }}>{set.flashcardCount} cards</p>
           
           {/* Button */}
           <Button 
             variant="Primary"
             text="Start lesson"
             onClick={onClick}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200"
+            className="w-fit mx-auto px-5 py-3 rounded-[8px] transition-colors duration-200"
+            style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
           />
         </div>
       </div>
@@ -147,15 +229,16 @@ function Deck({ set, onClick }: { set: FlashcardSet; onClick: () => void }) {
 function NavItem({ selected = false, icon, label, onClick }: { selected?: boolean; icon: string; label: string; onClick: () => void }) {
   return (
     <button 
-      className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors duration-200 ${
+      className={`flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] transition-colors duration-200 ${
         selected 
-          ? 'bg-purple-100 text-purple-700' 
-          : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+          ? 'bg-white shadow-sm' 
+          : 'hover:bg-white/60'
       }`}
       onClick={onClick}
+      style={{ color: FIGMA_COLORS.textSecondary }}
     >
       <div className="text-2xl mb-1">{icon}</div>
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-[14px] leading-[21px]">{label}</span>
     </button>
   )
 }
@@ -215,15 +298,35 @@ export default function FlashcardsPage() {
     router.push(`/flashcards/study/${setId}`)
   }
 
+  // Handle deck deletion
+  const handleDeleteDeck = async (setId: string) => {
+    try {
+      const response = await fetch(`/api/flashcards/${setId}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete flashcard set')
+      }
+      
+      // Refresh the list after successful deletion
+      fetchFlashcardSets()
+      toast.success('Flashcard set deleted successfully')
+    } catch (error) {
+      console.error('Error deleting flashcard set:', error)
+      toast.error('Failed to delete flashcard set')
+    }
+  }
+
   // Show loading while checking authentication
   if (status === "loading" || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-200 to-purple-300 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-2xl">📚</span>
           </div>
-          <p className="text-lg text-gray-600 font-medium">Loading flashcards...</p>
+          <p className="text-lg font-medium" style={{ color: FIGMA_COLORS.textSecondary }}>Loading flashcards...</p>
         </div>
       </div>
     )
@@ -235,23 +338,22 @@ export default function FlashcardsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
+    <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-purple-100">
+      <div className="sticky top-0 z-10 backdrop-blur-md" style={{ background: 'rgba(255,252,249,0.6)', borderBottom: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}>
         <div className="max-w-md mx-auto px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                <span className="text-white text-lg font-bold">C</span>
-              </div>
-              <h1 className="text-xl font-semibold text-gray-900">Flashcards</h1>
+            {/* Center logo placeholder */}
+            <div className="w-10 h-10 rounded-full bg-center bg-cover bg-no-repeat" />
+            <div className="text-center flex-1">
+              <div className="inline-block w-10 h-10 rounded-full bg-[#FFEFD8]" />
             </div>
-            
             {/* Upload Button */}
             <button 
               onClick={() => setShowUploadForm(!showUploadForm)}
-              className="w-10 h-10 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg flex items-center justify-center transition-colors duration-200"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200"
+              style={{ color: FIGMA_COLORS.textPrimary, border: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}
+              aria-label="Upload flashcards"
             >
               <span className="text-lg font-bold">+</span>
             </button>
@@ -276,41 +378,49 @@ export default function FlashcardsPage() {
           <div className="space-y-6">
             {flashcardSets.length === 0 ? (
               // Empty State
-              <Card className="bg-white border-0 shadow-lg rounded-2xl overflow-hidden">
+              <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
                 <div className="p-8 text-center">
                   <div className="mb-6">
-                    <div className="w-32 h-32 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <div className="w-32 h-32 bg-white/70 rounded-full flex items-center justify-center mx-auto shadow-inner">
                       <span className="text-6xl">📚</span>
                     </div>
                   </div>
                   
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">No flashcard sets yet</h2>
-                  <p className="text-gray-600 mb-8">Create your first set to start learning Cantonese</p>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>No flashcard sets yet</h2>
+                  <p className="mb-8" style={{ color: FIGMA_COLORS.textSecondary }}>Create your first set to start learning Cantonese</p>
                   
                   <Button 
                     variant="Primary"
                     text="Upload First Set"
                     onClick={() => setShowUploadForm(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-8 rounded-lg transition-colors duration-200"
+                    className="font-medium py-3 px-8 rounded-[8px] transition-colors duration-200"
+                    style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
                   />
                 </div>
               </Card>
             ) : (
               // Flashcard Sets
-              flashcardSets.map((set) => (
-                <Deck 
-                  key={set.id} 
-                  set={set} 
-                  onClick={() => handleDeckClick(set.id)}
-                />
-              ))
+              flashcardSets.map((set, idx) => {
+                // Cycle Figma deck background colors
+                const bg = [FIGMA_COLORS.deckBlue, FIGMA_COLORS.deckGreen, FIGMA_COLORS.deckPink][idx % 3]
+                // Attach color to set.theme so Deck can read it without changing props
+                const themedSet = { ...set, theme: bg }
+                return (
+                  <Deck 
+                    key={set.id} 
+                    set={themedSet} 
+                    onClick={() => handleDeckClick(set.id)}
+                    onDelete={handleDeleteDeck}
+                  />
+                )
+              })
             )}
           </div>
         )}
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-purple-100">
+      <div className="fixed bottom-0 left-0 right-0 backdrop-blur-md" style={{ background: 'rgba(249,242,236,0.6)' }}>
         <div className="max-w-md mx-auto px-4 py-3 sm:px-6">
           <div className="flex items-center justify-around">
             <NavItem 
