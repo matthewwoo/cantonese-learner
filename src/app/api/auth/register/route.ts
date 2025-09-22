@@ -79,3 +79,7 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+// Avoid edge runtime to allow Prisma Node engine
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"

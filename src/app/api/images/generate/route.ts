@@ -57,10 +57,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const revisedPrompt = (response as any).data?.[0]?.revised_prompt ?? imagePrompt
+
     return NextResponse.json({
       success: true,
       imageUrl: `data:image/png;base64,${b64}`,
-      prompt: response.data[0]?.revised_prompt || imagePrompt
+      prompt: revisedPrompt
     })
 
   } catch (error) {

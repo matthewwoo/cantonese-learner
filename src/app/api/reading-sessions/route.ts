@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { PrismaClient } from '@/generated/prisma';
 import { z } from 'zod';
 
+// Initialize Prisma client
 const prisma = new PrismaClient();
 
 // Validation schema for creating a reading session

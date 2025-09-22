@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
@@ -251,6 +251,82 @@ function NavItem({ selected = false, icon, label, onClick }: { selected?: boolea
   )
 }
 
+function FlashcardsBody({
+  flashcardSets,
+  onUploadSuccess,
+  onDeckClick,
+  onDeleteDeck,
+  onCloseUpload,
+}: {
+  flashcardSets: FlashcardSet[]
+  onUploadSuccess: () => void
+  onDeckClick: (setId: string) => void
+  onDeleteDeck: (setId: string) => Promise<void>
+  onCloseUpload: () => void
+}) {
+  const searchParams = useSearchParams()
+  const showUploadForm = searchParams.get("upload") === "1"
+
+  return (
+    <>
+      {/* Upload Form (conditionally shown) */}
+      {showUploadForm && (
+        <div className="mb-8">
+          <UploadForm 
+            onUploadSuccess={onUploadSuccess} 
+            onClose={onCloseUpload}
+          />
+        </div>
+      )}
+
+      {/* Decks - Only show when not uploading */}
+      {!showUploadForm && (
+        <div className="space-y-6">
+          {flashcardSets.length === 0 ? (
+            // Empty State
+            <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
+              <div className="p-8 text-center">
+                <div className="mb-6">
+                  <div className="w-32 h-32 bg-white/70 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <span className="text-6xl">📚</span>
+                  </div>
+                </div>
+                
+                <h2 className="text-xl font-semibold mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>No flashcard sets yet</h2>
+                <p className="mb-8" style={{ color: FIGMA_COLORS.textSecondary }}>Create your first set to start learning Cantonese</p>
+                
+                <Button 
+                  variant="Primary"
+                  text="Upload First Set"
+                  onClick={() => onCloseUpload()}
+                  className="font-medium py-3 px-8 rounded-[8px] transition-colors duration-200"
+                  style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
+                />
+              </div>
+            </Card>
+          ) : (
+            // Flashcard Sets
+            flashcardSets.map((set, idx) => {
+              // Cycle Figma deck background colors
+              const bg = [FIGMA_COLORS.deckBlue, FIGMA_COLORS.deckGreen, FIGMA_COLORS.deckPink][idx % 3]
+              // Attach color to set.theme so Deck can read it without changing props
+              const themedSet = { ...set, theme: bg }
+              return (
+                <Deck 
+                  key={set.id} 
+                  set={themedSet} 
+                  onClick={() => onDeckClick(set.id)}
+                  onDelete={onDeleteDeck}
+                />
+              )
+            })
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function FlashcardsPage() {
   // Authentication and navigation
   const { data: session, status } = useSession()
@@ -259,8 +335,6 @@ export default function FlashcardsPage() {
   // Component state
   const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const searchParams = useSearchParams()
-  const showUploadForm = searchParams.get("upload") === "1"
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
@@ -350,60 +424,15 @@ export default function FlashcardsPage() {
     <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
       {/* Main Content */}
       <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
-        {/* Upload Form (conditionally shown) */}
-        {showUploadForm && (
-          <div className="mb-8">
-            <UploadForm 
-              onUploadSuccess={handleUploadSuccess} 
-              onClose={() => router.push('/flashcards')}
-            />
-          </div>
-        )}
-
-        {/* Decks - Only show when not uploading */}
-        {!showUploadForm && (
-          <div className="space-y-6">
-            {flashcardSets.length === 0 ? (
-              // Empty State
-              <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
-                <div className="p-8 text-center">
-                  <div className="mb-6">
-                    <div className="w-32 h-32 bg-white/70 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                      <span className="text-6xl">📚</span>
-                    </div>
-                  </div>
-                  
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>No flashcard sets yet</h2>
-                  <p className="mb-8" style={{ color: FIGMA_COLORS.textSecondary }}>Create your first set to start learning Cantonese</p>
-                  
-              <Button 
-                variant="Primary"
-                text="Upload First Set"
-                onClick={() => router.push('/flashcards?upload=1')}
-                    className="font-medium py-3 px-8 rounded-[8px] transition-colors duration-200"
-                    style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
-                  />
-                </div>
-              </Card>
-            ) : (
-              // Flashcard Sets
-              flashcardSets.map((set, idx) => {
-                // Cycle Figma deck background colors
-                const bg = [FIGMA_COLORS.deckBlue, FIGMA_COLORS.deckGreen, FIGMA_COLORS.deckPink][idx % 3]
-                // Attach color to set.theme so Deck can read it without changing props
-                const themedSet = { ...set, theme: bg }
-                return (
-                  <Deck 
-                    key={set.id} 
-                    set={themedSet} 
-                    onClick={() => handleDeckClick(set.id)}
-                    onDelete={handleDeleteDeck}
-                  />
-                )
-              })
-            )}
-          </div>
-        )}
+        <Suspense fallback={<div />}> 
+          <FlashcardsBody
+            flashcardSets={flashcardSets}
+            onUploadSuccess={handleUploadSuccess}
+            onDeckClick={handleDeckClick}
+            onDeleteDeck={handleDeleteDeck}
+            onCloseUpload={() => router.push('/flashcards?upload=1')}
+          />
+        </Suspense>
       </div>
 
       {/* Bottom Navigation removed; now rendered globally in Providers */}

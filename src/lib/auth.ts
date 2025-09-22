@@ -7,6 +7,9 @@ import { db } from "@/lib/db"
 
 // NextAuth configuration object - this tells NextAuth how to handle authentication
 export const authOptions = {
+  // Explicitly set secret and enable debug in development to surface errors
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV !== "production",
   // Session configuration
   session: {
     // Use JWT tokens instead of database sessions (simpler for our app)

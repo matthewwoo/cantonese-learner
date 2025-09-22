@@ -15,3 +15,8 @@ const handler = NextAuth(authOptions)
 // Export the handler for both GET and POST requests
 // This is required for Next.js 13+ App Router API routes
 export { handler as GET, handler as POST }
+
+// Ensure this route is always dynamic and not statically cached
+export const dynamic = "force-dynamic"
+// Ensure Prisma runs on the Node.js runtime, not Edge
+export const runtime = "nodejs"

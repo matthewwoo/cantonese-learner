@@ -2,14 +2,14 @@
 // API endpoint for individual flashcard set operations (GET, DELETE)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 // GET /api/flashcards/[id] - Get a specific flashcard set
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -18,9 +18,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await context.params
+
     const flashcardSet = await db.flashcardSet.findFirst({
       where: {
-        id: params.id,
+        id,
         user: {
           email: session.user.email
         }
@@ -44,7 +46,7 @@ export async function GET(
 // DELETE /api/flashcards/[id] - Delete a specific flashcard set
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -54,9 +56,11 @@ export async function DELETE(
     }
 
     // First, verify the flashcard set belongs to the user
+    const { id } = await context.params
+
     const flashcardSet = await db.flashcardSet.findFirst({
       where: {
-        id: params.id,
+        id,
         user: {
           email: session.user.email
         }
@@ -70,7 +74,7 @@ export async function DELETE(
     // Delete the flashcard set (this will cascade delete all flashcards due to the schema)
     await db.flashcardSet.delete({
       where: {
-        id: params.id
+        id
       }
     })
 
