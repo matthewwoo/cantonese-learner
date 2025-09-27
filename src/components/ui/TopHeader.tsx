@@ -16,6 +16,7 @@ export default function TopHeader() {
 
   const showFlashcardsAdd = useMemo(() => pathname?.startsWith("/flashcards") ?? false, [pathname])
   const showArticlesAdd = useMemo(() => pathname === "/articles", [pathname])
+  const showChatNew = useMemo(() => pathname === "/chat", [pathname])
 
   const toggleFlashcardsUpload = () => {
     const isOpen = searchParams.get("upload") === "1"
@@ -29,6 +30,10 @@ export default function TopHeader() {
 
   const goToAddArticle = () => {
     router.push("/articles/new")
+  }
+
+  const startNewChat = () => {
+    router.push("/chat?new=1")
   }
 
   return (
@@ -49,7 +54,7 @@ export default function TopHeader() {
         {/* Center logo */}
         <div className="flex-1 flex items-center justify-center">
           <img
-            src="/header_logo.svg"
+            src="/header_logo.png"
             alt="Cantonese Learner"
             className="h-7"
             aria-hidden="false"
@@ -62,7 +67,7 @@ export default function TopHeader() {
             <button
               onClick={toggleFlashcardsUpload}
               className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200"
-              style={{ border: `1px solid ${COLORS.surfaceBorder}` }}
+            style={{ border: "1px solid #8C8B89", color: "#8C8B89" }}
               aria-label="Add flashcard deck"
               title="Add flashcard deck"
             >
@@ -73,9 +78,20 @@ export default function TopHeader() {
             <button
               onClick={goToAddArticle}
               className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200"
-              style={{ border: `1px solid ${COLORS.surfaceBorder}` }}
+            style={{ border: "1px solid #8C8B89", color: "#8C8B89" }}
               aria-label="Add article"
               title="Add article"
+            >
+              <span className="text-lg font-bold">+</span>
+            </button>
+          )}
+          {showChatNew && (
+            <button
+              onClick={startNewChat}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200"
+              style={{ border: "1px solid #8C8B89", color: "#8C8B89" }}
+              aria-label="Start new chat"
+              title="Start new chat"
             >
               <span className="text-lg font-bold">+</span>
             </button>

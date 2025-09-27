@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ChatMessage from '@/components/chat/ChatMessage'
 import ChatInput from '@/components/chat/ChatInput'
 import { isTTSSupported, speakCantonese } from '@/utils/textToSpeech'
@@ -33,6 +33,7 @@ export default function ChatPage() {
   // Authentication and routing
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   // Chat session state
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
@@ -171,6 +172,15 @@ export default function ChatPage() {
     setError(null)
   }
 
+  // ============ HANDLE NEW CHAT QUERY PARAM (?new=1) ==========
+  useEffect(() => {
+    const isNew = searchParams.get('new') === '1'
+    if (isNew) {
+      startNewChat()
+      router.replace('/chat')
+    }
+  }, [searchParams, router])
+
   // ============ LOADING STATE ============
   if (status === "loading") {
     return (
@@ -191,12 +201,6 @@ export default function ChatPage() {
       {/* Messages area */}
       <div className="mx-auto w-full max-w-[480px] px-4 pt-[88px] pb-[220px]">
         {/* Welcome message */}
-        {messages.length === 0 && !isLoading && (
-          <div className="text-center py-10 text-[#6e6c66]">
-            <div className="text-4xl mb-3">👋</div>
-            <p>開始傾計啦！Send a message to start chatting.</p>
-          </div>
-        )}
 
         {/* Message List */}
         <div className="space-y-4">

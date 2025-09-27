@@ -166,6 +166,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
     }
   }
 
+  // Make entire message bubble tappable/clickable to start/stop TTS
+  const handleContainerClick = () => {
+    if (!ttsSupported) return
+    if (isDragging) return
+    void handleSpeak()
+  }
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div
@@ -177,6 +184,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
         onMouseMove={handleMouseMove}
         onMouseUp={endMouseDrag}
         onMouseLeave={endMouseDrag}
+        onClick={handleContainerClick}
         style={{ transform: touchDeltaX !== 0 ? `translateX(${Math.max(Math.min(touchDeltaX, 16), -16)}px)` : undefined }}
       >
         <div className="px-4 py-3">
@@ -185,8 +193,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
               <IconButton
                 aria-label={isSpeaking ? 'Stop pronunciation' : 'Play pronunciation'}
                 size="32px"
-                className={`rounded-full ${isUser ? 'bg-[#f6f6f6]' : 'bg-white/70'} text-[#6e6c66]`}
-                onClick={handleSpeak}
+                className="rounded-full text-[#6e6c66] hover:bg-transparent focus:bg-transparent"
+                onClick={(e) => { e.stopPropagation(); void handleSpeak() }}
                 title={isSpeaking ? 'Stop pronunciation' : 'Listen'}
               >
                 <span className="text-[14px]">{isSpeaking ? '⏸' : '▶'}</span>

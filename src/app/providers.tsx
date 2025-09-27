@@ -8,18 +8,27 @@ import { SessionProvider, useSession } from "next-auth/react" // Provides authen
 import { Toaster } from "react-hot-toast" // Provides toast notification system
 import BottomNav from "@/components/ui/BottomNav"
 import TopHeader from "@/components/ui/TopHeader"
+import { usePathname } from "next/navigation"
 
 // Renders BottomNav only when authenticated and adds spacer to prevent overlap
 function AuthenticatedNavWrapper({ children }: { children: React.ReactNode }) {
-  const { status } = useSession()
-  const isAuthed = status === "authenticated"
+  const { status, data: session } = useSession()
+  const pathname = usePathname()
+
+  const isAuthed = status === "authenticated" && !!session?.user
+  const isAuthRoute = pathname?.startsWith("/auth")
+  const allowedNavRoots = ["/dashboard", "/flashcards", "/chat", "/articles"]
+  const isOnAllowedPage = !!pathname && allowedNavRoots.some(root => pathname === root || pathname.startsWith(`${root}/`))
+
+  const showChrome = isAuthed && !isAuthRoute
+  const showBottomNav = showChrome && isOnAllowedPage
   return (
     <>
-      {isAuthed && <TopHeader />}
-      {isAuthed && <div style={{ height: "72px" }} />}
+      {showChrome && <TopHeader />}
+      {showChrome && <div style={{ height: "72px" }} />}
       {children}
-      {isAuthed && <div style={{ height: "84px" }} />}
-      {isAuthed && <BottomNav />}
+      {showBottomNav && <div style={{ height: "84px" }} />}
+      {showBottomNav && <BottomNav />}
     </>
   )
 }

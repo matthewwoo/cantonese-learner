@@ -66,14 +66,86 @@ export async function POST(request: NextRequest) {
     })
 
     // Select cards for this session (up to maxCards)
-    // For now, we'll just take the first N cards, but later we can implement
-    // smart selection based on due dates and difficulty
-    const selectedCards = flashcardSet.flashcards
-      .slice(0, maxCards)
+    // Prefer cards that are due based on the user's most recent progress,
+    // then fill with new cards, and lightly shuffle to avoid repetition
+
+    // Helper: simple in-place shuffle
+    function shuffleInPlace<T>(array: T[]): void {
+      for (let i = array.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const tmp = array[i]
+        array[i] = array[j]
+        array[j] = tmp
+      }
+    }
+
+    const allFlashcards = flashcardSet.flashcards
+    const flashcardIds = allFlashcards.map((f) => f.id)
+
+    // Fetch latest study progress per flashcard for this user (across sessions)
+    const priorStudyCards = await db.studyCard.findMany({
+      where: {
+        flashcardId: { in: flashcardIds },
+        studySession: { userId: session.user.id },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        flashcardId: true,
+        easeFactor: true,
+        interval: true,
+        repetitions: true,
+        nextReviewDate: true,
+        createdAt: true,
+      },
+    })
+
+    // Build a map of the most recent studyCard per flashcardId
+    const latestByFlashcardId = new Map<string, typeof priorStudyCards[number]>()
+    for (const sc of priorStudyCards) {
+      if (!latestByFlashcardId.has(sc.flashcardId)) {
+        latestByFlashcardId.set(sc.flashcardId, sc)
+      }
+    }
+
+    const now = new Date()
+
+    type Candidate = {
+      flashcard: typeof allFlashcards[number]
+      prior: typeof priorStudyCards[number] | undefined
+      isDue: boolean
+      nextReviewDate: Date
+    }
+
+    // Create candidate list with due info
+    const candidates: Candidate[] = allFlashcards.map((fc) => {
+      const prior = latestByFlashcardId.get(fc.id)
+      const nextReviewDate = prior?.nextReviewDate ?? new Date(0) // new cards treated as due now
+      const isDue = nextReviewDate <= now
+      return { flashcard: fc, prior, isDue, nextReviewDate: new Date(nextReviewDate) }
+    })
+
+    // Lightly shuffle to avoid fixed ordering, then sort by due first, then by nextReviewDate asc
+    shuffleInPlace(candidates)
+    candidates.sort((a, b) => {
+      if (a.isDue !== b.isDue) return a.isDue ? -1 : 1
+      return a.nextReviewDate.getTime() - b.nextReviewDate.getTime()
+    })
+
+    const selectedCards = candidates.slice(0, maxCards)
 
     // Create study cards for each selected flashcard
-    const studyCardsData = selectedCards.map(flashcard => {
-      const reviewData = createInitialReviewData()
+    const studyCardsData = selectedCards.map(({ flashcard, prior }) => {
+      // Seed with prior progress if available; otherwise start fresh
+      const reviewData = prior
+        ? {
+            easeFactor: prior.easeFactor,
+            interval: prior.interval,
+            repetitions: prior.repetitions,
+            nextReviewDate: new Date(prior.nextReviewDate),
+          }
+        : createInitialReviewData()
+
       return {
         flashcardId: flashcard.id,
         studySessionId: studySession.id,
@@ -94,6 +166,7 @@ export async function POST(request: NextRequest) {
       where: { id: studySession.id },
       include: {
         studyCards: {
+          orderBy: { createdAt: 'asc' },
           include: {
             flashcard: {
               select: {
@@ -110,6 +183,18 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Ensure deterministic ordering that matches our selected candidate order
+    const flashcardOrder = new Map<string, number>()
+    selectedCards.forEach(({ flashcard }, idx) => {
+      flashcardOrder.set(flashcard.id, idx)
+    })
+
+    const orderedStudyCards = [...(completeStudySession!.studyCards || [])].sort((a, b) => {
+      const ai = flashcardOrder.get(a.flashcard.id) ?? Number.MAX_SAFE_INTEGER
+      const bi = flashcardOrder.get(b.flashcard.id) ?? Number.MAX_SAFE_INTEGER
+      return ai - bi
+    })
+
     return NextResponse.json({
       message: "Study session started successfully",
       studySession: {
@@ -117,7 +202,7 @@ export async function POST(request: NextRequest) {
         totalCards: completeStudySession!.totalCards,
         startedAt: completeStudySession!.startedAt,
         flashcardSetName: flashcardSet.name,
-        studyCards: completeStudySession!.studyCards.map((studyCard, index) => ({
+        studyCards: orderedStudyCards.map((studyCard, index) => ({
           id: studyCard.id,
           position: index + 1, // 1-based position for UI
           flashcard: {

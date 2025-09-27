@@ -26,35 +26,35 @@ interface ReadingSession {
 }
 
 /**
- * 文章閱讀頁面
- * 提供 TTS、高亮顯示、翻譯切換等功能
+ * Article reading page
+ * Provides TTS, highlighting, translation toggle, etc.
  */
 export default function ArticleReadingPage() {
   const params = useParams();
   const router = useRouter();
   const articleId = params.id as string;
 
-  // 狀態管理
+  // State management
   const [article, setArticle] = useState<Article | null>(null);
   const [readingSession, setReadingSession] = useState<ReadingSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sentences, setSentences] = useState<SentenceCard[]>([]);
   
-  // 閱讀控制
+  // Reading controls
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   
-  // 詞彙定義彈窗
+  // Vocabulary definition modal
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [wordDefinition, setWordDefinition] = useState<any>(null);
   
-  // TTS 相關
+  // TTS related
   const speechSynthesis = useRef<SpeechSynthesis | null>(null);
   const currentUtterance = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // 初始化語音合成
+// Initialize speech synthesis
   useEffect(() => {
     if (typeof window !== 'undefined') {
       speechSynthesis.current = window.speechSynthesis;
@@ -69,7 +69,7 @@ export default function ArticleReadingPage() {
       console.warn('Article TTS: No TTS service available');
     }
     
-    // 清理函數
+    // Cleanup function
     return () => {
       stopSpeech(); // Stop any ongoing Web Speech TTS
       stopOpenAITTS(); // Stop any ongoing OpenAI TTS
@@ -79,13 +79,13 @@ export default function ArticleReadingPage() {
     };
   }, []);
 
-  // 載入文章數據
+  // Load article data
   useEffect(() => {
     fetchArticle();
   }, [articleId]);
 
   /**
-   * 獲取文章內容和閱讀會話
+   * Fetch article content and reading session
    */
   const fetchArticle = async () => {
     try {
@@ -130,13 +130,13 @@ export default function ArticleReadingPage() {
   };
 
   /**
-   * 播放/暫停 TTS
+   * Play/Pause TTS
    */
   const togglePlayback = () => {
     if (!article) return;
 
     if (isPlaying) {
-      // 暫停播放
+      // Pause playback
       stopSpeech();
       stopOpenAITTS();
       if (speechSynthesis.current?.speaking) {
@@ -144,75 +144,75 @@ export default function ArticleReadingPage() {
       }
       setIsPlaying(false);
     } else {
-      // 開始播放
+      // Start playback
       playFromLine(currentLineIndex);
       setIsPlaying(true);
     }
   };
 
   /**
-   * 從指定行開始播放
+   * Play from specified line
    */
   const playFromLine = async (lineIndex: number) => {
     if (!article) return;
 
-    // 取消當前播放
+    // Cancel current playback
     stopSpeech();
     stopOpenAITTS();
     if (speechSynthesis.current?.speaking) {
       speechSynthesis.current.cancel();
     }
 
-    // 獲取要播放的文本（中文）
+    // Get the text to speak (Chinese)
     const textToSpeak = article.translatedContent[lineIndex];
     if (!textToSpeak) return;
 
     try {
-      // 設置當前行索引
+      // Set current line index
       setCurrentLineIndex(lineIndex);
 
-      // 優先使用 Web Speech TTS (像 chat/flashcards 一樣，更好的 Cantonese 支持)
+      // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
       if (ttsService.isSupported()) {
         console.log(`Article TTS: Playing line ${lineIndex + 1} with Web Speech TTS`);
         
-        // 使用 Web Speech TTS 播放
+        // Play using Web Speech TTS
         await speakCantonese(textToSpeak, {
           rate: playbackSpeed,
           lang: 'zh-HK' // Hong Kong Cantonese
         });
         
-        // 播放完成後，播放下一行
+        // After playback finishes, play the next line
         if (lineIndex < article.translatedContent.length - 1) {
-          setTimeout(() => playFromLine(lineIndex + 1), 500); // 短暫停頓
+          setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
         } else {
-          // 播放完成
+          // Playback complete
           setIsPlaying(false);
           updateReadingProgress(article.translatedContent.length - 1);
         }
       } else if (isOpenAITTSAvailable()) {
-        // 回退到 OpenAI TTS
+        // Fallback to OpenAI TTS
         console.log(`Article TTS: Playing line ${lineIndex + 1} with OpenAI TTS`);
         
-        // 使用 OpenAI TTS 播放
+        // Play using OpenAI TTS
         await speakWithOpenAI(textToSpeak, {
           speed: playbackSpeed,
-          voice: 'nova' // 適合中文的語音
+          voice: 'nova' // Voice suitable for Chinese
         });
         
-        // 播放完成後，播放下一行
+        // After playback finishes, play the next line
         if (lineIndex < article.translatedContent.length - 1) {
-          setTimeout(() => playFromLine(lineIndex + 1), 500); // 短暫停頓
+          setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
         } else {
-          // 播放完成
+          // Playback complete
           setIsPlaying(false);
           updateReadingProgress(article.translatedContent.length - 1);
         }
       } else {
-        // 最後回退到基本 TTS
+        // Final fallback to basic TTS
         console.log(`Article TTS: Using fallback TTS for line ${lineIndex + 1}`);
         
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = 'zh-HK'; // 嘗試使用香港中文
+        utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
         utterance.rate = playbackSpeed;
         
         utterance.onstart = () => {
@@ -220,11 +220,11 @@ export default function ArticleReadingPage() {
         };
         
         utterance.onend = () => {
-          // 播放下一行
+          // Play the next line
           if (lineIndex < article.translatedContent.length - 1) {
             setTimeout(() => playFromLine(lineIndex + 1), 500);
           } else {
-            // 播放完成
+            // Playback complete
             setIsPlaying(false);
             updateReadingProgress(article.translatedContent.length - 1);
           }
@@ -247,16 +247,16 @@ export default function ArticleReadingPage() {
   };
 
   /**
-   * 高亮當前播放的詞彙
-   * 注意：這是簡化版本，實際實現需要更複雜的邏輯
+   * Highlight the current word being played
+   * Note: simplified version; a real implementation needs more complex logic
    */
   const highlightCurrentWord = (utterance: SpeechSynthesisUtterance, text: string) => {
-    // 這裡可以實現詞彙級別的高亮
-    // 需要結合 utterance 的 boundary 事件
+    // Implement word-level highlighting here
+    // Requires using the utterance boundary events
   };
 
   /**
-   * 點擊某一行播放
+   * Play a specific line on click
    */
   const playLine = async (lineIndex: number) => {
     if (!article) return;
@@ -265,14 +265,14 @@ export default function ArticleReadingPage() {
     if (!textToSpeak) return;
 
     try {
-      // 取消當前播放
+      // Cancel current playback
       stopSpeech();
       stopOpenAITTS();
       if (speechSynthesis.current?.speaking) {
         speechSynthesis.current.cancel();
       }
 
-      // 優先使用 Web Speech TTS (像 chat/flashcards 一樣，更好的 Cantonese 支持)
+      // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
       if (ttsService.isSupported()) {
         console.log(`Article TTS: Playing single line ${lineIndex + 1} with Web Speech TTS`);
         await speakCantonese(textToSpeak, {
@@ -280,17 +280,17 @@ export default function ArticleReadingPage() {
           lang: 'zh-HK' // Hong Kong Cantonese
         });
       } else if (isOpenAITTSAvailable()) {
-        // 回退到 OpenAI TTS
+        // Fallback to OpenAI TTS
         console.log(`Article TTS: Playing single line ${lineIndex + 1} with OpenAI TTS`);
         await speakWithOpenAI(textToSpeak, {
           speed: playbackSpeed,
-          voice: 'nova' // 適合中文的語音
+          voice: 'nova' // Voice suitable for Chinese
         });
       } else {
-        // 最後回退到基本 TTS
+        // Final fallback to basic TTS
         console.log(`Article TTS: Using fallback TTS for single line ${lineIndex + 1}`);
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = 'zh-HK'; // 嘗試使用香港中文
+        utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
         utterance.rate = playbackSpeed;
         speechSynthesis.current?.speak(utterance);
       }
@@ -301,14 +301,14 @@ export default function ArticleReadingPage() {
   };
 
   /**
-   * 更改播放速度
+   * Change playback speed
    */
   const changeSpeed = (speed: number) => {
     setPlaybackSpeed(speed);
     
-    // 如果正在播放，重新開始當前行
+    // If currently playing, restart the current line
     if (isPlaying) {
-      // 停止當前播放並重新開始
+      // Stop current playback and restart
       stopSpeech();
       stopOpenAITTS();
       if (speechSynthesis.current?.speaking) {
@@ -319,7 +319,7 @@ export default function ArticleReadingPage() {
   };
 
   /**
-   * 顯示詞彙定義
+   * Show vocabulary definition
    */
   const showWordDefinition = (word: string) => {
     if (!article?.wordDefinitions) return;
@@ -332,25 +332,25 @@ export default function ArticleReadingPage() {
   };
 
   /**
-   * 更新閱讀進度
+   * Update reading progress
    */
   const updateReadingProgress = async (position: number) => {
-    // TODO: 調用 API 更新閱讀進度
+    // TODO: Call API to update reading progress
   };
 
-  // 載入中狀態
+  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9f2ec' }}>
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
       </div>
     );
   }
 
-  // 文章不存在
+  // Article does not exist
   if (!article) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9f2ec' }}>
         <div className="text-center">
           <div className="text-6xl mb-4">📄</div>
           <h2 className="text-2xl font-bold text-gray-700 mb-2">Article Not Found</h2>
@@ -366,30 +366,43 @@ export default function ArticleReadingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-50">
-      {/* 頂部控制欄 */}
-      <div className="sticky top-0 z-40 bg-white shadow-md">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => router.push('/articles')}
-              className="flex items-center text-gray-600 hover:text-gray-800"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back
-            </button>
-            <h1 className="text-xl font-bold text-gray-800 truncate mx-4">
-              {article.title}
-            </h1>
+    <div className="min-h-screen" style={{ backgroundColor: '#f9f2ec' }}>
+      {/* Article header (Figma-aligned) */}
+      <div className="max-w-md mx-auto px-4 sm:px-6 pt-4">
+        <div className="flex items-center justify-between h-[29px] mb-2">
+          <h1 className="text-[24px] font-semibold tracking-[-0.48px] text-black truncate">
+            {article.title}
+          </h1>
+          <div className="bg-[#5a5a5a] text-white h-[24px] px-[8px] py-[4px] rounded-[8px] flex items-center">
+            <span className="text-[10px] leading-[14px]">To read</span>
           </div>
+        </div>
+        <div className="relative h-[40px] w-full">
+          <div className="h-full flex items-center text-[14px] leading-[1.4] text-[#757575] overflow-hidden gap-1">
+            {article.sourceUrl && (
+              <>
+                <span className="shrink-0">
+                  {(() => { try { return new URL(article.sourceUrl!).hostname } catch { return null } })()}
+                </span>
+                <span className="shrink-0">-</span>
+                <a
+                  href={article.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate hover:underline underline-offset-2"
+                >
+                  {article.sourceUrl}
+                </a>
+              </>
+            )}
+          </div>
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ borderBottom: '1px solid #f2e2c4' }} />
         </div>
       </div>
 
-      {/* 文章內容（以聊天氣泡顯示每句） */}
+      {/* Article content (display each sentence as chat bubbles) */}
       <div className="max-w-[480px] mx-auto px-4 py-8">
-        {/* 對齊 chat 頁面的窄寬與留白 */}
+        {/* Align narrow width and spacing with the chat page */}
         <div className="space-y-4">
           {sentences.map((s, idx) => (
             <ChatMessage
@@ -407,7 +420,7 @@ export default function ArticleReadingPage() {
         </div>
       </div>
 
-      {/* 詞彙定義彈窗 */}
+      {/* Vocabulary definition modal */}
       {selectedWord && wordDefinition && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
@@ -453,26 +466,26 @@ export default function ArticleReadingPage() {
             
             <button
               onClick={async () => {
-                // 播放單個字的發音
+                // Play pronunciation of a single character/word
                 try {
-                  // 優先使用 Web Speech TTS (像 chat/flashcards 一樣，更好的 Cantonese 支持)
+                  // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
                   if (ttsService.isSupported()) {
                     console.log(`Article TTS: Playing word "${selectedWord}" with Web Speech TTS`);
                     await speakCantonese(selectedWord, {
-                      rate: 0.8, // 較慢的速度以便學習
+                      rate: 0.8, // Slower speed for learning
                       lang: 'zh-HK' // Hong Kong Cantonese
                     });
                   } else if (isOpenAITTSAvailable()) {
                     console.log(`Article TTS: Playing word "${selectedWord}" with OpenAI TTS`);
                     await speakWithOpenAI(selectedWord, {
-                      speed: 0.8, // 較慢的速度以便學習
-                      voice: 'nova' // 適合中文的語音
+                      speed: 0.8, // Slower speed for learning
+                      voice: 'nova' // Voice suitable for Chinese
                     });
                   } else if (speechSynthesis.current) {
                     console.log(`Article TTS: Using fallback TTS for word "${selectedWord}"`);
                     const utterance = new SpeechSynthesisUtterance(selectedWord);
-                    utterance.lang = 'zh-HK'; // 嘗試使用香港中文
-                    utterance.rate = 0.8; // 較慢的速度以便學習
+                    utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
+                    utterance.rate = 0.8; // Slower speed for learning
                     speechSynthesis.current.speak(utterance);
                   }
                 } catch (error) {
@@ -488,9 +501,9 @@ export default function ArticleReadingPage() {
         </div>
       )}
 
-      {/* 浮動操作按鈕 */}
+      {/* Floating action buttons */}
       <div className="fixed bottom-8 right-8 flex flex-col gap-3">
-        {/* 跳到頂部 */}
+        {/* Back to top */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
@@ -501,7 +514,7 @@ export default function ArticleReadingPage() {
           </svg>
         </button>
         
-        {/* 全屏模式 */}
+        {/* Fullscreen mode */}
         <button
           onClick={() => {
             if (document.fullscreenElement) {
