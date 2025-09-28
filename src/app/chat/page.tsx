@@ -4,7 +4,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ChatMessage from '@/components/chat/ChatMessage'
@@ -27,7 +27,7 @@ interface ChatSession {
   createdAt: Date
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   // ============ REACT HOOKS FOR STATE MANAGEMENT ============
   
   // Authentication and routing
@@ -229,5 +229,13 @@ export default function ChatPage() {
 
       {/* Bottom navigation removed - using global BottomNav */}
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div />}> 
+      <ChatPageContent />
+    </Suspense>
   )
 }

@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast" // Provides toast notification system
 import BottomNav from "@/components/ui/BottomNav"
 import TopHeader from "@/components/ui/TopHeader"
 import { usePathname } from "next/navigation"
+import { Suspense } from "react"
 
 // Renders BottomNav only when authenticated and adds spacer to prevent overlap
 function AuthenticatedNavWrapper({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,11 @@ function AuthenticatedNavWrapper({ children }: { children: React.ReactNode }) {
   const showBottomNav = showChrome && isOnAllowedPage
   return (
     <>
-      {showChrome && <TopHeader />}
+      {showChrome && (
+        <Suspense fallback={<div />}>
+          <TopHeader />
+        </Suspense>
+      )}
       {showChrome && <div style={{ height: "72px" }} />}
       {children}
       {showBottomNav && <div style={{ height: "84px" }} />}

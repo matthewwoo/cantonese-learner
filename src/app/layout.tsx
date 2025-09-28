@@ -2,7 +2,7 @@
 // This is the root layout that wraps every page in our application
 // It's like the HTML document structure that's shared across all pages
 
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google" // Google Fonts integration
 import "./globals.css"                   // Global CSS styles (includes Tailwind)
 import Providers from "./providers"       // Our providers component
@@ -15,7 +15,22 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Cantonese Learner",                                       // Browser tab title
   description: "Learn Cantonese through flashcards and AI conversations", // SEO description
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/header_logo.png", sizes: "192x192", type: "image/png" },
+      { url: "/header_logo.png", sizes: "512x512", type: "image/png" },
+      { url: "/header_logo.svg", rel: "icon", type: "image/svg+xml" }
+    ],
+    apple: [
+      { url: "/header_logo.png", sizes: "180x180", type: "image/png" }
+    ]
+  },
 }
+
+export const viewport: Viewport = {
+  themeColor: "#0f766e",
+};
 
 // This is the root layout component
 // Every page in our app will be wrapped with this structure

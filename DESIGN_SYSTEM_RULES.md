@@ -238,6 +238,66 @@ src/components/
 └── reading-session/ # Reading components
 ```
 
+## 🧩 Cards Page (Figma)
+
+### Tokens used
+- **surface/background**: `#f9f2ec`
+- **surface/border-1**: `#f2e2c4`
+- **text/text-primary**: `#171515`
+- **text/text-secondary**: `#6e6c66`
+- **text/text-invert**: `#ffffff`
+- **color/grey/black**: `#171515` (buttons, headings)
+- **color/brand/blue-bg**: `#e8f4ff` (Deck variant A)
+- **var(--sds-color-background-positive-secondary)**: `#cff7d3` (Deck variant B)
+- **var(--sds-color-background-danger-secondary)**: `#fdd3d0` (Deck variant C)
+- **radius/radius-2,5**: `20px` (Deck corners)
+- **radius/radius-1,5**: `12px`
+- **radius/radius-2**: `16px`
+- **radius/radius-1**: `8px` (Buttons)
+- **spacing/spacing-0,5**: `4px`
+- **var(--sds-size-space-200)**: `8px`
+
+### Components
+- **Deck card container**:
+  - Background: one of `#e8f4ff`, `#cff7d3`, `#fdd3d0`
+  - Corner radius: `20px`
+  - Min height: `360px` (max `400px`), width: `320px` (mobile reference)
+  - Shadow: `0 1px 3px 0 rgba(0,0,0,0.12)`
+  - Internal spacing: gap `20px`; top padding `20px`
+  - Top-right icon button: `24px`
+- **Illustration**:
+  - Size: `160px` square, centered
+- **Text blocks**:
+  - Title: Söhne Kräftig 16/24 (`font-medium text-[16px] leading-[24px]`, color `#171515`)
+  - Meta: Söhne Buch 14/21 (`text-[14px] leading-[21px]`, color `#6e6c66`)
+- **Primary button (Start lesson)**:
+  - Background `#171515`, text `#ffffff`
+  - Radius `8px`; padding `px-[20px] py-[12px]`
+  - Label: Söhne Kräftig 14/21, centered
+
+### Layout
+- Vertical list of Deck cards with outer gap `24px`.
+- Header: blurred backdrop over `surface/background`, 1px bottom border `#f2e2c4`.
+- Bottom navigation: blurred container; active item has white background, icons at `24px`.
+
+### Tailwind example
+```tsx
+// Cards page Deck example
+<div className="bg-[#e8f4ff] rounded-[20px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)] min-h-[360px] max-h-[400px] w-[320px] overflow-clip flex flex-col items-center justify-center pt-[20px]">
+  <div className="w-full flex items-center justify-end px-[20px]">
+    <button className="size-[24px]" aria-label="More" />
+  </div>
+  <div className="size-[160px] overflow-clip" aria-hidden />
+  <div className="w-full px-[20px] py-[20px] flex flex-col items-center gap-[20px]">
+    <div className="w-full">
+      <h3 className="text-[#171515] text-[16px] leading-[24px] font-medium text-center">Dim Sum</h3>
+      <p className="text-[#6e6c66] text-[14px] leading-[21px] text-center">10 cards</p>
+    </div>
+    <button className="bg-[#171515] text-white rounded-[8px] px-[20px] py-[12px] text-[14px] leading-[21px] font-medium">Start lesson</button>
+  </div>
+</div>
+```
+
 ## 🎯 Design Principles
 
 ### 1. Bilingual Design
