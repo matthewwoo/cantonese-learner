@@ -37,6 +37,10 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
   const [isLoading, setIsLoading] = useState(false) // Loading state during upload
   const [previewData, setPreviewData] = useState<Flashcard[]>([]) // Preview of parsed CSV
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  // Mode: upload CSV vs generate with AI
+  const [mode, setMode] = useState<'upload' | 'generate'>('upload')
+  // Seed words for AI generation
+  const [seedWords, setSeedWords] = useState<{ traditional: string; jyutping: string }[]>([])
   
   // State for image generation
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null)
@@ -220,57 +224,93 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
       toast.error("Please enter a set name")
       return
     }
-    if (!csvFile) {
-      toast.error("Please select a CSV file")
+
+    // Upload mode
+    if (mode === 'upload') {
+      if (!csvFile) {
+        toast.error("Please select a CSV file")
+        return
+      }
+
+      setIsLoading(true)
+
+      try {
+        const content = await csvFile.text()
+        const flashcards = parseCSV(content)
+
+        const response = await fetch('/api/flashcards/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: setName.trim(),
+            flashcards,
+            imageUrl: generatedImage?.url || null,
+          }),
+        })
+
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Upload failed')
+        }
+
+        toast.success(`Successfully uploaded ${flashcards.length} flashcards!`)
+        
+        setSetName("")
+        setCsvFile(null)
+        setPreviewData([])
+        setGeneratedImage(null)
+        setShowImageGeneration(false)
+        setSeedWords([])
+        setMode('upload')
+        const fileInput = document.getElementById('csv-file') as HTMLInputElement
+        if (fileInput) fileInput.value = ''
+        onUploadSuccess?.()
+      } catch (error) {
+        console.error("Upload error:", error)
+        toast.error(error instanceof Error ? error.message : "Upload failed")
+      } finally {
+        setIsLoading(false)
+      }
       return
     }
 
+    // Generate mode
     setIsLoading(true)
-
     try {
-      // Parse the full CSV file
-      const content = await csvFile.text()
-      const flashcards = parseCSV(content)
+      const cleanedSeeds = seedWords
+        .map(w => ({ traditional: w.traditional.trim(), jyutping: w.jyutping.trim() }))
+        .filter(w => w.traditional && w.jyutping)
 
-      // Send data to API
-      const response = await fetch('/api/flashcards/upload', {
+      const response = await fetch('/api/flashcards/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: setName.trim(),
-          flashcards,
+          count: 100,
+          seedWords: cleanedSeeds.length > 0 ? cleanedSeeds : undefined,
           imageUrl: generatedImage?.url || null,
-        }),
+        })
       })
-
       const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.error || 'Upload failed')
+        throw new Error(data.error || 'Failed to generate deck')
       }
-
-      // Success! Reset form and notify parent
-      toast.success(`Successfully uploaded ${flashcards.length} flashcards!`)
-      
-      // Reset form state
+      toast.success(`Successfully generated ${data?.flashcardSet?.flashcardCount ?? 100} flashcards!`)
       setSetName("")
       setCsvFile(null)
-      setPreviewData([])
+      setPreviewData(data?.previewCards || [])
       setGeneratedImage(null)
       setShowImageGeneration(false)
-      
-      // Reset file input
+      setSeedWords([])
+      setMode('upload')
       const fileInput = document.getElementById('csv-file') as HTMLInputElement
       if (fileInput) fileInput.value = ''
-
-      // Call success callback if provided
       onUploadSuccess?.()
-
     } catch (error) {
-      console.error("Upload error:", error)
-      toast.error(error instanceof Error ? error.message : "Upload failed")
+      console.error("Generate error:", error)
+      toast.error(error instanceof Error ? error.message : "Generation failed")
     } finally {
       setIsLoading(false)
     }
@@ -295,6 +335,25 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Mode Toggle */}
+          <div className="py-2">
+            <div className="inline-flex rounded-[10px] overflow-hidden border" style={{ borderColor: '#f2e2c4' }}>
+              <button
+                type="button"
+                onClick={() => setMode('upload')}
+                className={`px-4 py-2 text-sm ${mode === 'upload' ? 'bg-[#171515] text-white' : 'bg-white text-[#171515]'}`}
+              >
+                Upload CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('generate')}
+                className={`px-4 py-2 text-sm ${mode === 'generate' ? 'bg-[#171515] text-white' : 'bg-white text-[#171515]'}`}
+              >
+                Generate with AI
+              </button>
+            </div>
+          </div>
           {/* Set Name */}
           <div className="py-5">
             <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Set Name *</label>
@@ -311,48 +370,122 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
             </div>
           </div>
 
-          {/* CSV File - Custom control */}
-          <div className="py-5">
-            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">CSV File *</label>
-            <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
-              <input
-                id="csv-file"
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={openFilePicker}
-                className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
-              >
-                Choose File
-              </button>
-              <div className="px-3 text-[14px] leading-[21px] text-[#171515] truncate">
-                {csvFile ? csvFile.name : 'No file chosen'}
+          {/* CSV File - Custom control (Upload mode only) */}
+          {mode === 'upload' && (
+            <div className="py-5">
+              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">CSV File *</label>
+              <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
+                <input
+                  id="csv-file"
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={openFilePicker}
+                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
+                >
+                  Choose File
+                </button>
+                <div className="px-3 text-[14px] leading-[21px] text-[#171515] truncate">
+                  {csvFile ? csvFile.name : 'No file chosen'}
+                </div>
               </div>
+              <p className="text-xs text-[#7d7a74] mt-2">Maximum file size: 5MB</p>
             </div>
-            <p className="text-xs text-[#7d7a74] mt-2">Maximum file size: 5MB</p>
-          </div>
+          )}
 
-          {/* Sample CSV download */}
-          <div className="py-5">
-            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Sample CSV</label>
-            <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
-              <button
-                type="button"
-                onClick={downloadSampleCsv}
-                className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
-              >
-                Download
-              </button>
-              <div className="px-3 text-[14px] leading-[21px] text-[#171515]">
-                Get a template to format your cards
+          {/* Sample CSV download / CSV format helper */}
+          {mode === 'upload' ? (
+            <div className="py-5">
+              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Sample CSV</label>
+              <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
+                <button
+                  type="button"
+                  onClick={downloadSampleCsv}
+                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
+                >
+                  Download
+                </button>
+                <div className="px-3 text-[14px] leading-[21px] text-[#171515]">
+                  Get a template to format your cards
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="py-5">
+              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">CSV Format Needed</label>
+              <div className="rounded-[12px] p-4" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
+                <p className="text-[14px] leading-[21px] text-[#171515]">
+                  Chinese Word, English Translation, Pronunciation, Example Sentence (English), Example Sentence (Chinese)
+                </p>
+                <p className="text-xs text-[#7d7a74] mt-1">AI will generate 100 rows in this format using Traditional characters and Jyutping.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Seed Words (Generate mode only) */}
+          {mode === 'generate' && (
+            <div className="py-5">
+              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Cantonese Words (Optional)</label>
+              <div className="rounded-[12px] p-4 space-y-3" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
+                <p className="text-xs text-[#6e6c66]">Add Traditional characters and Jyutping to guide generation. Leave empty to let AI choose.</p>
+                {seedWords.length === 0 && (
+                  <div className="text-xs text-[#7d7a74]">No seed words added.</div>
+                )}
+                {seedWords.map((w, idx) => (
+                  <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Input
+                      type="text"
+                      placeholder="Traditional (e.g., 你好)"
+                      value={w.traditional}
+                      onChange={(e) => {
+                        const next = [...seedWords]
+                        next[idx] = { ...next[idx], traditional: e.target.value }
+                        setSeedWords(next)
+                      }}
+                      className="h-10 px-3 rounded-[8px] border bg-white text-[#171515] placeholder:text-[#7d7a74]"
+                      style={{ borderColor: '#f9f2ec' }}
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="Jyutping (e.g., nei5 hou2)"
+                        value={w.jyutping}
+                        onChange={(e) => {
+                          const next = [...seedWords]
+                          next[idx] = { ...next[idx], jyutping: e.target.value }
+                          setSeedWords(next)
+                        }}
+                        className="h-10 px-3 rounded-[8px] border bg-white text-[#171515] placeholder:text-[#7d7a74]"
+                        style={{ borderColor: '#f9f2ec' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSeedWords(seedWords.filter((_, i) => i !== idx))}
+                        className="px-3 rounded-[8px] text-[#6e6c66] hover:bg-[#f5f5f5]"
+                        aria-label="Remove seed word"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex">
+                  <Button
+                    type="button"
+                    variant="Secondary"
+                    text="Add word"
+                    onClick={() => setSeedWords([...seedWords, { traditional: '', jyutping: '' }])}
+                    className="bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Image Generation (optional) */}
           <div className="py-2">
@@ -473,9 +606,9 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
           {/* Submit */}
           <Button
             variant="Primary"
-            text={isLoading ? 'Saving...' : 'Save'}
+            text={isLoading ? (mode === 'upload' ? 'Saving...' : 'Generating...') : (mode === 'upload' ? 'Save' : 'Generate Deck')}
             className="w-full"
-            disabled={isLoading || !csvFile}
+            disabled={isLoading || (mode === 'upload' && !csvFile)}
           />
         </form>
       </div>
