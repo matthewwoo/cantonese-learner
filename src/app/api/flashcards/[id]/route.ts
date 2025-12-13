@@ -36,7 +36,47 @@ export async function GET(
       return NextResponse.json({ error: 'Flashcard set not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ flashcardSet })
+    // Fetch latest study progress per flashcard
+    const flashcardIds = flashcardSet.flashcards.map(f => f.id)
+    
+    const priorStudyCards = await db.studyCard.findMany({
+      where: {
+        flashcardId: { in: flashcardIds },
+        studySession: { 
+          user: { email: session.user.email } 
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        flashcardId: true,
+        nextReviewDate: true,
+        wasCorrect: true,
+      },
+    })
+
+    // Map latest progress to flashcards
+    const latestByFlashcardId = new Map<string, typeof priorStudyCards[number]>()
+    for (const sc of priorStudyCards) {
+      if (!latestByFlashcardId.has(sc.flashcardId)) {
+        latestByFlashcardId.set(sc.flashcardId, sc)
+      }
+    }
+
+    const flashcardsWithProgress = flashcardSet.flashcards.map(fc => {
+      const prior = latestByFlashcardId.get(fc.id)
+      return {
+        ...fc,
+        nextReviewDate: prior?.nextReviewDate || null,
+        lastWasCorrect: prior?.wasCorrect ?? null
+      }
+    })
+
+    return NextResponse.json({ 
+      flashcardSet: {
+        ...flashcardSet,
+        flashcards: flashcardsWithProgress
+      } 
+    })
   } catch (error) {
     console.error('Error fetching flashcard set:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

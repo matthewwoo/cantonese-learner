@@ -35,7 +35,7 @@ function parseStrictCsv(csv: string) {
     throw new Error("Unexpected CSV header from AI")
   }
   const rows = lines.slice(1)
-  const flashcards = rows.map((row, idx) => {
+    const flashcards = rows.map((row, idx) => {
     const cols = row.split(',')
     if (cols.length !== 5) {
       throw new Error(`Invalid CSV row ${idx + 2}: expected 5 columns`)
@@ -50,6 +50,17 @@ function parseStrictCsv(csv: string) {
     }
   })
   return flashcards
+}
+
+function deduplicateFlashcards(cards: ReturnType<typeof parseStrictCsv>) {
+  const seen = new Set<string>()
+  return cards.filter(card => {
+    // keys are case-sensitive for Chinese usually, but let's just trim
+    const key = card.chineseWord.trim()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -127,7 +138,14 @@ ${seedSection}`
     csvOutput = csvOutput.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim()
 
     // Parse into structured flashcards
-    const flashcards = parseStrictCsv(csvOutput)
+    let flashcards = parseStrictCsv(csvOutput)
+
+    // Deduplicate
+    const initialCount = flashcards.length
+    flashcards = deduplicateFlashcards(flashcards)
+    if (flashcards.length < initialCount) {
+      console.log(`Removed ${initialCount - flashcards.length} duplicate cards`)
+    }
 
     // Create the set in DB
     const created = await db.flashcardSet.create({

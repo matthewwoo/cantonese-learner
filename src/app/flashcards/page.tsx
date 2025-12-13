@@ -116,7 +116,7 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
 }
 
 // Deck card component
-function Deck({ set, onClick, onDelete }: { set: FlashcardSet; onClick: () => void; onDelete: (setId: string) => void }) {
+function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: () => void; onDelete: (setId: string) => void; onView: (setId: string) => void }) {
   const [showMenu, setShowMenu] = useState(false)
 
   // Close menu when clicking outside
@@ -166,6 +166,20 @@ function Deck({ set, onClick, onDelete }: { set: FlashcardSet; onClick: () => vo
           {/* Dropdown Menu */}
           {showMenu && (
             <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[120px] z-30">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onView(set.id)
+                  setShowMenu(false)
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                See all cards
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -256,12 +270,14 @@ function FlashcardsBody({
   onUploadSuccess,
   onDeckClick,
   onDeleteDeck,
+  onViewDeck,
   onCloseUpload,
 }: {
   flashcardSets: FlashcardSet[]
   onUploadSuccess: () => void
   onDeckClick: (setId: string) => void
   onDeleteDeck: (setId: string) => Promise<void>
+  onViewDeck: (setId: string) => void
   onCloseUpload: () => void
 }) {
   const searchParams = useSearchParams()
@@ -317,6 +333,7 @@ function FlashcardsBody({
                   set={themedSet} 
                   onClick={() => onDeckClick(set.id)}
                   onDelete={onDeleteDeck}
+                  onView={onViewDeck}
                 />
               )
             })
@@ -381,6 +398,11 @@ export default function FlashcardsPage() {
     router.push(`/flashcards/study/${setId}`)
   }
 
+  // Handle deck view - navigate to set view page
+  const handleViewDeck = (setId: string) => {
+    router.push(`/flashcards/set/${setId}`)
+  }
+
   // Handle deck deletion
   const handleDeleteDeck = async (setId: string) => {
     try {
@@ -430,6 +452,7 @@ export default function FlashcardsPage() {
             onUploadSuccess={handleUploadSuccess}
             onDeckClick={handleDeckClick}
             onDeleteDeck={handleDeleteDeck}
+            onViewDeck={handleViewDeck}
             onCloseUpload={() => router.push('/flashcards?upload=1')}
           />
         </Suspense>

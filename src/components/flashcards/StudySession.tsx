@@ -139,7 +139,7 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
     <div className="min-h-screen bg-[#f9f2ec] relative"> 
     
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-center pt-[103px] pb-20">
+      <div className="flex flex-col items-center justify-center p-4">
         <QuestionCard
           key={currentCard.id}
           flashcard={currentCard.flashcard}
