@@ -219,7 +219,7 @@ function ChatPageContent() {
       </div>
 
       {/* Chat input - floating above bottom nav */}
-      <div className="fixed left-1/2 bottom-[88px] -translate-x-1/2 w-full max-w-[480px] px-3 z-30">
+      <div className="fixed left-1/2 bottom-[86px] -translate-x-1/2 w-full max-w-[480px] z-30">
         <ChatInput
           onSendMessage={sendMessage}
           disabled={isLoading}

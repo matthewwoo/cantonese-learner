@@ -102,7 +102,7 @@ export default function FlashcardSetPage() {
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
-      <div className="max-w-md mx-auto px-10 py-6">
+      <div className="max-w-md mx-auto px-4 py-6">
         <div className="flex items-center mb-6">
             <IconButton 
               onClick={() => router.back()} 

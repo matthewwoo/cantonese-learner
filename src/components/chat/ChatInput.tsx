@@ -132,14 +132,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
   }, [isListening])
 
   return (
-    <div className="bg-white rounded-t-[20px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)] border-t border-[#f6f6f6] px-5 pt-3 pb-5">
-      <div className="flex items-start gap-3">
-        <div className="flex-1">
-          <div className="w-full h-8 text-[14px] leading-[21px] text-[#757575] flex items-center">
-            {inputValue.length === 0 ? (
-              <span>{placeholder}</span>
-            ) : null}
-          </div>
+    <div className="bg-white rounded-t-[20px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)] border-t border-[#f6f6f6] px-5 pt-3 pb-3 h-[80px] flex justify-end items-end">
+      <div className="flex items-center justify-center gap-3 h-full w-full">
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -147,7 +141,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
             placeholder=""
             disabled={disabled}
             rows={1}
-            className="w-full resize-none border-0 outline-none focus:ring-0 text-[14px] text-[#6e6c66] bg-transparent"
+            className="w-full h-full resize-none border-0 outline-none focus:ring-0 text-[14px] text-[#6e6c66] bg-transparent"
           />
           {interimTranscript && (
             <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
@@ -158,7 +152,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
               <div className="text-sm text-blue-800 italic">{interimTranscript}</div>
             </div>
           )}
-        </div>
 
         <div className="relative h-8 w-[76px] shrink-0">
           <button
