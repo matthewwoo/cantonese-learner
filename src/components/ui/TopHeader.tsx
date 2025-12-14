@@ -54,7 +54,7 @@ export default function TopHeader() {
         {/* Center logo */}
         <div className="flex-1 flex items-center justify-center">
           <img
-            src="/header_logo.png"
+            src="/header_logo.svg"
             alt="Cantonese Learner"
             className="h-7"
             aria-hidden="false"
