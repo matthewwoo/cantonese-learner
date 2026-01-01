@@ -14,6 +14,25 @@ export const authOptions = {
   session: {
     // Use JWT tokens instead of database sessions (simpler for our app)
     strategy: "jwt" as const,
+    // Session lasts 30 days
+    maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+  },
+  // Cookie configuration - CRITICAL for mobile persistence
+  // Without maxAge, cookies are "session cookies" that get deleted when browser closes
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" 
+        ? `__Secure-next-auth.session-token` 
+        : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        // This maxAge makes the cookie PERSISTENT instead of a session cookie
+        maxAge: 30 * 24 * 60 * 60, // 30 days - keeps user logged in
+      },
+    },
   },
   
   // Custom pages for authentication (instead of NextAuth's default pages)
