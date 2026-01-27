@@ -32,7 +32,7 @@
   --color-semantic-info: #3B82F6;
   
   /* Typography */
-  --font-family-sans: Arial, Helvetica, sans-serif;
+  --font-family-sans: Inter, Arial, Helvetica, sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
   
   /* Spacing */

@@ -2,9 +2,18 @@
 // Homepage for the Cantonese learning app
 
 import Link from "next/link"
+import { redirect } from "next/navigation"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 import { Button } from "@/components/ui/Button"
 
-export default function Home() {
+export default async function Home() {
+  // Check if user is logged in - if so, redirect to dashboard
+  const session = await getServerSession(authOptions)
+  if (session) {
+    redirect("/dashboard")
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Navigation */}
