@@ -26,7 +26,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // Base button classes from design system
     const buttonClasses = cn(
       // Base styles applied to all buttons
-      "inline-flex items-center justify-center rounded-[8px] font-['Söhne'] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+      "inline-flex items-center justify-center rounded-[8px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
       "px-5 py-3 text-[14px] leading-[21px]", // Design system padding and typography
       variants[variant], // Add variant-specific styles
       className    // Allow custom classes to be added

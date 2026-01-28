@@ -386,7 +386,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                 <button
                   type="button"
                   onClick={openFilePicker}
-                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
+                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-medium px-2 py-1 rounded-[8px]"
                 >
                   Choose File
                 </button>
@@ -406,7 +406,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                 <button
                   type="button"
                   onClick={downloadSampleCsv}
-                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-['Söhne'] font-medium px-2 py-1 rounded-[8px]"
+                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-medium px-2 py-1 rounded-[8px]"
                 >
                   Download
                 </button>
