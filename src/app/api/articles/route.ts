@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { PrismaClient } from '@/generated/prisma';
+import { db } from '@/lib/db';
+import { requireUser } from '@/lib/api-auth';
 import { z } from 'zod';
-
-// Initialize Prisma client
-const prisma = new PrismaClient();
 
 // Article creation validation schema
 const createArticleSchema = z.object({
@@ -20,29 +17,13 @@ const createArticleSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information from database
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     // Get all articles for the user
-    const articles = await prisma.article.findMany({
-      where: { userId: user.id },
+    const articles = await db.article.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' }, // Sort by creation time in descending order
       select: {
         id: true,
@@ -71,25 +52,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     // Parse request content
     const body = await request.json();
@@ -114,9 +79,9 @@ export async function POST(request: NextRequest) {
     console.log('Article creation: Original content (first 2 lines):', lines.slice(0, 2));
     console.log('Article creation: Translated content (first 2 lines):', translatedLines.slice(0, 2));
     
-    const article = await prisma.article.create({
+    const article = await db.article.create({
       data: {
-        userId: user.id,
+        userId,
         title: validatedData.title,
         sourceUrl: validatedData.url,
         originalContent: lines,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { requireUser } from '@/lib/api-auth';
 import { z } from 'zod';
 import dns from 'dns/promises';
 import net from 'net';
@@ -66,13 +66,8 @@ async function assertSafeUrl(rawUrl: string): Promise<void> {
 export async function POST(request: NextRequest) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
 
     // Parse request
     const body = await request.json();
