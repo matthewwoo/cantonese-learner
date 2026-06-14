@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
       await request.json()
     );
 
-    console.log('TTS API: Generating speech for text:', text.substring(0, 50) + '...');
 
     // Call OpenAI TTS API
     const response = await fetch('https://api.openai.com/v1/audio/speech', {

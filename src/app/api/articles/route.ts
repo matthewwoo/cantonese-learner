@@ -66,18 +66,12 @@ export async function POST(request: NextRequest) {
       .filter(line => line.trim().length > 0);
 
     // Translate each line
-    console.log('Article creation: Starting translation of', lines.length, 'lines');
     const translatedLines = await translateLines(lines);
-    console.log('Article creation: Translation completed. Original lines:', lines);
-    console.log('Article creation: Translated lines:', translatedLines);
 
     // Extract all Chinese vocabulary and get definitions
     const wordDefinitions = await extractWordDefinitions(translatedLines);
 
     // Create article record
-    console.log('Article creation: Storing in database...');
-    console.log('Article creation: Original content (first 2 lines):', lines.slice(0, 2));
-    console.log('Article creation: Translated content (first 2 lines):', translatedLines.slice(0, 2));
     
     const article = await db.article.create({
       data: {
@@ -90,7 +84,6 @@ export async function POST(request: NextRequest) {
       },
     });
     
-    console.log('Article creation: Article created with ID:', article.id);
 
     return NextResponse.json({ 
       success: true, 
@@ -126,10 +119,8 @@ async function translateLines(lines: string[]): Promise<string[]> {
     }
     
     try {
-      console.log(`Translating line: "${line}"`);
       // Use translation service directly instead of calling API
       const translatedText = await translateWithService(line.trim(), 'zh-TW', 'en');
-      console.log(`Translation result: "${translatedText}"`);
       translations.push(translatedText);
     } catch (error) {
       console.error(`Translation error for line: ${line}`, error);
@@ -148,24 +139,19 @@ async function translateWithService(
   targetLanguage: string,
   sourceLanguage?: string
 ): Promise<string> {
-  console.log('Translation service: Checking available APIs...');
   
   // Check if OpenAI API key exists (Primary)
   const openaiApiKey = process.env.OPENAI_API_KEY;
-  console.log('OpenAI API key exists:', !!openaiApiKey);
   
   if (openaiApiKey) {
-    console.log('Using OpenAI API for translation');
     // Use OpenAI for translation
     return translateWithOpenAI(text, targetLanguage, sourceLanguage, openaiApiKey);
   }
   
   // Check if Google Cloud Translation API key exists (Fallback)
   const googleApiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-  console.log('Google Translate API key exists:', !!googleApiKey);
   
   if (googleApiKey) {
-    console.log('Using Google Translate API');
     // Use Google Translate API
     return translateWithGoogle(text, targetLanguage, sourceLanguage, googleApiKey);
   }

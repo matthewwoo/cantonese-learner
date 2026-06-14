@@ -29,17 +29,7 @@ class TextToSpeechService {
     
     // Listen for voice changes
     this.synthesis.onvoiceschanged = () => {
-      console.log('TTS: Voices changed, reloading...')
       this.loadVoices()
-    }
-
-    // Handle browser autoplay restrictions
-    ;(this.synthesis as any).onstart = () => {
-      console.log('TTS: Speech started')
-    }
-
-    ;(this.synthesis as any).onend = () => {
-      console.log('TTS: Speech ended')
     }
 
     ;(this.synthesis as any).onerror = (event: any) => {
@@ -47,7 +37,6 @@ class TextToSpeechService {
     }
 
     this.isInitialized = true
-    console.log('TTS: Service initialized')
   }
 
   private loadVoices(): void {
@@ -56,7 +45,6 @@ class TextToSpeechService {
     try {
       this.voices = this.synthesis.getVoices()
       this.isLoaded = true
-      console.log(`TTS: Loaded ${this.voices.length} voices`)
     } catch (error) {
       console.error('TTS: Error loading voices:', error)
     }
@@ -101,7 +89,6 @@ class TextToSpeechService {
       const checkVoices = () => {
         this.loadVoices()
         if (this.areVoicesLoaded()) {
-          console.log('TTS: Voices loaded successfully')
           resolve()
           return
         }
@@ -131,7 +118,6 @@ class TextToSpeechService {
       throw new Error('No text provided for speech synthesis')
     }
 
-    console.log('TTS: Attempting to speak:', text)
 
     // Wait for voices to load
     try {
@@ -149,19 +135,11 @@ class TextToSpeechService {
       // Try to get the best Cantonese voice
       const cantoneseVoices = this.getCantoneseVoices()
       const chineseVoices = this.getChineseVoices()
-      
-      console.log('TTS: Available voices:', {
-        cantonese: cantoneseVoices.length,
-        chinese: chineseVoices.length,
-        total: this.voices.length
-      })
-      
+
       if (cantoneseVoices.length > 0) {
         utterance.voice = cantoneseVoices[0]
-        console.log('TTS: Using Cantonese voice:', cantoneseVoices[0].name)
       } else if (chineseVoices.length > 0) {
         utterance.voice = chineseVoices[0]
-        console.log('TTS: Using Chinese voice:', chineseVoices[0].name)
       } else {
         console.warn('TTS: No Chinese voices found, using default')
       }
@@ -175,12 +153,7 @@ class TextToSpeechService {
       utterance.volume = options.volume || 1.0
 
       // Set up event handlers
-      utterance.onstart = () => {
-        console.log('TTS: Speech started for:', text)
-      }
-
       utterance.onend = () => {
-        console.log('TTS: Speech completed for:', text)
         resolve()
       }
 
@@ -189,19 +162,9 @@ class TextToSpeechService {
         reject(new Error(`Speech synthesis error: ${event.error}`))
       }
 
-      // Handle browser autoplay restrictions
-      utterance.onpause = () => {
-        console.log('TTS: Speech paused')
-      }
-
-      utterance.onresume = () => {
-        console.log('TTS: Speech resumed')
-      }
-
       // Speak the text
       try {
         this.synthesis!.speak(utterance)
-        console.log('TTS: Speech queued successfully')
       } catch (error) {
         console.error('TTS: Error queuing speech:', error)
         reject(error)
@@ -213,7 +176,6 @@ class TextToSpeechService {
   stop(): void {
     if (this.synthesis) {
       this.synthesis.cancel()
-      console.log('TTS: Speech stopped')
     }
   }
 
@@ -232,7 +194,6 @@ class TextToSpeechService {
 
   // Test TTS functionality
   async test(): Promise<void> {
-    console.log('TTS: Running test...')
     
     if (!this.isSupported()) {
       throw new Error('TTS not supported')
@@ -240,7 +201,6 @@ class TextToSpeechService {
 
     try {
       await this.speakCantonese('你好', { rate: 0.8 })
-      console.log('TTS: Test successful')
     } catch (error) {
       console.error('TTS: Test failed:', error)
       throw error

@@ -141,11 +141,7 @@ ${seedSection}`
     let flashcards = parseStrictCsv(csvOutput)
 
     // Deduplicate
-    const initialCount = flashcards.length
     flashcards = deduplicateFlashcards(flashcards)
-    if (flashcards.length < initialCount) {
-      console.log(`Removed ${initialCount - flashcards.length} duplicate cards`)
-    }
 
     // Create the set in DB
     const created = await db.flashcardSet.create({

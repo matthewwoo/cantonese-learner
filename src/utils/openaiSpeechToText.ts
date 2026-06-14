@@ -76,15 +76,12 @@ class OpenAISpeechToTextService {
       // Check if the browser supports this format
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'audio/webm'
-        console.log('Falling back to basic audio/webm format')
       }
       
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'audio/mp4'
-        console.log('Falling back to audio/mp4 format')
       }
       
-      console.log('Using MediaRecorder format:', mimeType)
       
       this.mediaRecorder = new MediaRecorder(this.stream, {
         mimeType: mimeType
@@ -103,10 +100,8 @@ class OpenAISpeechToTextService {
       this.mediaRecorder.onstop = async () => {
         try {
           if (this.audioChunks.length > 0) {
-            console.log('Audio recording stopped. Chunks:', this.audioChunks.length)
             
             const audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder?.mimeType || 'audio/webm' })
-            console.log('Audio blob created. Size:', audioBlob.size, 'bytes, Type:', audioBlob.type)
             
             // Enhanced validation
             if (audioBlob.size === 0) {
@@ -119,7 +114,6 @@ class OpenAISpeechToTextService {
             
             // Check if we have actual audio data
             const arrayBuffer = await audioBlob.arrayBuffer()
-            console.log('Audio array buffer size:', arrayBuffer.byteLength, 'bytes')
             
             if (arrayBuffer.byteLength === 0) {
               throw new Error('Audio data is empty after conversion')
@@ -155,7 +149,6 @@ class OpenAISpeechToTextService {
 
       // Start recording
       this.mediaRecorder.start(1000) // Collect data every second
-      console.log('Started recording audio for OpenAI Whisper')
 
     } catch (error) {
       console.error('Failed to start recording:', error)
@@ -176,23 +169,18 @@ class OpenAISpeechToTextService {
   // Process audio with OpenAI Whisper API
   private async processAudio(audioBlob: Blob, options: STTOptions): Promise<STTResult> {
     try {
-      console.log('Processing audio with OpenAI Whisper...')
       
       // Convert audio to base64
       const base64Audio = await this.blobToBase64(audioBlob)
-      console.log('Audio converted to base64, length:', base64Audio.length)
       
       // Call OpenAI Whisper API
       const transcript = await this.callWhisperAPI(base64Audio, options.lang)
-      console.log('Whisper transcript received:', transcript)
       
       // If translation is requested, call translation API
       let translation: string | undefined
       if (options.translateTo) {
-        console.log('Calling translation API for language:', options.translateTo)
         const translationResult = await this.translateText(transcript, options.translateTo)
         translation = translationResult.translatedText
-        console.log('Translation received:', translation)
       }
 
       return {
@@ -210,8 +198,6 @@ class OpenAISpeechToTextService {
 
   // Call OpenAI Whisper API
   private async callWhisperAPI(base64Audio: string, language?: string): Promise<string> {
-    console.log('Calling Whisper API with language:', language || 'zh')
-    console.log('Audio data length:', base64Audio.length)
     
     const requestBody = {
       audio: base64Audio,
@@ -219,7 +205,6 @@ class OpenAISpeechToTextService {
       audioType: this.mediaRecorder?.mimeType || 'audio/webm'
     }
     
-    console.log('Request body keys:', Object.keys(requestBody))
     
     const response = await fetch('/api/speech/whisper', {
       method: 'POST',
@@ -301,7 +286,6 @@ class OpenAISpeechToTextService {
               reject(new Error('Failed to extract base64 data from blob'))
               return
             }
-            console.log('Blob converted to base64. Length:', base64.length)
             resolve(base64)
           } catch (error) {
             reject(new Error('Failed to process blob data'))

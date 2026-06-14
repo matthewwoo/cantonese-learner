@@ -63,15 +63,11 @@ export default function ArticleReadingPage() {
       speechSynthesis.current = window.speechSynthesis;
     }
     
-    // Initialize Cantonese TTS services
-    if (isOpenAITTSAvailable()) {
-      console.log('Article TTS: OpenAI TTS service available for Cantonese');
-    } else if (ttsService.isSupported()) {
-      console.log('Article TTS: Web Speech TTS service available (fallback)');
-    } else {
+    // Warn if no TTS service is available
+    if (!isOpenAITTSAvailable() && !ttsService.isSupported()) {
       console.warn('Article TTS: No TTS service available');
     }
-    
+
     // Cleanup function
     return () => {
       stopSpeech(); // Stop any ongoing Web Speech TTS
@@ -100,9 +96,6 @@ export default function ArticleReadingPage() {
       if (!response.ok) throw new Error('獲取文章失敗');
       
       const data = await response.json();
-      console.log('Article display: Received article data:', data.article);
-      console.log('Article display: Original content (first 2 lines):', data.article.originalContent?.slice(0, 2));
-      console.log('Article display: Translated content (first 2 lines):', data.article.translatedContent?.slice(0, 2));
       
       setArticle(data.article);
       setReadingSession(data.readingSession);
@@ -184,7 +177,6 @@ export default function ArticleReadingPage() {
 
       // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
       if (ttsService.isSupported()) {
-        console.log(`Article TTS: Playing line ${lineIndex + 1} with Web Speech TTS`);
         
         // Play using Web Speech TTS
         await speakCantonese(textToSpeak, {
@@ -201,7 +193,6 @@ export default function ArticleReadingPage() {
         }
       } else if (isOpenAITTSAvailable()) {
         // Fallback to OpenAI TTS
-        console.log(`Article TTS: Playing line ${lineIndex + 1} with OpenAI TTS`);
         
         // Play using OpenAI TTS
         await speakWithOpenAI(textToSpeak, {
@@ -218,7 +209,6 @@ export default function ArticleReadingPage() {
         }
       } else {
         // Final fallback to basic TTS
-        console.log(`Article TTS: Using fallback TTS for line ${lineIndex + 1}`);
         
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
         utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
@@ -277,21 +267,18 @@ export default function ArticleReadingPage() {
 
       // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
       if (ttsService.isSupported()) {
-        console.log(`Article TTS: Playing single line ${lineIndex + 1} with Web Speech TTS`);
         await speakCantonese(textToSpeak, {
           rate: playbackSpeed,
           lang: 'zh-HK' // Hong Kong Cantonese
         });
       } else if (isOpenAITTSAvailable()) {
         // Fallback to OpenAI TTS
-        console.log(`Article TTS: Playing single line ${lineIndex + 1} with OpenAI TTS`);
         await speakWithOpenAI(textToSpeak, {
           speed: playbackSpeed,
           voice: 'nova' // Voice suitable for Chinese
         });
       } else {
         // Final fallback to basic TTS
-        console.log(`Article TTS: Using fallback TTS for single line ${lineIndex + 1}`);
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
         utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
         utterance.rate = playbackSpeed;
@@ -469,19 +456,16 @@ export default function ArticleReadingPage() {
                 try {
                   // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
                   if (ttsService.isSupported()) {
-                    console.log(`Article TTS: Playing word "${selectedWord}" with Web Speech TTS`);
                     await speakCantonese(selectedWord, {
                       rate: 0.8, // Slower speed for learning
                       lang: 'zh-HK' // Hong Kong Cantonese
                     });
                   } else if (isOpenAITTSAvailable()) {
-                    console.log(`Article TTS: Playing word "${selectedWord}" with OpenAI TTS`);
                     await speakWithOpenAI(selectedWord, {
                       speed: 0.8, // Slower speed for learning
                       voice: 'nova' // Voice suitable for Chinese
                     });
                   } else if (speechSynthesis.current) {
-                    console.log(`Article TTS: Using fallback TTS for word "${selectedWord}"`);
                     const utterance = new SpeechSynthesisUtterance(selectedWord);
                     utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
                     utterance.rate = 0.8; // Slower speed for learning

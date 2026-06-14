@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
     const sanitizedPrompt = prompt.trim().slice(0, 100) // Limit length
     const imagePrompt = `A simple, flat illustration of a single object with a white background representing: ${sanitizedPrompt}. Only illustrate one object. `
 
-    console.log('Generating image with prompt:', imagePrompt)
 
     // Generate image using DALL-E 3 and return base64 for persistence
     const response = await openai.images.generate({
@@ -55,7 +54,6 @@ export async function POST(request: NextRequest) {
       response_format: "b64_json",
     })
 
-    console.log('Image generation response received')
 
     const b64 = (response as any).data?.[0]?.b64_json as string | undefined
 
