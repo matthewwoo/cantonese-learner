@@ -94,10 +94,6 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Test the API key format
-    console.log('API key starts with:', openaiApiKey.substring(0, 7) + '...')
-    console.log('API key length:', openaiApiKey.length)
-    
     // Log the request details
     console.log('Making request to OpenAI Whisper API...')
     console.log('Request method: POST')

@@ -19,9 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions) as Session | null
-    console.log('API Session:', session) // Debug log
     if (!session || !session.user?.id) {
-      console.log('Authentication failed - session:', session) // Debug log
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }

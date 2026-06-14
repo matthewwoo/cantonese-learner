@@ -2,6 +2,8 @@
 // API endpoint for generating images using OpenAI DALL-E
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
 
 // Initialize OpenAI client
@@ -11,6 +13,15 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    // Require an authenticated user — this endpoint spends the owner's OpenAI quota
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { prompt } = await request.json()
 
     if (!prompt) {

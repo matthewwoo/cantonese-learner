@@ -70,13 +70,6 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Debug environment variables
-    console.log('Article creation: Environment check');
-    console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-    console.log('GOOGLE_TRANSLATE_API_KEY exists:', !!process.env.GOOGLE_TRANSLATE_API_KEY);
-    console.log('OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
-    console.log('OPENAI_API_KEY starts with:', process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined');
-    
     // Check if user is logged in
     const session = await getServerSession();
     if (!session?.user?.email) {
