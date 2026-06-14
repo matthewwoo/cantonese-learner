@@ -75,9 +75,9 @@ Optional (for enhanced features):
 ## Documentation
 
 - [Setup Guide](./SETUP.md) - Complete setup instructions
-- [Article Translation Feature](./TRANSLATION_FEATURE.md) - Detailed translation feature documentation
-- [Articles Feature](./ARTICLES_FEATURE.md) - Article reading functionality
-- [TTS Troubleshooting](./TTS_TROUBLESHOOTING.md) - Speech synthesis help
+- [Article Translation Feature](./docs/TRANSLATION_FEATURE.md) - Detailed translation feature documentation
+- [Articles Feature](./docs/ARTICLES_FEATURE.md) - Article reading functionality
+- [TTS Troubleshooting](./docs/TTS_TROUBLESHOOTING.md) - Speech synthesis help
 
 ## Tech Stack
 
