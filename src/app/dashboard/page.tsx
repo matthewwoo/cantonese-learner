@@ -9,13 +9,7 @@ import { useEffect } from "react"
 import { Card } from "@/components/ui/Card"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { QuickActions } from "@/components/ui/QuickActions"
-
-// Figma-derived color tokens used on the Cards page
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-}
+import { figmaColors as FIGMA_COLORS } from "@/lib/design-tokens"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()

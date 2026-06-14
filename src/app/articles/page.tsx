@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
+import { figmaColors as FIGMA_COLORS } from '@/lib/design-tokens'
 
 interface Article {
   id: string
@@ -15,16 +16,6 @@ interface Article {
   sourceUrl?: string
   createdAt: string
   updatedAt: string
-}
-
-// Figma-derived colors (aligned with flashcards page)
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  surfaceBorder: '#f2e2c4',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-  buttonBg: '#171515',
-  buttonText: '#ffffff',
 }
 
 export default function ArticlesPage() {

@@ -6,13 +6,12 @@
 import { useState, useEffect, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
 import { IconButton } from "@/components/ui/IconButton"
 import UploadForm from "@/components/flashcards/UploadForm"
 import { toast } from "react-hot-toast"
-import { featureColors } from "@/lib/design-tokens"
+import { figmaColors as FIGMA_COLORS } from "@/lib/design-tokens"
 
 // Define the structure of a flashcard set
 interface FlashcardSet {
@@ -24,19 +23,6 @@ interface FlashcardSet {
   flashcardCount: number
   createdAt: string
   updatedAt: string
-}
-
-// Figma-derived color tokens used on the Cards page
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  surfaceBorder: '#f2e2c4',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-  deckBlue: '#e8f4ff',
-  deckGreen: '#cff7d3',
-  deckPink: '#fdd3d0',
-  buttonBg: '#171515',
-  buttonText: '#ffffff',
 }
 
 // Illustration component for deck cards

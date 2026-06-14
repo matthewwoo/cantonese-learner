@@ -141,3 +141,16 @@ export const featureColors = {
     hover: '#2563EB',
   }
 }
+
+// Figma "warm" palette used by the flashcards, articles, and dashboard pages.
+export const figmaColors = {
+  surfaceBackground: '#f9f2ec',
+  surfaceBorder: '#f2e2c4',
+  textPrimary: '#171515',
+  textSecondary: '#6e6c66',
+  deckBlue: '#e8f4ff',
+  deckGreen: '#cff7d3',
+  deckPink: '#fdd3d0',
+  buttonBg: '#171515',
+  buttonText: '#ffffff',
+}

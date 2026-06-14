@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation"
 import { Card } from "@/components/ui/Card"
 import { IconButton } from "@/components/ui/IconButton"
 import { cn } from "@/lib/utils"
+import { figmaColors as FIGMA_COLORS } from "@/lib/design-tokens"
 
 interface Flashcard {
   id: string
@@ -22,12 +23,6 @@ interface FlashcardSet {
   name: string
   description: string | null
   flashcards: Flashcard[]
-}
-
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
 }
 
 // Helper to format date relative to now
