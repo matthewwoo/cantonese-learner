@@ -3,33 +3,28 @@
 
 "use client"
 
-import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { useAuth } from "@/lib/auth-context"
+import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/Card"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { QuickActions } from "@/components/ui/QuickActions"
-
-// Figma-derived color tokens used on the Cards page
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-}
+import { figmaColors as FIGMA_COLORS } from "@/lib/design-tokens"
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!loading && !user) {
       router.push("/auth/signin")
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   // Show loading while checking authentication
-  if (status === "loading") {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">
@@ -46,12 +41,15 @@ export default function DashboardPage() {
   }
 
   // If not authenticated, don't render anything (redirect is happening)
-  if (!session) {
+  if (!user) {
     return null
   }
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: "/auth/signin" })
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/auth/signin")
+    router.refresh()
   }
 
   // Feature cards data
@@ -130,9 +128,9 @@ export default function DashboardPage() {
           <h1 className="text-4xl font-bold mb-3" style={{ color: FIGMA_COLORS.textPrimary }}>
             Cantonese Learner
           </h1>
-          {session.user?.name && (
+          {user.user_metadata?.name && (
             <p className="break-words whitespace-normal" style={{ color: FIGMA_COLORS.textSecondary }}>
-              Name: <strong className="break-words" style={{ color: FIGMA_COLORS.textPrimary }}>{session.user.name}</strong>
+              Name: <strong className="break-words" style={{ color: FIGMA_COLORS.textPrimary }}>{user.user_metadata.name}</strong>
             </p>
           )}
         

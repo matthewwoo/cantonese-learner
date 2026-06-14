@@ -2,11 +2,9 @@
 // This API endpoint handles uploading CSV files and creating flashcard sets
 
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
+import { requireUser } from "@/lib/api-auth"
 import { db } from "@/lib/db"
 import { z } from "zod"
-import { Session } from "next-auth"
 
 // Validation schema for flashcard data
 const flashcardSchema = z.object({
@@ -28,13 +26,9 @@ const flashcardSetSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check if user is authenticated
-    const session = await getServerSession(authOptions) as Session | null
-    if (!session || !session.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      )
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
+    const { userId } = auth
 
     // Parse the request body
     const body = await request.json()
@@ -46,7 +40,7 @@ export async function POST(request: NextRequest) {
     const flashcardSet = await db.flashcardSet.create({
       data: {
         name: validatedData.name,
-        userId: session.user.id,
+        userId,
         imageUrl: validatedData.imageUrl || null,
         // Create all flashcards at the same time
         flashcards: {

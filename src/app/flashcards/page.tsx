@@ -4,15 +4,14 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
-import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
 import { IconButton } from "@/components/ui/IconButton"
 import UploadForm from "@/components/flashcards/UploadForm"
 import { toast } from "react-hot-toast"
-import { featureColors } from "@/lib/design-tokens"
+import { figmaColors as FIGMA_COLORS } from "@/lib/design-tokens"
 
 // Define the structure of a flashcard set
 interface FlashcardSet {
@@ -24,19 +23,6 @@ interface FlashcardSet {
   flashcardCount: number
   createdAt: string
   updatedAt: string
-}
-
-// Figma-derived color tokens used on the Cards page
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  surfaceBorder: '#f2e2c4',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-  deckBlue: '#e8f4ff',
-  deckGreen: '#cff7d3',
-  deckPink: '#fdd3d0',
-  buttonBg: '#171515',
-  buttonText: '#ffffff',
 }
 
 // Illustration component for deck cards
@@ -118,6 +104,7 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
 // Deck card component
 function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: () => void; onDelete: (setId: string) => void; onView: (setId: string) => void }) {
   const [showMenu, setShowMenu] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -204,24 +191,17 @@ function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: 
         {/* Illustration */}
         <div className="mb-6">
           <div className="w-32 h-32 rounded-full bg-white/70 flex items-center justify-center shadow-inner overflow-hidden">
-            {set.imageUrl ? (
+            {set.imageUrl && !imageError ? (
               <img
                 src={set.imageUrl}
                 alt={`${set.name} deck image`}
                 className="w-full h-full object-cover rounded-full"
-                onError={(e) => {
-                  console.error("Deck image failed to load:", set.imageUrl)
-                  // Hide the broken image and render fallback illustration
-                  e.currentTarget.style.display = 'none'
-                  const container = e.currentTarget.parentElement
-                  if (container) {
-                    const fallback = document.createElement('div')
-                    fallback.className = 'w-full h-full flex items-center justify-center bg-white/70'
-                    fallback.innerHTML = '<span class="text-4xl">📚</span>'
-                    container.appendChild(fallback)
-                  }
-                }}
+                onError={() => setImageError(true)}
               />
+            ) : set.imageUrl && imageError ? (
+              <div className="w-full h-full flex items-center justify-center bg-white/70">
+                <span className="text-4xl">📚</span>
+              </div>
             ) : (
               <Illustration illustration="doctor" />
             )}
@@ -346,26 +326,26 @@ function FlashcardsBody({
 
 export default function FlashcardsPage() {
   // Authentication and navigation
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
-  
+
   // Component state
   const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!loading && !user) {
       router.push("/auth/signin")
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   // Fetch user's flashcard sets when component mounts
   useEffect(() => {
-    if (session) {
+    if (user) {
       fetchFlashcardSets()
     }
-  }, [session])
+  }, [user])
 
   // Function to fetch flashcard sets from API
   const fetchFlashcardSets = async () => {
@@ -424,7 +404,7 @@ export default function FlashcardsPage() {
   }
 
   // Show loading while checking authentication
-  if (status === "loading" || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">
@@ -438,7 +418,7 @@ export default function FlashcardsPage() {
   }
 
   // Don't render anything if not authenticated (redirect is happening)
-  if (!session) {
+  if (!user) {
     return null
   }
 

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { PrismaClient } from '@/generated/prisma';
+import { db } from '@/lib/db';
+import { requireUser } from '@/lib/api-auth';
 import { processArticleIntoSentences, validateSentenceCards } from '@/utils/sentenceProcessor';
-
-const prisma = new PrismaClient();
 
 /**
  * POST /api/articles/[id]/process-sentences
@@ -15,34 +13,18 @@ export async function POST(
 ) {
   try {
     // Check authentication
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     const params = await context.params;
     const articleId = params.id;
 
     // Get the article
-    const article = await prisma.article.findFirst({
+    const article = await db.article.findFirst({
       where: {
         id: articleId,
-        userId: user.id,
+        userId,
       },
     });
 
@@ -82,7 +64,7 @@ export async function POST(
     }
 
     // Update article with processed sentences
-    const updatedArticle = await prisma.article.update({
+    const updatedArticle = await db.article.update({
       where: { id: articleId },
       data: {
         sentences: processedArticle.sentences as any,
@@ -121,34 +103,18 @@ export async function GET(
 ) {
   try {
     // Check authentication
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     const params = await context.params;
     const articleId = params.id;
 
     // Get the article with sentence data
-    const article = await prisma.article.findFirst({
+    const article = await db.article.findFirst({
       where: {
         id: articleId,
-        userId: user.id,
+        userId,
       },
       select: {
         id: true,

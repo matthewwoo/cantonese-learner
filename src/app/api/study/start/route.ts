@@ -2,12 +2,10 @@
 // API endpoint to start a new study session with a flashcard set
 
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
+import { requireUser } from "@/lib/api-auth"
 import { db } from "@/lib/db"
 import { createInitialReviewData } from "@/utils/spaced-repetition"
 import { z } from "zod"
-import { Session } from "next-auth"
 
 // Validation schema for starting a study session
 const startStudySchema = z.object({
@@ -18,15 +16,9 @@ const startStudySchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions) as Session | null
-    console.log('API Session:', session) // Debug log
-    if (!session || !session.user?.id) {
-      console.log('Authentication failed - session:', session) // Debug log
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      )
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
+    const { userId } = auth
 
     // Parse and validate request body
     const body = await request.json()
@@ -36,7 +28,7 @@ export async function POST(request: NextRequest) {
     const flashcardSet = await db.flashcardSet.findFirst({
       where: {
         id: flashcardSetId,
-        userId: session.user.id
+        userId
       },
       include: {
         flashcards: true // Include all flashcards in the set
@@ -60,7 +52,7 @@ export async function POST(request: NextRequest) {
     // Create a new study session
     const studySession = await db.studySession.create({
       data: {
-        userId: session.user.id,
+        userId,
         totalCards: Math.min(maxCards, flashcardSet.flashcards.length),
       }
     })
@@ -86,7 +78,7 @@ export async function POST(request: NextRequest) {
     const priorStudyCards = await db.studyCard.findMany({
       where: {
         flashcardId: { in: flashcardIds },
-        studySession: { userId: session.user.id },
+        studySession: { userId },
       },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -227,9 +219,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("Error starting study session:", error)
-    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }

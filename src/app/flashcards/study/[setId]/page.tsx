@@ -4,7 +4,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useRouter, useParams } from "next/navigation"
 import StudySession from "@/components/flashcards/StudySession"
 import { toast } from "react-hot-toast"
@@ -36,7 +36,7 @@ interface StudySessionData {
 }
 
 export default function StudyPage() {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const params = useParams()
   const setId = params.setId as string
@@ -85,17 +85,17 @@ export default function StudyPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!loading && !user) {
       router.push("/auth/signin")
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   // Automatically start a study session when component mounts
   useEffect(() => {
-    if (session && setId && !studySession && !isLoading) {
+    if (user && setId && !studySession && !isLoading) {
       startStudySession()
     }
-  }, [session, setId, studySession, isLoading, startStudySession])
+  }, [user, setId, studySession, isLoading, startStudySession])
 
   // Handle session completion
   const handleSessionComplete = () => {
@@ -104,7 +104,7 @@ export default function StudyPage() {
   }
 
   // Show loading while checking authentication or starting session
-  if (status === "loading" || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9f2ec' }}>
         <div className="text-center">
@@ -112,7 +112,7 @@ export default function StudyPage() {
             <span className="text-2xl">📚</span>
           </div>
           <p className="text-lg text-gray-600 font-medium">
-            {status === "loading" ? "Loading..." : "Starting your lesson..."}
+            {loading ? "Loading..." : "Starting your lesson..."}
           </p>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function StudyPage() {
   }
 
   // Don't render if not authenticated
-  if (!session) {
+  if (!user) {
     return null
   }
 

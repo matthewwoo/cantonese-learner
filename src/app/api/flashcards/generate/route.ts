@@ -2,8 +2,7 @@
 // API endpoint to generate a flashcard set using OpenAI and save it
 
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
+import { requireUser } from "@/lib/api-auth"
 import { db } from "@/lib/db"
 import { z } from "zod"
 import OpenAI from "openai"
@@ -65,10 +64,9 @@ function deduplicateFlashcards(cards: ReturnType<typeof parseStrictCsv>) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
+    const { userId } = auth
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 500 })
@@ -141,17 +139,13 @@ ${seedSection}`
     let flashcards = parseStrictCsv(csvOutput)
 
     // Deduplicate
-    const initialCount = flashcards.length
     flashcards = deduplicateFlashcards(flashcards)
-    if (flashcards.length < initialCount) {
-      console.log(`Removed ${initialCount - flashcards.length} duplicate cards`)
-    }
 
     // Create the set in DB
     const created = await db.flashcardSet.create({
       data: {
         name,
-        userId: session.user.id,
+        userId,
         imageUrl: imageUrl || null,
         flashcards: {
           create: flashcards.map(fc => ({

@@ -2,63 +2,64 @@
 
 ## Environment Variables Required
 
-To run this application, you need to set up the following environment variables. Create a `.env.local` file in the root directory with:
+This app uses **Supabase** for authentication and the Postgres database. Copy
+`.env.example` to `.env.local` and fill in the values (see variable reference
+there). The key ones:
 
 ```bash
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/cantonese_learner"
+# Supabase Auth (public)
+NEXT_PUBLIC_SUPABASE_URL="https://YOUR-PROJECT-ref.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-public-key"
 
-# NextAuth.js
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key-here-make-it-long-and-random"
+# Database (secret) — pooled for runtime, direct for migrations
+DATABASE_URL="postgresql://...pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://...pooler.supabase.com:5432/postgres"
 
-# OpenAI (Optional - for enhanced speech-to-text and translation)
+# OpenAI (required for chat, TTS, Whisper, image/flashcard generation)
 OPENAI_API_KEY="your-openai-api-key-here"
 
-# Google Cloud (Optional - for best Cantonese speech recognition)
-GOOGLE_APPLICATION_CREDENTIALS="./summer-health-prod-4cfa9958cb62.json"
-
-# Google Translate (Optional - for article translation)
+# Google Translate (optional fallback for article translation)
 GOOGLE_TRANSLATE_API_KEY="your-google-translate-api-key-here"
 ```
 
 ## Quick Setup
 
-1. **Install dependencies:**
+1. **Create a Supabase project** at https://supabase.com. Then:
+   - Settings → API: copy the Project URL and anon public key.
+   - Settings → Database → Connection string: copy the pooled (6543) and direct
+     (5432) connection strings.
+   - Authentication → Providers → Email: turn **off** "Confirm email" (this app
+     signs users in immediately on sign-up).
+
+2. **Install dependencies:**
    ```bash
    npm install
    ```
 
-2. **Set up your database:**
-   - Install PostgreSQL if you haven't already
-   - Create a database named `cantonese_learner`
-   - Update the `DATABASE_URL` in your `.env.local` file
+3. **Configure env:** copy `.env.example` → `.env.local` and fill in the values.
 
-3. **Generate Prisma client:**
+4. **Apply the database schema** (uses `DIRECT_URL`):
    ```bash
-   npx prisma generate
+   npx prisma migrate deploy
    ```
 
-4. **Run database migrations:**
-   ```bash
-   npx prisma db push
-   ```
+5. **Apply the Supabase auth setup** (profile-sync trigger + RLS): open
+   `supabase/auth-setup.sql` and run it in the Supabase SQL editor.
 
-5. **Start the development server:**
+6. **Start the development server:**
    ```bash
    npm run dev
    ```
 
 ## Common Issues
 
-### "Error: connect ECONNREFUSED" or Database Connection Issues
-- Make sure PostgreSQL is running
-- Verify your `DATABASE_URL` is correct
-- Check that the database exists
+### Database Connection Issues
+- Verify `DATABASE_URL` (pooled, 6543) and `DIRECT_URL` (direct, 5432) are correct.
+- `prisma migrate` must use the direct connection (`DIRECT_URL`).
 
-### "NEXTAUTH_SECRET is not set" Error
-- Add a strong secret key to your `.env.local` file
-- You can generate one with: `openssl rand -base64 32`
+### Signed up but no profile row appears
+- Make sure you ran `supabase/auth-setup.sql` — the `handle_new_user` trigger
+  is what mirrors `auth.users` into `public.users`.
 
 ### "Module not found" Errors
 - Run `npm install` to install dependencies

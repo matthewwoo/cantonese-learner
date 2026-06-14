@@ -1,25 +1,16 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-
-// Figma-derived colors (consistent with flashcards/articles index)
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  surfaceBorder: '#f2e2c4',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-  buttonBg: '#171515',
-  buttonText: '#ffffff',
-}
+import { figmaColors as FIGMA_COLORS } from '@/lib/design-tokens'
 
 export default function NewArticlePage() {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   const [articleUrl, setArticleUrl] = useState('')
@@ -30,12 +21,12 @@ export default function NewArticlePage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!loading && !user) {
       router.push('/auth/signin')
     }
-  }, [status, router])
+  }, [loading, user, router])
 
-  if (status === 'loading') {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">
@@ -48,7 +39,7 @@ export default function NewArticlePage() {
     )
   }
 
-  if (!session) return null
+  if (!user) return null
 
   const fetchFromUrl = async () => {
     if (!articleUrl) {

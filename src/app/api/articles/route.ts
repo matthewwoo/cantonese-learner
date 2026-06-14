@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { PrismaClient } from '@/generated/prisma';
+import { db } from '@/lib/db';
+import { requireUser } from '@/lib/api-auth';
 import { z } from 'zod';
-
-// Initialize Prisma client
-const prisma = new PrismaClient();
 
 // Article creation validation schema
 const createArticleSchema = z.object({
@@ -20,29 +17,13 @@ const createArticleSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information from database
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     // Get all articles for the user
-    const articles = await prisma.article.findMany({
-      where: { userId: user.id },
+    const articles = await db.article.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' }, // Sort by creation time in descending order
       select: {
         id: true,
@@ -70,33 +51,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Debug environment variables
-    console.log('Article creation: Environment check');
-    console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-    console.log('GOOGLE_TRANSLATE_API_KEY exists:', !!process.env.GOOGLE_TRANSLATE_API_KEY);
-    console.log('OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
-    console.log('OPENAI_API_KEY starts with:', process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined');
-    
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     // Parse request content
     const body = await request.json();
@@ -108,22 +66,16 @@ export async function POST(request: NextRequest) {
       .filter(line => line.trim().length > 0);
 
     // Translate each line
-    console.log('Article creation: Starting translation of', lines.length, 'lines');
     const translatedLines = await translateLines(lines);
-    console.log('Article creation: Translation completed. Original lines:', lines);
-    console.log('Article creation: Translated lines:', translatedLines);
 
     // Extract all Chinese vocabulary and get definitions
     const wordDefinitions = await extractWordDefinitions(translatedLines);
 
     // Create article record
-    console.log('Article creation: Storing in database...');
-    console.log('Article creation: Original content (first 2 lines):', lines.slice(0, 2));
-    console.log('Article creation: Translated content (first 2 lines):', translatedLines.slice(0, 2));
     
-    const article = await prisma.article.create({
+    const article = await db.article.create({
       data: {
-        userId: user.id,
+        userId,
         title: validatedData.title,
         sourceUrl: validatedData.url,
         originalContent: lines,
@@ -132,7 +84,6 @@ export async function POST(request: NextRequest) {
       },
     });
     
-    console.log('Article creation: Article created with ID:', article.id);
 
     return NextResponse.json({ 
       success: true, 
@@ -168,10 +119,8 @@ async function translateLines(lines: string[]): Promise<string[]> {
     }
     
     try {
-      console.log(`Translating line: "${line}"`);
       // Use translation service directly instead of calling API
       const translatedText = await translateWithService(line.trim(), 'zh-TW', 'en');
-      console.log(`Translation result: "${translatedText}"`);
       translations.push(translatedText);
     } catch (error) {
       console.error(`Translation error for line: ${line}`, error);
@@ -190,24 +139,19 @@ async function translateWithService(
   targetLanguage: string,
   sourceLanguage?: string
 ): Promise<string> {
-  console.log('Translation service: Checking available APIs...');
   
   // Check if OpenAI API key exists (Primary)
   const openaiApiKey = process.env.OPENAI_API_KEY;
-  console.log('OpenAI API key exists:', !!openaiApiKey);
   
   if (openaiApiKey) {
-    console.log('Using OpenAI API for translation');
     // Use OpenAI for translation
     return translateWithOpenAI(text, targetLanguage, sourceLanguage, openaiApiKey);
   }
   
   // Check if Google Cloud Translation API key exists (Fallback)
   const googleApiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-  console.log('Google Translate API key exists:', !!googleApiKey);
   
   if (googleApiKey) {
-    console.log('Using Google Translate API');
     // Use Google Translate API
     return translateWithGoogle(text, targetLanguage, sourceLanguage, googleApiKey);
   }

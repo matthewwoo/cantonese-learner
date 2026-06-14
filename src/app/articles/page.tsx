@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth-context'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
+import { figmaColors as FIGMA_COLORS } from '@/lib/design-tokens'
 
 interface Article {
   id: string
@@ -17,19 +18,9 @@ interface Article {
   updatedAt: string
 }
 
-// Figma-derived colors (aligned with flashcards page)
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  surfaceBorder: '#f2e2c4',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-  buttonBg: '#171515',
-  buttonText: '#ffffff',
-}
-
 export default function ArticlesPage() {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const [articles, setArticles] = useState<Article[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showAddPanel, setShowAddPanel] = useState(false)
@@ -43,14 +34,13 @@ export default function ArticlesPage() {
 
   // Auth and data load
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (loading) return
+    if (!user) {
       router.push('/auth/signin')
       return
     }
-    if (status === 'authenticated') {
-      fetchArticles()
-    }
-  }, [status, router])
+    fetchArticles()
+  }, [loading, user, router])
 
   const fetchArticles = async () => {
     try {
@@ -173,7 +163,7 @@ export default function ArticlesPage() {
   }
 
   // Loading state (match flashcards vibe)
-  if (status === 'loading' || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">
@@ -186,7 +176,7 @@ export default function ArticlesPage() {
     )
   }
 
-  if (!session) return null
+  if (!user) return null
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>

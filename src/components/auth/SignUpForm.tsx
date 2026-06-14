@@ -4,7 +4,7 @@
 "use client" // Client-side component
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -27,36 +27,29 @@ export default function SignUpForm() {
     setIsLoading(true)
 
     try {
-      // First, register the user by calling our API endpoint
-      const registerRes = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }, // Tell server we're sending JSON
-        body: JSON.stringify({ email, password, name }), // Convert form data to JSON
-      })
-
-      // Parse the response from our registration API
-      const registerData = await registerRes.json()
-
-      // Check if registration failed
-      if (!registerRes.ok) {
-        toast.error(registerData.error || "Registration failed")
-        return // Exit early if registration failed
-      }
-
-      // Registration successful! Now automatically sign them in
-      const result = await signIn("credentials", {
+      // Create the account in Supabase. The `name` is stored in user metadata
+      // and copied into the public.users profile by the handle_new_user trigger.
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        redirect: false, // Handle redirect manually
+        options: { data: { name } },
       })
 
-      // Check if automatic sign-in failed
-      if (result?.error) {
-        toast.error("Registration successful but sign-in failed")
-      } else {
-        // Everything worked! Show success and redirect
+      if (error) {
+        toast.error(error.message || "Registration failed")
+        return
+      }
+
+      // With email confirmation disabled, signUp returns an active session.
+      if (data.session) {
         toast.success("Account created successfully!")
         router.push("/dashboard")
+        router.refresh()
+      } else {
+        // Email confirmation is enabled — prompt the user to confirm.
+        toast.success("Check your email to confirm your account.")
+        router.push("/auth/signin")
       }
     } catch {
       // Handle any unexpected errors

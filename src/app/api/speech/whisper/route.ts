@@ -10,9 +10,7 @@
 // 6. Common Cantonese words included in prompt for better recognition
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import { Session } from 'next-auth'
+import { requireUser } from '@/lib/api-auth'
 
 interface WhisperRequest {
   audio: string // Base64 encoded audio
@@ -23,13 +21,8 @@ interface WhisperRequest {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions) as Session | null
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
 
     // Check if OpenAI API key is configured
     const openaiApiKey = process.env.OPENAI_API_KEY
@@ -70,7 +63,6 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log('Audio data validation passed. Size:', decoded.length, 'bytes')
     } catch (error) {
       console.error('Audio data validation failed:', error)
       return NextResponse.json(
@@ -80,31 +72,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Call OpenAI Whisper API
-    console.log('About to call OpenAI Whisper API with language:', language)
-    
     const formData = createFormData(audio, language, audioType)
-    console.log('FormData created, checking entries...')
-    
-    // Debug FormData contents
-    for (const [key, value] of formData.entries()) {
-      if (key === 'file') {
-        console.log('FormData file entry:', key, 'size:', (value as Blob).size, 'type:', (value as Blob).type)
-      } else {
-        console.log('FormData entry:', key, value)
-      }
-    }
-    
-    // Test the API key format
-    console.log('API key starts with:', openaiApiKey.substring(0, 7) + '...')
-    console.log('API key length:', openaiApiKey.length)
-    
-    // Log the request details
-    console.log('Making request to OpenAI Whisper API...')
-    console.log('Request method: POST')
-    console.log('Request URL: https://api.openai.com/v1/audio/transcriptions')
-    console.log('Authorization header present:', !!openaiApiKey)
-    
-    // Try a different approach - use node-fetch compatible method
+
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -143,7 +112,7 @@ export async function POST(request: NextRequest) {
       console.error('Response headers:', headers)
       
       return NextResponse.json(
-        { error: 'Failed to transcribe audio', details: errorData },
+        { error: 'Failed to transcribe audio' },
         { status: response.status }
       )
     }
@@ -158,12 +127,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Whisper API error:', error)
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
     return NextResponse.json(
-      { error: 'Failed to process audio transcription', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to process audio transcription' },
       { status: 500 }
     )
   }
@@ -176,22 +141,16 @@ function createFormData(base64Audio: string, language: string, audioType: string
     
     // Convert base64 to blob using the provided audio type
     const audioBlob = base64ToBlob(base64Audio, audioType)
-    console.log('Audio blob created. Size:', audioBlob.size, 'bytes, Type:', audioBlob.type)
     
     // Check if blob is valid
     if (audioBlob.size === 0) {
       throw new Error('Audio blob is empty')
     }
     
-    // Always use mp3 extension for Whisper API as it's most widely supported
+    // Always use mp3 extension for Whisper API as it's most widely supported;
+    // Whisper can handle various underlying formats regardless of extension.
     const fileName = 'audio.mp3'
-    
-    // Use the original blob but with mp3 extension
-    // Whisper should be able to handle various formats
-    if (!audioType.includes('mp3')) {
-      console.log('Using original audio format but with mp3 extension for Whisper compatibility')
-    }
-    
+
     formData.append('file', audioBlob, fileName)
     formData.append('model', 'whisper-1')
     formData.append('language', language)
@@ -210,7 +169,6 @@ function createFormData(base64Audio: string, language: string, audioType: string
       formData.append('prompt', 'This is Cantonese (廣東話) speech from Hong Kong. The speaker is using Cantonese dialect, not Mandarin Chinese. Cantonese has different pronunciation, vocabulary, and grammar patterns from Mandarin. Common Cantonese words include: 你 (nei5), 我 (ngo5), 佢 (keoi5), 係 (hai6), 唔 (m4), 嘅 (ge3), 咗 (zo2), 緊 (gan2), 過 (gwo3).')
     }
     
-    console.log('FormData created successfully with language:', language, 'fileName:', fileName)
     return formData
   } catch (error) {
     console.error('Error creating FormData:', error)
@@ -231,7 +189,6 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
     const byteArray = new Uint8Array(byteNumbers)
     const blob = new Blob([byteArray], { type: mimeType })
     
-    console.log('Blob created successfully. Size:', blob.size, 'bytes, Type:', blob.type)
     return blob
   } catch (error) {
     console.error('Error converting base64 to blob:', error)

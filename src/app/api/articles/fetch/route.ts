@@ -1,11 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { requireUser } from '@/lib/api-auth';
 import { z } from 'zod';
+import dns from 'dns/promises';
+import net from 'net';
 
 // Validation schema
 const fetchArticleSchema = z.object({
   url: z.string().url(),
 });
+
+/**
+ * Returns true if an IP address is loopback, private, link-local, or otherwise
+ * not safe to fetch from a server (SSRF protection).
+ */
+function isPrivateIp(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split('.').map(Number);
+    if (a === 0 || a === 10 || a === 127) return true; // unspecified, private, loopback
+    if (a === 169 && b === 254) return true; // link-local incl. cloud metadata (169.254.169.254)
+    if (a === 172 && b >= 16 && b <= 31) return true; // private
+    if (a === 192 && b === 168) return true; // private
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const lower = ip.toLowerCase();
+    if (lower === '::1' || lower === '::') return true; // loopback / unspecified
+    if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local
+    if (lower.startsWith('fe80')) return true; // link-local
+    const mapped = lower.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/); // IPv4-mapped
+    if (mapped) return isPrivateIp(mapped[1]);
+    return false;
+  }
+  return true; // unparseable → treat as unsafe
+}
+
+/**
+ * Validates a user-supplied URL against SSRF: only http(s), and the hostname
+ * must not resolve to a private/loopback/link-local address. Throws on failure.
+ */
+async function assertSafeUrl(rawUrl: string): Promise<void> {
+  const parsed = new URL(rawUrl);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('UNSAFE_URL');
+  }
+  const hostname = parsed.hostname.replace(/^\[|\]$/g, ''); // strip IPv6 brackets
+  if (/^(localhost|.*\.local|.*\.internal)$/i.test(hostname)) {
+    throw new Error('UNSAFE_URL');
+  }
+  // If the host is already a literal IP, check it directly; otherwise resolve it.
+  if (net.isIP(hostname)) {
+    if (isPrivateIp(hostname)) throw new Error('UNSAFE_URL');
+    return;
+  }
+  const addresses = await dns.lookup(hostname, { all: true });
+  if (addresses.length === 0 || addresses.some((a) => isPrivateIp(a.address))) {
+    throw new Error('UNSAFE_URL');
+  }
+}
 
 /**
  * POST /api/articles/fetch - Fetch article content from URL
@@ -14,17 +66,22 @@ const fetchArticleSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
 
     // Parse request
     const body = await request.json();
     const { url } = fetchArticleSchema.parse(body);
+
+    // SSRF guard: reject URLs that resolve to internal/private addresses
+    try {
+      await assertSafeUrl(url);
+    } catch {
+      return NextResponse.json(
+        { error: 'This URL is not allowed.' },
+        { status: 400 }
+      );
+    }
 
     // Fetch web page content
     const controller = new AbortController();

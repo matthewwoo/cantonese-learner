@@ -48,7 +48,6 @@ class OpenAITTSService {
       throw new Error('No text provided for speech synthesis')
     }
 
-    console.log('OpenAI TTS: Speaking Cantonese text:', text)
 
     try {
       // Call the OpenAI TTS API
@@ -176,11 +175,9 @@ class OpenAITTSService {
    * Test the TTS service
    */
   async test(): Promise<void> {
-    console.log('Testing OpenAI TTS...')
     
     try {
       await this.speakAndPlay('你好', { speed: 0.8 })
-      console.log('OpenAI TTS test successful')
     } catch (error) {
       console.error('OpenAI TTS test failed:', error)
       throw error

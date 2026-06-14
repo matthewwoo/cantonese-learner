@@ -4,37 +4,38 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                String             @id @default(cuid())
-  email             String             @unique
-  password          String
-  name              String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  articles          Article[]
-  chatSessions      ChatSession[]
-  flashcardSets     FlashcardSet[]
-  readingSessions   ReadingSession[]
-  readingSessionsV2 ReadingSessionV2[]
-  studySessions     StudySession[]
+  // Matches the Supabase auth.users UUID; populated by the handle_new_user trigger.
+  id              String           @id @db.Uuid
+  email           String           @unique
+  name            String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  articles        Article[]
+  chatSessions    ChatSession[]
+  flashcardSets   FlashcardSet[]
+  readingSessions ReadingSession[]
+  studySessions   StudySession[]
 
   @@map("users")
 }
 
 model FlashcardSet {
-  id          String      @id @default(cuid())
-  name        String
-  userId      String
-  imageUrl    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  flashcards  Flashcard[]
+  id         String      @id @default(cuid())
+  name       String
+  userId     String      @db.Uuid
+  imageUrl   String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcards Flashcard[]
 
+  @@index([userId])
   @@map("flashcard_sets")
 }
 
@@ -51,18 +52,20 @@ model Flashcard {
   flashcardSet           FlashcardSet @relation(fields: [flashcardSetId], references: [id], onDelete: Cascade)
   studyCards             StudyCard[]
 
+  @@index([flashcardSetId])
   @@map("flashcards")
 }
 
 model StudySession {
   id          String      @id @default(cuid())
-  userId      String
+  userId      String      @db.Uuid
   startedAt   DateTime    @default(now())
   completedAt DateTime?
   totalCards  Int         @default(20)
   studyCards  StudyCard[]
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("study_sessions")
 }
 
@@ -81,12 +84,14 @@ model StudyCard {
   flashcard      Flashcard    @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
   studySession   StudySession @relation(fields: [studySessionId], references: [id], onDelete: Cascade)
 
+  @@index([flashcardId])
+  @@index([studySessionId])
   @@map("study_cards")
 }
 
 model ChatSession {
   id          String        @id @default(cuid())
-  userId      String
+  userId      String        @db.Uuid
   theme       String
   targetWords Json
   startedAt   DateTime      @default(now())
@@ -94,6 +99,7 @@ model ChatSession {
   messages    ChatMessage[]
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("chat_sessions")
 }
 
@@ -106,33 +112,34 @@ model ChatMessage {
   createdAt     DateTime    @default(now())
   chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
 
+  @@index([chatSessionId])
   @@map("chat_messages")
 }
 
 model Article {
-  id                String             @id @default(cuid())
-  userId            String
+  id                String           @id @default(cuid())
+  userId            String           @db.Uuid
   title             String
   sourceUrl         String?
   originalContent   Json
   translatedContent Json
   wordDefinitions   Json?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   difficulty        String?
   estimatedMinutes  Int?
   sentenceCount     Int?
   sentences         Json?
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   readingSessions   ReadingSession[]
-  readingSessionsV2 ReadingSessionV2[]
 
+  @@index([userId])
   @@map("articles")
 }
 
 model ReadingSession {
   id               String    @id @default(cuid())
-  userId           String
+  userId           String    @db.Uuid
   articleId        String
   currentPosition  Int       @default(0)
   readingSpeed     Float     @default(1.0)
@@ -144,27 +151,7 @@ model ReadingSession {
   article          Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([articleId])
   @@map("reading_sessions")
-}
-
-model ReadingSessionV2 {
-  id               String    @id @default(cuid())
-  userId           String
-  articleId        String
-  currentCardIndex Int       @default(0)
-  totalCards       Int
-  completedCards   Int[]     @default([])
-  autoPlayTTS      Boolean   @default(true)
-  ttsSpeed         Float     @default(1.0)
-  showTranslation  Boolean   @default(false)
-  startedAt        DateTime  @default(now())
-  lastActiveAt     DateTime  @updatedAt
-  completedAt      DateTime?
-  cardsFlipped     Int[]     @default([])
-  audioReplays     Json?
-  timePerCard      Json?
-  article          Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("reading_sessions_v2")
 }

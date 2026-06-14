@@ -2,6 +2,8 @@
 // API endpoint for generating images using OpenAI DALL-E
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '@/lib/api-auth'
+import { z } from 'zod'
 import OpenAI from 'openai'
 
 // Initialize OpenAI client
@@ -9,16 +11,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+// Request body validation schema
+const generateImageSchema = z.object({
+  prompt: z.string().trim().min(1, 'Prompt is required'),
+})
+
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json()
+    // Require an authenticated user — this endpoint spends the owner's OpenAI quota
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
 
-    if (!prompt) {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400 }
-      )
-    }
+    const { prompt } = generateImageSchema.parse(await request.json())
 
     if (!process.env.OPENAI_API_KEY) {
       console.error('OpenAI API key not configured')
@@ -32,7 +36,6 @@ export async function POST(request: NextRequest) {
     const sanitizedPrompt = prompt.trim().slice(0, 100) // Limit length
     const imagePrompt = `A simple, flat illustration of a single object with a white background representing: ${sanitizedPrompt}. Only illustrate one object. `
 
-    console.log('Generating image with prompt:', imagePrompt)
 
     // Generate image using DALL-E 3 and return base64 for persistence
     const response = await openai.images.generate({
@@ -45,7 +48,6 @@ export async function POST(request: NextRequest) {
       response_format: "b64_json",
     })
 
-    console.log('Image generation response received')
 
     const b64 = (response as any).data?.[0]?.b64_json as string | undefined
 
@@ -67,7 +69,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Image generation error:', error)
-    
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      )
+    }
+
     // Handle specific OpenAI API errors
     if (error && typeof error === 'object' && 'status' in error) {
       const status = (error as any).status

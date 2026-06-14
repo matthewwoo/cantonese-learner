@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { PrismaClient } from '@/generated/prisma';
-
-const prisma = new PrismaClient();
+import { db } from '@/lib/db';
+import { requireUser } from '@/lib/api-auth';
 
 /**
  * GET /api/articles/[id] - Get detailed content of a specific article
@@ -13,32 +11,16 @@ export async function GET(
 ) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     const params = await context.params;
     // Get article
-    const article = await prisma.article.findFirst({
+    const article = await db.article.findFirst({
       where: {
         id: params.id,
-        userId: user.id, // Ensure can only access own articles
+        userId, // Ensure can only access own articles
       },
     });
 
@@ -50,9 +32,9 @@ export async function GET(
     }
 
     // Check if there's an existing reading session
-    let readingSession = await prisma.readingSession.findFirst({
+    let readingSession = await db.readingSession.findFirst({
       where: {
-        userId: user.id,
+        userId,
         articleId: article.id,
         completedAt: null, // Uncompleted session
       },
@@ -60,9 +42,9 @@ export async function GET(
 
     // If no active reading session, create a new one
     if (!readingSession) {
-      readingSession = await prisma.readingSession.create({
+      readingSession = await db.readingSession.create({
         data: {
-          userId: user.id,
+          userId,
           articleId: article.id,
         },
       });
@@ -90,32 +72,16 @@ export async function DELETE(
 ) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     const params = await context.params;
     // Delete article (can only delete own articles)
-    const deletedArticle = await prisma.article.deleteMany({
+    const deletedArticle = await db.article.deleteMany({
       where: {
         id: params.id,
-        userId: user.id,
+        userId,
       },
     });
 

@@ -26,8 +26,8 @@ Learn Cantonese through flashcards and AI conversations.
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- PostgreSQL database
+- Node.js 18+
+- A Supabase project (Postgres database + Auth)
 - Translation API key (Google Translate or OpenAI)
 
 ### Quick Setup
@@ -48,7 +48,8 @@ Learn Cantonese through flashcards and AI conversations.
 3. **Set up the database:**
    ```bash
    npx prisma generate
-   npx prisma db push
+   npx prisma migrate deploy
+   # then run supabase/auth-setup.sql in the Supabase SQL editor
    ```
 
 4. **Start the development server:**
@@ -63,28 +64,27 @@ Learn Cantonese through flashcards and AI conversations.
 See [SETUP.md](./SETUP.md) for detailed environment variable configuration.
 
 Required variables:
-- `DATABASE_URL`: PostgreSQL connection string
-- `NEXTAUTH_URL`: Your app URL
-- `NEXTAUTH_SECRET`: Authentication secret key
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase Auth
+- `DATABASE_URL`: pooled Supabase Postgres connection (runtime)
+- `DIRECT_URL`: direct Supabase Postgres connection (migrations)
+- `OPENAI_API_KEY`: AI conversations, TTS, Whisper, image/flashcard generation
 
 Optional (for enhanced features):
-- `OPENAI_API_KEY`: For AI conversations and translation
 - `GOOGLE_TRANSLATE_API_KEY`: For article translation
-- `GOOGLE_APPLICATION_CREDENTIALS`: For speech recognition
 
 ## Documentation
 
 - [Setup Guide](./SETUP.md) - Complete setup instructions
-- [Article Translation Feature](./TRANSLATION_FEATURE.md) - Detailed translation feature documentation
-- [Articles Feature](./ARTICLES_FEATURE.md) - Article reading functionality
-- [TTS Troubleshooting](./TTS_TROUBLESHOOTING.md) - Speech synthesis help
+- [Article Translation Feature](./docs/TRANSLATION_FEATURE.md) - Detailed translation feature documentation
+- [Articles Feature](./docs/ARTICLES_FEATURE.md) - Article reading functionality
+- [TTS Troubleshooting](./docs/TTS_TROUBLESHOOTING.md) - Speech synthesis help
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **Backend**: Next.js API Routes, Prisma ORM
-- **Database**: PostgreSQL
-- **Authentication**: NextAuth.js
+- **Database**: Supabase Postgres
+- **Authentication**: Supabase Auth
 - **AI Services**: OpenAI API, Google Cloud APIs
 - **Translation**: Google Translate API, OpenAI GPT
 
