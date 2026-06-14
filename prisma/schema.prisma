@@ -9,31 +9,32 @@ datasource db {
 }
 
 model User {
-  id                String             @id @default(cuid())
-  email             String             @unique
-  password          String
-  name              String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  articles          Article[]
-  chatSessions      ChatSession[]
-  flashcardSets     FlashcardSet[]
-  readingSessions   ReadingSession[]
-  studySessions     StudySession[]
+  id              String           @id @default(cuid())
+  email           String           @unique
+  password        String
+  name            String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  articles        Article[]
+  chatSessions    ChatSession[]
+  flashcardSets   FlashcardSet[]
+  readingSessions ReadingSession[]
+  studySessions   StudySession[]
 
   @@map("users")
 }
 
 model FlashcardSet {
-  id          String      @id @default(cuid())
-  name        String
-  userId      String
-  imageUrl    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  flashcards  Flashcard[]
+  id         String      @id @default(cuid())
+  name       String
+  userId     String
+  imageUrl   String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcards Flashcard[]
 
+  @@index([userId])
   @@map("flashcard_sets")
 }
 
@@ -50,6 +51,7 @@ model Flashcard {
   flashcardSet           FlashcardSet @relation(fields: [flashcardSetId], references: [id], onDelete: Cascade)
   studyCards             StudyCard[]
 
+  @@index([flashcardSetId])
   @@map("flashcards")
 }
 
@@ -62,6 +64,7 @@ model StudySession {
   studyCards  StudyCard[]
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("study_sessions")
 }
 
@@ -80,6 +83,8 @@ model StudyCard {
   flashcard      Flashcard    @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
   studySession   StudySession @relation(fields: [studySessionId], references: [id], onDelete: Cascade)
 
+  @@index([flashcardId])
+  @@index([studySessionId])
   @@map("study_cards")
 }
 
@@ -93,6 +98,7 @@ model ChatSession {
   messages    ChatMessage[]
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("chat_sessions")
 }
 
@@ -105,26 +111,28 @@ model ChatMessage {
   createdAt     DateTime    @default(now())
   chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
 
+  @@index([chatSessionId])
   @@map("chat_messages")
 }
 
 model Article {
-  id                String             @id @default(cuid())
+  id                String           @id @default(cuid())
   userId            String
   title             String
   sourceUrl         String?
   originalContent   Json
   translatedContent Json
   wordDefinitions   Json?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   difficulty        String?
   estimatedMinutes  Int?
   sentenceCount     Int?
   sentences         Json?
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   readingSessions   ReadingSession[]
 
+  @@index([userId])
   @@map("articles")
 }
 
@@ -142,5 +150,7 @@ model ReadingSession {
   article          Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([articleId])
   @@map("reading_sessions")
 }
