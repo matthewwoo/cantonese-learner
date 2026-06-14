@@ -44,6 +44,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
   
   // State for image generation
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null)
+  const [imageError, setImageError] = useState(false)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   const [showImageGeneration, setShowImageGeneration] = useState(false)
 
@@ -196,6 +197,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
         throw new Error(data.error || 'Failed to generate image')
       }
 
+      setImageError(false)
       setGeneratedImage({
         url: data.imageUrl,
         prompt: data.prompt
@@ -528,18 +530,18 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                       />
                     </div>
                     <div className="relative">
-                      <img
-                        src={generatedImage.url}
-                        alt="Generated deck image"
-                        className="w-full h-48 object-cover rounded-[8px]"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                          const fallback = document.createElement('div')
-                          fallback.className = 'w-full h-48 rounded-[8px] flex items-center justify-center text-[#7d7a74]'
-                          fallback.innerHTML = '🖼️ Image failed to load'
-                          e.currentTarget.parentNode?.appendChild(fallback)
-                        }}
-                      />
+                      {imageError ? (
+                        <div className="w-full h-48 rounded-[8px] flex items-center justify-center text-[#7d7a74]">
+                          🖼️ Image failed to load
+                        </div>
+                      ) : (
+                        <img
+                          src={generatedImage.url}
+                          alt="Generated deck image"
+                          className="w-full h-48 object-cover rounded-[8px]"
+                          onError={() => setImageError(true)}
+                        />
+                      )}
                     </div>
                     <p className="text-xs text-[#6e6c66] mt-2 italic">"{generatedImage.prompt}"</p>
                   </div>

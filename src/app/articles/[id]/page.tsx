@@ -53,6 +53,9 @@ export default function ArticleReadingPage() {
   // TTS related
   const speechSynthesis = useRef<SpeechSynthesis | null>(null);
   const currentUtterance = useRef<SpeechSynthesisUtterance | null>(null);
+  // Tracks the pending "play next line" timer so it can be cancelled on
+  // pause/unmount (otherwise playback resumes after the user stops it).
+  const playbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 // Initialize speech synthesis
   useEffect(() => {
@@ -75,6 +78,10 @@ export default function ArticleReadingPage() {
       stopOpenAITTS(); // Stop any ongoing OpenAI TTS
       if (speechSynthesis.current?.speaking) {
         speechSynthesis.current.cancel();
+      }
+      if (playbackTimeout.current) {
+        clearTimeout(playbackTimeout.current);
+        playbackTimeout.current = null;
       }
     };
   }, []);
@@ -142,6 +149,10 @@ export default function ArticleReadingPage() {
       if (speechSynthesis.current?.speaking) {
         speechSynthesis.current.cancel();
       }
+      if (playbackTimeout.current) {
+        clearTimeout(playbackTimeout.current);
+        playbackTimeout.current = null;
+      }
       setIsPlaying(false);
     } else {
       // Start playback
@@ -183,11 +194,10 @@ export default function ArticleReadingPage() {
         
         // After playback finishes, play the next line
         if (lineIndex < article.translatedContent.length - 1) {
-          setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
+          playbackTimeout.current = setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
         } else {
           // Playback complete
           setIsPlaying(false);
-          updateReadingProgress(article.translatedContent.length - 1);
         }
       } else if (isOpenAITTSAvailable()) {
         // Fallback to OpenAI TTS
@@ -201,11 +211,10 @@ export default function ArticleReadingPage() {
         
         // After playback finishes, play the next line
         if (lineIndex < article.translatedContent.length - 1) {
-          setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
+          playbackTimeout.current = setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
         } else {
           // Playback complete
           setIsPlaying(false);
-          updateReadingProgress(article.translatedContent.length - 1);
         }
       } else {
         // Final fallback to basic TTS
@@ -222,11 +231,10 @@ export default function ArticleReadingPage() {
         utterance.onend = () => {
           // Play the next line
           if (lineIndex < article.translatedContent.length - 1) {
-            setTimeout(() => playFromLine(lineIndex + 1), 500);
+            playbackTimeout.current = setTimeout(() => playFromLine(lineIndex + 1), 500);
           } else {
             // Playback complete
             setIsPlaying(false);
-            updateReadingProgress(article.translatedContent.length - 1);
           }
         };
         
@@ -247,15 +255,6 @@ export default function ArticleReadingPage() {
   };
 
   /**
-   * Highlight the current word being played
-   * Note: simplified version; a real implementation needs more complex logic
-   */
-  const highlightCurrentWord = (utterance: SpeechSynthesisUtterance, text: string) => {
-    // Implement word-level highlighting here
-    // Requires using the utterance boundary events
-  };
-
-  /**
    * Play a specific line on click
    */
   const playLine = async (lineIndex: number) => {
@@ -265,11 +264,15 @@ export default function ArticleReadingPage() {
     if (!textToSpeak) return;
 
     try {
-      // Cancel current playback
+      // Cancel current playback (including any pending auto-advance)
       stopSpeech();
       stopOpenAITTS();
       if (speechSynthesis.current?.speaking) {
         speechSynthesis.current.cancel();
+      }
+      if (playbackTimeout.current) {
+        clearTimeout(playbackTimeout.current);
+        playbackTimeout.current = null;
       }
 
       // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
@@ -314,7 +317,10 @@ export default function ArticleReadingPage() {
       if (speechSynthesis.current?.speaking) {
         speechSynthesis.current.cancel();
       }
-      setTimeout(() => playFromLine(currentLineIndex), 100);
+      if (playbackTimeout.current) {
+        clearTimeout(playbackTimeout.current);
+      }
+      playbackTimeout.current = setTimeout(() => playFromLine(currentLineIndex), 100);
     }
   };
 
@@ -329,13 +335,6 @@ export default function ArticleReadingPage() {
       setSelectedWord(word);
       setWordDefinition(definition);
     }
-  };
-
-  /**
-   * Update reading progress
-   */
-  const updateReadingProgress = async (position: number) => {
-    // TODO: Call API to update reading progress
   };
 
   // Loading state

@@ -118,6 +118,7 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
 // Deck card component
 function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: () => void; onDelete: (setId: string) => void; onView: (setId: string) => void }) {
   const [showMenu, setShowMenu] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -204,24 +205,17 @@ function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: 
         {/* Illustration */}
         <div className="mb-6">
           <div className="w-32 h-32 rounded-full bg-white/70 flex items-center justify-center shadow-inner overflow-hidden">
-            {set.imageUrl ? (
+            {set.imageUrl && !imageError ? (
               <img
                 src={set.imageUrl}
                 alt={`${set.name} deck image`}
                 className="w-full h-full object-cover rounded-full"
-                onError={(e) => {
-                  console.error("Deck image failed to load:", set.imageUrl)
-                  // Hide the broken image and render fallback illustration
-                  e.currentTarget.style.display = 'none'
-                  const container = e.currentTarget.parentElement
-                  if (container) {
-                    const fallback = document.createElement('div')
-                    fallback.className = 'w-full h-full flex items-center justify-center bg-white/70'
-                    fallback.innerHTML = '<span class="text-4xl">📚</span>'
-                    container.appendChild(fallback)
-                  }
-                }}
+                onError={() => setImageError(true)}
               />
+            ) : set.imageUrl && imageError ? (
+              <div className="w-full h-full flex items-center justify-center bg-white/70">
+                <span className="text-4xl">📚</span>
+              </div>
             ) : (
               <Illustration illustration="doctor" />
             )}
