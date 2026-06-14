@@ -4,7 +4,7 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
@@ -326,26 +326,26 @@ function FlashcardsBody({
 
 export default function FlashcardsPage() {
   // Authentication and navigation
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
-  
+
   // Component state
   const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!loading && !user) {
       router.push("/auth/signin")
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   // Fetch user's flashcard sets when component mounts
   useEffect(() => {
-    if (session) {
+    if (user) {
       fetchFlashcardSets()
     }
-  }, [session])
+  }, [user])
 
   // Function to fetch flashcard sets from API
   const fetchFlashcardSets = async () => {
@@ -404,7 +404,7 @@ export default function FlashcardsPage() {
   }
 
   // Show loading while checking authentication
-  if (status === "loading" || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">
@@ -418,7 +418,7 @@ export default function FlashcardsPage() {
   }
 
   // Don't render anything if not authenticated (redirect is happening)
-  if (!session) {
+  if (!user) {
     return null
   }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useRouter, useParams } from "next/navigation"
 import { Card } from "@/components/ui/Card"
 import { IconButton } from "@/components/ui/IconButton"
@@ -47,22 +47,22 @@ function formatReviewDate(dateString: string | null) {
 }
 
 export default function FlashcardSetPage() {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
-  
+
   const [set, setSet] = useState<FlashcardSet | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!loading && !user) {
       router.push("/auth/signin")
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   useEffect(() => {
-    if (session && id) {
+    if (user && id) {
       const fetchSet = async () => {
         try {
           setIsLoading(true)
@@ -78,9 +78,9 @@ export default function FlashcardSetPage() {
       }
       fetchSet()
     }
-  }, [session, id])
+  }, [user, id])
 
-  if (status === "loading" || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
         <div className="text-center">

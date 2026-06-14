@@ -2,8 +2,7 @@
 // API endpoint for individual flashcard set operations (GET, DELETE)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+import { requireUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 
 // GET /api/flashcards/[id] - Get a specific flashcard set
@@ -12,20 +11,16 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
+    const { userId } = auth
 
     const { id } = await context.params
 
     const flashcardSet = await db.flashcardSet.findFirst({
       where: {
         id,
-        user: {
-          email: session.user.email
-        }
+        userId
       },
       include: {
         flashcards: true
@@ -42,9 +37,7 @@ export async function GET(
     const priorStudyCards = await db.studyCard.findMany({
       where: {
         flashcardId: { in: flashcardIds },
-        studySession: { 
-          user: { email: session.user.email } 
-        },
+        studySession: { userId },
       },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -89,11 +82,9 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
+    const { userId } = auth
 
     // First, verify the flashcard set belongs to the user
     const { id } = await context.params
@@ -101,9 +92,7 @@ export async function DELETE(
     const flashcardSet = await db.flashcardSet.findFirst({
       where: {
         id,
-        user: {
-          email: session.user.email
-        }
+        userId
       }
     })
 

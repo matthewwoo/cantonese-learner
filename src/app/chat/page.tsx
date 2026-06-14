@@ -5,7 +5,7 @@
 "use client"
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ChatMessage from '@/components/chat/ChatMessage'
 import ChatInput from '@/components/chat/ChatInput'
@@ -31,7 +31,7 @@ function ChatPageContent() {
   // ============ REACT HOOKS FOR STATE MANAGEMENT ============
   
   // Authentication and routing
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -52,10 +52,10 @@ function ChatPageContent() {
 
   // ============ AUTHENTICATION CHECK ============
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!loading && !user) {
       router.push("/auth/signin")
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   // ============ AUTO-SCROLL TO LATEST MESSAGE ============
   const scrollToBottom = () => {
@@ -181,7 +181,7 @@ function ChatPageContent() {
   }, [searchParams, router])
 
   // ============ LOADING STATE ============
-  if (status === "loading") {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f9f2ec]">
         <p className="text-lg text-[#6e6c66]">Loading chat...</p>
@@ -190,7 +190,7 @@ function ChatPageContent() {
   }
 
   // ============ AUTHENTICATION REQUIRED ============
-  if (!session) {
+  if (!user) {
     return null // Redirect is happening
   }
 

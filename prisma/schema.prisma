@@ -4,14 +4,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id              String           @id @default(cuid())
+  // Matches the Supabase auth.users UUID; populated by the handle_new_user trigger.
+  id              String           @id @db.Uuid
   email           String           @unique
-  password        String
   name            String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -27,7 +28,7 @@ model User {
 model FlashcardSet {
   id         String      @id @default(cuid())
   name       String
-  userId     String
+  userId     String      @db.Uuid
   imageUrl   String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -57,7 +58,7 @@ model Flashcard {
 
 model StudySession {
   id          String      @id @default(cuid())
-  userId      String
+  userId      String      @db.Uuid
   startedAt   DateTime    @default(now())
   completedAt DateTime?
   totalCards  Int         @default(20)
@@ -90,7 +91,7 @@ model StudyCard {
 
 model ChatSession {
   id          String        @id @default(cuid())
-  userId      String
+  userId      String        @db.Uuid
   theme       String
   targetWords Json
   startedAt   DateTime      @default(now())
@@ -117,7 +118,7 @@ model ChatMessage {
 
 model Article {
   id                String           @id @default(cuid())
-  userId            String
+  userId            String           @db.Uuid
   title             String
   sourceUrl         String?
   originalContent   Json
@@ -138,7 +139,7 @@ model Article {
 
 model ReadingSession {
   id               String    @id @default(cuid())
-  userId           String
+  userId           String    @db.Uuid
   articleId        String
   currentPosition  Int       @default(0)
   readingSpeed     Float     @default(1.0)

@@ -2,27 +2,21 @@
 // This API endpoint gets all flashcard sets for the authenticated user
 
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
+import { requireUser } from "@/lib/api-auth"
 import { db } from "@/lib/db"
-import { Session } from "next-auth"
 
 // Handle GET requests to fetch user's flashcard sets
 export async function GET() {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions) as Session | null
-    if (!session || !session.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      )
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
+    const { userId } = auth
 
     // Get all flashcard sets for this user
     const flashcardSets = await db.flashcardSet.findMany({
       where: {
-        userId: session.user.id
+        userId
       },
       include: {
         // Include flashcard count and basic info

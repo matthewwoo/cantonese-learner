@@ -4,7 +4,7 @@
 "use client" // This tells Next.js this component runs on the client (browser)
 
 import { useState } from "react"
-import { signIn } from "next-auth/react" // NextAuth function to handle sign in
+import { createClient } from "@/lib/supabase/client" // Supabase browser client
 import { useRouter } from "next/navigation" // Next.js hook for navigation
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input" 
@@ -30,21 +30,19 @@ export default function SignInForm() {
     setIsLoading(true)
 
     try {
-      // Call NextAuth's signIn function with credentials
-      const result = await signIn("credentials", {
-        email,              // User's email
-        password,           // User's password  
-        redirect: false,    // Don't auto-redirect, we'll handle it manually
-      })
+      // Authenticate against Supabase
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
 
       // Check if sign in failed
-      if (result?.error) {
+      if (error) {
         // Show error notification to user
         toast.error("Invalid credentials")
       } else {
         // Sign in successful! Show success message and redirect
         toast.success("Signed in successfully!")
         router.push("/dashboard") // Navigate to dashboard page
+        router.refresh() // Re-render server components with the new session
       }
     } catch {
       // Handle any unexpected errors

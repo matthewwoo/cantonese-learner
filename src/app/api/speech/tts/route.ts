@@ -2,8 +2,7 @@
 // OpenAI Text-to-Speech API endpoint for Cantonese pronunciation
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { requireUser } from '@/lib/api-auth';
 import { z } from 'zod';
 
 // Request body validation schema
@@ -20,13 +19,8 @@ const ttsRequestSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireUser();
+    if (auth instanceof NextResponse) return auth;
 
     // Check if OpenAI API key is configured
     const openaiApiKey = process.env.OPENAI_API_KEY;

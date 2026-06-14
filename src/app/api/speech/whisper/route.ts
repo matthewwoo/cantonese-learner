@@ -10,9 +10,7 @@
 // 6. Common Cantonese words included in prompt for better recognition
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import { Session } from 'next-auth'
+import { requireUser } from '@/lib/api-auth'
 
 interface WhisperRequest {
   audio: string // Base64 encoded audio
@@ -23,13 +21,8 @@ interface WhisperRequest {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions) as Session | null
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
 
     // Check if OpenAI API key is configured
     const openaiApiKey = process.env.OPENAI_API_KEY

@@ -3,10 +3,8 @@
 // This handles communication between our frontend and AI services (OpenAI/Claude)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+import { requireUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { Session } from 'next-auth'
 import { z } from 'zod'
 
 // Define the structure of a chat message
@@ -25,17 +23,10 @@ const chatRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    
     // 1. AUTHENTICATION CHECK
-    // Always verify the user is logged in before processing chat requests
-    const session = await getServerSession(authOptions) as Session | null
-    
-    if (!session || !session.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
+    const { userId } = auth
 
     // 2. PARSE & VALIDATE REQUEST DATA
     const { message, sessionId, theme, targetWords } = chatRequestSchema.parse(
@@ -50,7 +41,7 @@ export async function POST(request: NextRequest) {
       chatSession = await db.chatSession.findFirst({
         where: {
           id: sessionId,
-          user: { email: session.user.email }
+          userId
         },
         include: {
           messages: {
@@ -63,20 +54,9 @@ export async function POST(request: NextRequest) {
 
     // If no existing session found, create a new one
     if (!chatSession) {
-      const user = await db.user.findUnique({
-        where: { email: session.user.email }
-      })
-
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        )
-      }
-
       chatSession = await db.chatSession.create({
         data: {
-          userId: user.id,
+          userId,
           theme: theme || 'general',
           targetWords: targetWords || []
         },

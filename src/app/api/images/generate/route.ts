@@ -2,8 +2,7 @@
 // API endpoint for generating images using OpenAI DALL-E
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+import { requireUser } from '@/lib/api-auth'
 import { z } from 'zod'
 import OpenAI from 'openai'
 
@@ -20,13 +19,8 @@ const generateImageSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Require an authenticated user — this endpoint spends the owner's OpenAI quota
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireUser()
+    if (auth instanceof NextResponse) return auth
 
     const { prompt } = generateImageSchema.parse(await request.json())
 
