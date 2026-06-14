@@ -19,7 +19,6 @@ model User {
   chatSessions      ChatSession[]
   flashcardSets     FlashcardSet[]
   readingSessions   ReadingSession[]
-  readingSessionsV2 ReadingSessionV2[]
   studySessions     StudySession[]
 
   @@map("users")
@@ -125,7 +124,6 @@ model Article {
   sentences         Json?
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   readingSessions   ReadingSession[]
-  readingSessionsV2 ReadingSessionV2[]
 
   @@map("articles")
 }
@@ -145,26 +143,4 @@ model ReadingSession {
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("reading_sessions")
-}
-
-model ReadingSessionV2 {
-  id               String    @id @default(cuid())
-  userId           String
-  articleId        String
-  currentCardIndex Int       @default(0)
-  totalCards       Int
-  completedCards   Int[]     @default([])
-  autoPlayTTS      Boolean   @default(true)
-  ttsSpeed         Float     @default(1.0)
-  showTranslation  Boolean   @default(false)
-  startedAt        DateTime  @default(now())
-  lastActiveAt     DateTime  @updatedAt
-  completedAt      DateTime?
-  cardsFlipped     Int[]     @default([])
-  audioReplays     Json?
-  timePerCard      Json?
-  article          Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("reading_sessions_v2")
 }
