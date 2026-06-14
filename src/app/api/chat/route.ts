@@ -7,6 +7,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { Session } from 'next-auth'
+import { z } from 'zod'
 
 // Define the structure of a chat message
 interface ChatMessage {
@@ -14,13 +15,13 @@ interface ChatMessage {
   content: string
 }
 
-// Define the request body structure
-interface ChatRequest {
-  message: string
-  sessionId?: string
-  theme?: string
-  targetWords?: string[]
-}
+// Request body validation schema
+const chatRequestSchema = z.object({
+  message: z.string().trim().min(1, 'Message is required'),
+  sessionId: z.string().optional(),
+  theme: z.string().optional(),
+  targetWords: z.array(z.string()).optional(),
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,20 +40,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. PARSE REQUEST DATA
-    // Extract the chat message and session info from the request
-    const body: ChatRequest = await request.json()
-    const { message, sessionId, theme, targetWords } = body
-    console.log('Chat API: Request body parsed:', { message: message?.substring(0, 50) + '...', sessionId, theme })
-
-    // Basic validation - make sure we have a message to process
-    if (!message?.trim()) {
-      console.log('Chat API: Message validation failed - empty message')
-      return NextResponse.json(
-        { error: 'Message is required' },
-        { status: 400 }
-      )
-    }
+    // 2. PARSE & VALIDATE REQUEST DATA
+    const { message, sessionId, theme, targetWords } = chatRequestSchema.parse(
+      await request.json()
+    )
 
     // 3. GET OR CREATE CHAT SESSION
     // If no sessionId provided, create a new chat session in the database
@@ -168,9 +159,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Error handling - log the error and return user-friendly message
     console.error('Chat API error:', error)
-    console.error('Chat API error stack:', error instanceof Error ? error.stack : 'No stack trace')
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
-      { error: 'Failed to process chat message', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to process chat message' },
       { status: 500 }
     )
   }

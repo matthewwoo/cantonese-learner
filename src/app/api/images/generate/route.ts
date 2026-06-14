@@ -4,11 +4,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
+import { z } from 'zod'
 import OpenAI from 'openai'
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+})
+
+// Request body validation schema
+const generateImageSchema = z.object({
+  prompt: z.string().trim().min(1, 'Prompt is required'),
 })
 
 export async function POST(request: NextRequest) {
@@ -22,14 +28,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { prompt } = await request.json()
-
-    if (!prompt) {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400 }
-      )
-    }
+    const { prompt } = generateImageSchema.parse(await request.json())
 
     if (!process.env.OPENAI_API_KEY) {
       console.error('OpenAI API key not configured')
@@ -78,7 +77,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Image generation error:', error)
-    
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      )
+    }
+
     // Handle specific OpenAI API errors
     if (error && typeof error === 'object' && 'status' in error) {
       const status = (error as any).status

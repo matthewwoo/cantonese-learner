@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       console.error('Response headers:', headers)
       
       return NextResponse.json(
-        { error: 'Failed to transcribe audio', details: errorData },
+        { error: 'Failed to transcribe audio' },
         { status: response.status }
       )
     }
@@ -154,12 +154,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Whisper API error:', error)
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
     return NextResponse.json(
-      { error: 'Failed to process audio transcription', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to process audio transcription' },
       { status: 500 }
     )
   }

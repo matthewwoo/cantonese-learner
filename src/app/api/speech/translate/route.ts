@@ -4,12 +4,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
+import { z } from 'zod'
 
-interface TranslateRequest {
-  text: string
-  targetLanguage: string // e.g., 'en', 'zh', 'yue'
-  sourceLanguage?: string // optional, will be auto-detected if not provided
-}
+// Request body validation schema
+const translateRequestSchema = z.object({
+  text: z.string().trim().min(1, 'Text is required'),
+  targetLanguage: z.string().min(1, 'Target language is required'),
+  sourceLanguage: z.string().optional(),
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,16 +33,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse request body
-    const body: TranslateRequest = await request.json()
-    const { text, targetLanguage, sourceLanguage } = body
-
-    if (!text || !targetLanguage) {
-      return NextResponse.json(
-        { error: 'Text and target language are required' },
-        { status: 400 }
-      )
-    }
+    // Parse & validate request body
+    const { text, targetLanguage, sourceLanguage } = translateRequestSchema.parse(
+      await request.json()
+    )
 
     // Auto-detect Cantonese if no source language specified and text contains Chinese characters
     let detectedSourceLanguage = sourceLanguage
@@ -84,7 +80,7 @@ export async function POST(request: NextRequest) {
       }
       console.error('OpenAI Translation API error:', errorData)
       return NextResponse.json(
-        { error: 'Failed to translate text', details: errorData },
+        { error: 'Failed to translate text' },
         { status: response.status }
       )
     }
@@ -109,12 +105,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Translation API error:', error)
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
-      { error: 'Failed to translate text', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to translate text' },
       { status: 500 }
     )
   }

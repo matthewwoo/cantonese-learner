@@ -4,14 +4,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { z } from 'zod';
 
-interface TTSRequest {
-  text: string;
-  voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
-  speed?: number; // 0.25 to 4.0
-  format?: 'mp3' | 'opus' | 'aac' | 'flac';
-  model?: 'tts-1' | 'tts-1-hd';
-}
+// Request body validation schema
+const ttsRequestSchema = z.object({
+  text: z.string().trim().min(1, 'Text is required'),
+  voice: z
+    .enum(['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'])
+    .default('nova'),
+  speed: z.number().min(0.25).max(4.0).default(1.0),
+  format: z.enum(['mp3', 'opus', 'aac', 'flac']).default('mp3'),
+  model: z.enum(['tts-1', 'tts-1-hd']).default('tts-1'),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,24 +37,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse request body
-    const body: TTSRequest = await request.json();
-    const { text, voice = 'nova', speed = 1.0, format = 'mp3', model = 'tts-1' } = body;
-
-    if (!text || text.trim() === '') {
-      return NextResponse.json(
-        { error: 'Text is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate speed
-    if (speed < 0.25 || speed > 4.0) {
-      return NextResponse.json(
-        { error: 'Speed must be between 0.25 and 4.0' },
-        { status: 400 }
-      );
-    }
+    // Parse & validate request body
+    const { text, voice, speed, format, model } = ttsRequestSchema.parse(
+      await request.json()
+    );
 
     console.log('TTS API: Generating speech for text:', text.substring(0, 50) + '...');
 
@@ -79,7 +69,7 @@ export async function POST(request: NextRequest) {
       }
       console.error('OpenAI TTS API error:', errorData);
       return NextResponse.json(
-        { error: 'Failed to generate speech', details: errorData },
+        { error: 'Failed to generate speech' },
         { status: response.status }
       );
     }
@@ -106,6 +96,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('TTS API error:', error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
