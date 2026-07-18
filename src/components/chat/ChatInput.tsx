@@ -3,7 +3,7 @@
 // This teaches: Form handling, React events, controlled components
 
 import React, { useState, KeyboardEvent, useEffect } from 'react'
-import { Button } from '@/components/legacy/Button'
+import { Button } from '@/components/ui/button'
 import { startOpenAIRecording, stopOpenAIRecording, isOpenAISTTSupported } from '@/utils/openaiSpeechToText'
 import { toast } from 'sonner'
 
@@ -132,7 +132,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
   }, [isListening])
 
   return (
-    <div className="bg-white rounded-t-[20px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)] border-t border-[#f6f6f6] px-5 pt-3 pb-3 h-[80px] flex justify-end items-end">
+    <div className="bg-card rounded-t-xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] border-t border-secondary px-5 pt-3 pb-3 h-[80px] flex justify-end items-end">
       <div className="flex items-center justify-center gap-3 h-full w-full">
           <textarea
             value={inputValue}
@@ -141,35 +141,40 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placehol
             placeholder=""
             disabled={disabled}
             rows={1}
-            className="w-full h-full resize-none border-0 outline-none focus:ring-0 text-[14px] text-[#6e6c66] bg-transparent"
+            className="w-full h-full resize-none border-0 outline-none focus:ring-0 text-[14px] text-muted-foreground bg-transparent"
           />
           {interimTranscript && (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="mt-2 p-2 bg-accent border border-border rounded-md">
               <div className="flex justify-between items-center mb-1">
-                <div className="text-sm text-blue-600 font-medium">Listening... (OpenAI Whisper)</div>
-                <div className="text-sm text-blue-600 font-mono">{timeLeft}s</div>
+                <div className="text-sm text-accent-foreground font-medium">Listening... (OpenAI Whisper)</div>
+                <div className="text-sm text-accent-foreground font-mono">{timeLeft}s</div>
               </div>
-              <div className="text-sm text-blue-800 italic">{interimTranscript}</div>
+              <div className="text-sm text-foreground italic">{interimTranscript}</div>
             </div>
           )}
 
         <div className="relative h-8 w-[76px] shrink-0">
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={handleSpeechStart}
             disabled={disabled || !openaiSTTSupported}
             title={isListening ? `Stop listening (${timeLeft}s left)` : `Start voice input`}
-            className={`absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center ${openaiSTTSupported ? 'bg-[#fff1c2]' : 'bg-[#cdcdcd] opacity-60'} ${disabled ? 'cursor-not-allowed' : ''}`}
+            className={`absolute left-0 top-0 rounded-full ${openaiSTTSupported ? 'bg-accent text-foreground hover:bg-accent/80' : 'bg-muted opacity-60'}`}
           >
             <span className="text-[16px]">{isListening ? '⏺️' : '🎤'}</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            size="icon"
             onClick={handleSend}
             disabled={disabled || !inputValue.trim()}
-            className="absolute left-[43px] top-0 w-8 h-8 rounded-full flex items-center justify-center bg-[#5a5a5a] text-white disabled:opacity-50"
+            className="absolute left-[43px] top-0 rounded-full bg-muted-foreground text-background hover:bg-muted-foreground/90"
             title="Send"
           >
             <span>➤</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -72,12 +72,12 @@ export default function StudyPage() {
   // Show loading while checking authentication or starting session
   if (status === "loading" || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9f2ec' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-2xl">📚</span>
           </div>
-          <p className="text-lg text-gray-600 font-medium">
+          <p className="text-lg text-muted-foreground font-medium">
             {status === "loading" ? "Loading..." : "Starting your lesson..."}
           </p>
         </div>
@@ -102,8 +102,8 @@ export default function StudyPage() {
 
   // This shouldn't be reached, but just in case
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-lg text-gray-600">Something went wrong. Redirecting...</p>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <p className="text-lg text-muted-foreground">Something went wrong. Redirecting...</p>
     </div>
   )
 }

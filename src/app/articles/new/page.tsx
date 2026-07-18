@@ -5,18 +5,11 @@ import { useUser } from '@/lib/supabase/use-user'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Card } from '@/components/legacy/Card'
-import { Button } from '@/components/legacy/Button'
-
-// Figma-derived colors (consistent with flashcards/articles index)
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  surfaceBorder: '#f2e2c4',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-  buttonBg: '#171515',
-  buttonText: '#ffffff',
-}
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 
 export default function NewArticlePage() {
   const { user: session, status } = useUser()
@@ -37,12 +30,12 @@ export default function NewArticlePage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-2xl">📖</span>
           </div>
-          <p className="text-lg font-medium" style={{ color: FIGMA_COLORS.textSecondary }}>Loading…</p>
+          <p className="text-lg font-medium text-muted-foreground">Loading…</p>
         </div>
       </div>
     )
@@ -141,18 +134,18 @@ export default function NewArticlePage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-10 backdrop-blur-md" style={{ background: 'rgba(255,252,249,0.6)', borderBottom: `1px solid ${FIGMA_COLORS.surfaceBorder}` }}>
+      <div className="sticky top-0 z-10 bg-background/60 backdrop-blur-md border-b border-border">
         <div className="max-w-md mx-auto px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
-            <Link href="/articles" className="w-10 h-10 rounded-full flex items-center justify-center" style={{ border: `1px solid ${FIGMA_COLORS.surfaceBorder}`, color: FIGMA_COLORS.textPrimary }} aria-label="Back to articles">
+            <Link href="/articles" className="w-10 h-10 rounded-full flex items-center justify-center border border-border text-foreground" aria-label="Back to articles">
               <span className="text-lg">←</span>
             </Link>
             <div className="text-center flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[#FFEFD8]">
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-accent">
                 <span>🆕</span>
-                <span className="text-[14px] leading-[21px]" style={{ color: FIGMA_COLORS.textPrimary }}>Add Article</span>
+                <span className="text-[14px] leading-[21px] text-foreground">Add Article</span>
               </div>
             </div>
             <div className="w-10 h-10" />
@@ -162,81 +155,74 @@ export default function NewArticlePage() {
 
       {/* Form Card */}
       <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
-        <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
+        <Card className="border-0 ring-0 shadow-lg rounded-xl overflow-hidden py-0">
           <div className="p-6">
-            <h1 className="text-xl font-semibold mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>Add new article</h1>
-            <p className="mb-6" style={{ color: FIGMA_COLORS.textSecondary }}>Paste a URL or enter content below. We’ll translate to Traditional Chinese.</p>
+            <h1 className="text-xl font-semibold mb-2 text-foreground">Add new article</h1>
+            <p className="mb-6 text-muted-foreground">Paste a URL or enter content below. We’ll translate to Traditional Chinese.</p>
 
             <div className="space-y-5">
               {/* URL */}
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>Article URL</label>
+                <Label htmlFor="article-url" className="mb-2 text-foreground">Article URL</Label>
                 <div className="flex gap-2">
-                  <input
+                  <Input
+                    id="article-url"
                     type="url"
                     value={articleUrl}
                     onChange={(e) => setArticleUrl(e.target.value)}
                     placeholder="https://example.com/article"
                     disabled={isSubmitting}
-                    className="flex-1 px-4 py-3 border rounded-[10px] focus:outline-none placeholder:text-[#757575] text-[#757575]"
-                    style={{ borderColor: FIGMA_COLORS.surfaceBorder }}
+                    className="flex-1"
                   />
-                  <button
+                  <Button
                     onClick={fetchFromUrl}
                     disabled={isFetchingUrl || !articleUrl || isSubmitting}
-                    className="px-4 rounded-[10px]"
-                    style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
+                    className="px-4"
                   >
                     {isFetchingUrl ? 'Fetching…' : 'Fetch'}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>Title *</label>
-                <input
+                <Label htmlFor="article-title" className="mb-2 text-foreground">Title *</Label>
+                <Input
+                  id="article-title"
                   type="text"
                   value={articleTitle}
                   onChange={(e) => setArticleTitle(e.target.value)}
                   placeholder="Enter article title"
                   disabled={isSubmitting}
-                  className="w-full px-4 py-3 border rounded-[10px] focus:outline-none placeholder:text-[#757575] text-[#757575]"
-                  style={{ borderColor: FIGMA_COLORS.surfaceBorder }}
+                  className="w-full"
                 />
               </div>
 
               {/* Content */}
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>Content *</label>
-                <textarea
+                <Label htmlFor="article-content" className="mb-2 text-foreground">Content *</Label>
+                <Textarea
+                  id="article-content"
                   value={articleContent}
                   onChange={(e) => setArticleContent(e.target.value)}
                   placeholder="Paste or type English article content..."
                   rows={10}
                   disabled={isSubmitting}
-                  className="w-full px-4 py-3 border rounded-[10px] focus:outline-none placeholder:text-[#757575] text-[#757575]"
-                  style={{ borderColor: FIGMA_COLORS.surfaceBorder }}
+                  className="w-full"
                 />
               </div>
 
               {/* Actions */}
               <div className="flex items-center justify-end gap-3">
-                <Link
-                  href="/articles"
-                  className="px-5 py-2 rounded-[8px] border"
-                  style={{ borderColor: FIGMA_COLORS.surfaceBorder, color: FIGMA_COLORS.textSecondary }}
-                >
-                  Cancel
-                </Link>
+                <Button asChild variant="outline" className="text-muted-foreground">
+                  <Link href="/articles">Cancel</Link>
+                </Button>
                 <Button
-                  variant="Primary"
-                  text={isSubmitting ? 'Creating…' : 'Create Article'}
                   onClick={handleCreate}
                   disabled={isSubmitting || !articleTitle || (!articleContent && !articleUrl)}
-                  className="px-5 py-2 rounded-[8px]"
-                  style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
-                />
+                >
+                  {isSubmitting ? 'Creating…' : 'Create Article'}
+                </Button>
               </div>
             </div>
           </div>
@@ -244,22 +230,22 @@ export default function NewArticlePage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 backdrop-blur-md" style={{ background: 'rgba(249,242,236,0.6)' }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-background/60 backdrop-blur-md">
         <div className="max-w-md mx-auto px-4 py-3 sm:px-6">
           <div className="flex items-center justify-around">
-            <Link href="/dashboard" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] text-[#6e6c66] hover:bg-white/60">
+            <Link href="/dashboard" className="flex flex-col items-center justify-center px-5 py-2 rounded-sm h-[61px] text-muted-foreground hover:bg-white/60">
               <div className="text-2xl mb-1">🏠</div>
               <span className="text-[14px] leading-[21px]">Home</span>
             </Link>
-            <Link href="/flashcards" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] text-[#6e6c66] hover:bg-white/60">
+            <Link href="/flashcards" className="flex flex-col items-center justify-center px-5 py-2 rounded-sm h-[61px] text-muted-foreground hover:bg-white/60">
               <div className="text-2xl mb-1">📚</div>
               <span className="text-[14px] leading-[21px]">Cards</span>
             </Link>
-            <Link href="/chat" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] text-[#6e6c66] hover:bg-white/60">
+            <Link href="/chat" className="flex flex-col items-center justify-center px-5 py-2 rounded-sm h-[61px] text-muted-foreground hover:bg-white/60">
               <div className="text-2xl mb-1">💬</div>
               <span className="text-[14px] leading-[21px]">Chat</span>
             </Link>
-            <Link href="/articles" className="flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] bg-white text-[#6e6c66]">
+            <Link href="/articles" className="flex flex-col items-center justify-center px-5 py-2 rounded-sm h-[61px] bg-white text-muted-foreground">
               <div className="text-2xl mb-1">📖</div>
               <span className="text-[14px] leading-[21px]">Articles</span>
             </Link>
@@ -269,5 +255,3 @@ export default function NewArticlePage() {
     </div>
   )
 }
-
-

@@ -10,6 +10,15 @@ import ChatMessage from '@/components/chat/ChatMessage';
 import { processArticleIntoSentences, type SentenceCard } from '@/utils/sentenceProcessor';
 import { createClient } from '@/lib/supabase/client';
 import { getArticleWithSession } from '@/lib/data/articles';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/shared/spinner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface Article {
   id: string;
@@ -350,8 +359,8 @@ export default function ArticleReadingPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9f2ec' }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Spinner size="xl" />
       </div>
     );
   }
@@ -359,35 +368,35 @@ export default function ArticleReadingPage() {
   // Article does not exist
   if (!article) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9f2ec' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="text-6xl mb-4">📄</div>
-          <h2 className="text-2xl font-bold text-gray-700 mb-2">Article Not Found</h2>
-          <button
+          <h2 className="text-2xl font-bold text-foreground mb-2">Article Not Found</h2>
+          <Button
             onClick={() => router.push('/articles')}
-            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="mt-4 px-6"
           >
             Back to Articles
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f9f2ec' }}>
+    <div className="min-h-screen bg-background">
       {/* Article header (Figma-aligned) */}
       <div className="max-w-md mx-auto px-4 sm:px-6 pt-4">
         <div className="flex items-center justify-between h-[29px] mb-2">
-          <h1 className="text-[24px] font-semibold tracking-[-0.48px] text-black truncate">
+          <h1 className="text-[24px] font-semibold tracking-[-0.48px] text-foreground truncate">
             {article.title}
           </h1>
-          <div className="bg-[#5a5a5a] text-white h-[24px] px-[8px] py-[4px] rounded-[8px] flex items-center">
+          <Badge className="h-[24px] px-[8px] py-[4px] rounded-sm">
             <span className="text-[10px] leading-[14px]">To read</span>
-          </div>
+          </Badge>
         </div>
         <div className="relative h-[40px] w-full">
-          <div className="h-full flex items-center text-[14px] leading-[1.4] text-[#757575] overflow-hidden gap-1">
+          <div className="h-full flex items-center text-[14px] leading-[1.4] text-muted-foreground overflow-hidden gap-1">
             {article.sourceUrl && (
               <>
                 <span className="shrink-0">
@@ -405,7 +414,7 @@ export default function ArticleReadingPage() {
               </>
             )}
           </div>
-          <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ borderBottom: '1px solid #f2e2c4' }} />
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none border-b border-border" />
         </div>
       </div>
 
@@ -430,95 +439,82 @@ export default function ArticleReadingPage() {
       </div>
 
       {/* Vocabulary definition modal */}
-      {selectedWord && wordDefinition && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => {
+      <Dialog
+        open={!!selectedWord}
+        onOpenChange={(open) => {
+          if (!open) {
             setSelectedWord(null);
             setWordDefinition(null);
-          }}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-2xl font-bold text-gray-800">
-                {selectedWord}
-              </h3>
-              <button
-                onClick={() => {
-                  setSelectedWord(null);
-                  setWordDefinition(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-foreground">
+              {selectedWord}
+            </DialogTitle>
+          </DialogHeader>
+
+          {wordDefinition?.pinyin && (
+            <div className="mb-3">
+              <span className="text-sm text-muted-foreground">Pinyin:</span>
+              <span className="text-lg">{wordDefinition.pinyin}</span>
             </div>
-            
-            {wordDefinition.pinyin && (
-              <div className="mb-3">
-                <span className="text-sm text-gray-600">Pinyin:</span>
-                <span className="text-lg">{wordDefinition.pinyin}</span>
-              </div>
-            )}
-            
-            {wordDefinition.english && (
-              <div className="mb-3">
-                <span className="text-sm text-gray-600">English:</span>
-                <span className="text-lg">{wordDefinition.english}</span>
-              </div>
-            )}
-            
-            <button
-              onClick={async () => {
-                // Play pronunciation of a single character/word
-                try {
-                  // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
-                  if (ttsService.isSupported()) {
-                    console.log(`Article TTS: Playing word "${selectedWord}" with Web Speech TTS`);
-                    await speakCantonese(selectedWord, {
-                      rate: 0.8, // Slower speed for learning
-                      lang: 'zh-HK' // Hong Kong Cantonese
-                    });
-                  } else if (isOpenAITTSAvailable()) {
-                    console.log(`Article TTS: Playing word "${selectedWord}" with OpenAI TTS`);
-                    await speakWithOpenAI(selectedWord, {
-                      speed: 0.8, // Slower speed for learning
-                      voice: 'nova' // Voice suitable for Chinese
-                    });
-                  } else if (speechSynthesis.current) {
-                    console.log(`Article TTS: Using fallback TTS for word "${selectedWord}"`);
-                    const utterance = new SpeechSynthesisUtterance(selectedWord);
-                    utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
-                    utterance.rate = 0.8; // Slower speed for learning
-                    speechSynthesis.current.speak(utterance);
-                  }
-                } catch (error) {
-                  console.error('TTS 播放錯誤:', error);
-                  toast.error('Speech playback error');
+          )}
+
+          {wordDefinition?.english && (
+            <div className="mb-3">
+              <span className="text-sm text-muted-foreground">English:</span>
+              <span className="text-lg">{wordDefinition.english}</span>
+            </div>
+          )}
+
+          <Button
+            onClick={async () => {
+              // Play pronunciation of a single character/word
+              if (!selectedWord) return;
+              try {
+                // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
+                if (ttsService.isSupported()) {
+                  console.log(`Article TTS: Playing word "${selectedWord}" with Web Speech TTS`);
+                  await speakCantonese(selectedWord, {
+                    rate: 0.8, // Slower speed for learning
+                    lang: 'zh-HK' // Hong Kong Cantonese
+                  });
+                } else if (isOpenAITTSAvailable()) {
+                  console.log(`Article TTS: Playing word "${selectedWord}" with OpenAI TTS`);
+                  await speakWithOpenAI(selectedWord, {
+                    speed: 0.8, // Slower speed for learning
+                    voice: 'nova' // Voice suitable for Chinese
+                  });
+                } else if (speechSynthesis.current) {
+                  console.log(`Article TTS: Using fallback TTS for word "${selectedWord}"`);
+                  const utterance = new SpeechSynthesisUtterance(selectedWord);
+                  utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
+                  utterance.rate = 0.8; // Slower speed for learning
+                  speechSynthesis.current.speak(utterance);
                 }
-              }}
-              className="w-full mt-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-2 rounded-lg font-semibold hover:shadow-md transition-all"
-            >
-              🔊 Play Cantonese Pronunciation
-            </button>
-          </div>
-        </div>
-      )}
+              } catch (error) {
+                console.error('TTS 播放錯誤:', error);
+                toast.error('Speech playback error');
+              }
+            }}
+            className="w-full mt-4 font-semibold"
+          >
+            🔊 Play Cantonese Pronunciation
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating action buttons */}
       <div className="fixed bottom-8 right-8 flex flex-col gap-3">
         {/* Back to top */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
+          className="w-12 h-12 bg-card rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
           title="Back to top"
         >
-          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
           </svg>
         </button>
@@ -532,10 +528,10 @@ export default function ArticleReadingPage() {
               document.documentElement.requestFullscreen();
             }
           }}
-          className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
+          className="w-12 h-12 bg-card rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
           title="Fullscreen mode"
         >
-          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
           </svg>
         </button>

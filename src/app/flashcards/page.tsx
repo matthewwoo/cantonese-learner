@@ -6,13 +6,26 @@
 import { useState, useEffect, Suspense } from "react"
 import { useUser } from "@/lib/supabase/use-user"
 import { useRouter, useSearchParams } from "next/navigation"
-import Image from "next/image"
-import { Button } from "@/components/legacy/Button"
-import { Card } from "@/components/legacy/Card"
-import { IconButton } from "@/components/legacy/IconButton"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import UploadForm from "@/components/flashcards/UploadForm"
 import { toast } from "sonner"
-import { featureColors } from "@/lib/design-tokens"
 import { createClient } from "@/lib/supabase/client"
 import { listFlashcardSets, deleteFlashcardSet } from "@/lib/data/flashcards"
 
@@ -20,25 +33,15 @@ import { listFlashcardSets, deleteFlashcardSet } from "@/lib/data/flashcards"
 interface FlashcardSet {
   id: string
   name: string
-  theme?: string // client-side deck color, attached at render time
+  toneClass?: string // client-side deck pastel class, attached at render time
   imageUrl: string | null
   flashcardCount: number
   createdAt: string
   updatedAt: string
 }
 
-// Figma-derived color tokens used on the Cards page
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  surfaceBorder: '#f2e2c4',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-  deckBlue: '#e8f4ff',
-  deckGreen: '#cff7d3',
-  deckPink: '#fdd3d0',
-  buttonBg: '#171515',
-  buttonText: '#ffffff',
-}
+// Deck pastel background classes (design tokens), cycled per deck
+const DECK_TONES = ["bg-deck-sky", "bg-deck-mint", "bg-deck-blush"]
 
 // Illustration component for deck cards
 function Illustration({ illustration = "empty" }: { illustration?: string }) {
@@ -49,7 +52,7 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
           <div className="flex-none h-[130px] rotate-[75deg] w-[136px]">
             <div className="relative size-full" data-name="Vector">
               <svg width="136" height="130" viewBox="0 0 136 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M68 65C68 65 68 65 68 65Z" fill="#7DC4FF"/>
+                <path d="M68 65C68 65 68 65 68 65Z" fill="currentColor" className="text-deck-sky" />
               </svg>
             </div>
           </div>
@@ -105,7 +108,7 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
       </div>
     );
   }
-  
+
   // Default illustration
   return (
     <div className="relative size-full flex items-center justify-center">
@@ -118,88 +121,69 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
 
 // Deck card component
 function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: () => void; onDelete: (setId: string) => void; onView: (setId: string) => void }) {
-  const [showMenu, setShowMenu] = useState(false)
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showMenu) {
-        setShowMenu(false)
-      }
-    }
-
-    if (showMenu) {
-      document.addEventListener('click', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside)
-    }
-  }, [showMenu])
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
-    <Card className="border-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.12)] hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 rounded-[20px] overflow-hidden relative" style={{ backgroundColor: set.theme }}>
+    <Card className={`gap-0 py-0 ring-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.12)] hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 rounded-xl overflow-hidden relative ${set.toneClass ?? "bg-deck-sky"}`}>
       {/* Icon button in upper right */}
       <div className="absolute top-4 right-4 z-20">
-        <div className="relative">
-          <IconButton 
-            size="24px" 
-            variant="ghost"
-            onClick={(e) => {
-              e.stopPropagation() // Prevent deck click when clicking icon
-              setShowMenu(!showMenu)
-            }}
-            className="text-[#6e6c66] hover:bg-white"
-          >
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 16 16" 
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Deck options"
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground hover:bg-card"
             >
-              <circle cx="2" cy="8" r="1.5" fill="currentColor"/>
-              <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
-              <circle cx="14" cy="8" r="1.5" fill="currentColor"/>
-            </svg>
-          </IconButton>
-
-          {/* Dropdown Menu */}
-          {showMenu && (
-            <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[120px] z-30">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onView(set.id)
-                  setShowMenu(false)
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                See all cards
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (confirm(`Are you sure you want to delete "${set.name}"? This action cannot be undone.`)) {
-                    onDelete(set.id)
-                  }
-                  setShowMenu(false)
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+                <circle cx="2" cy="8" r="1.5" fill="currentColor"/>
+                <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+                <circle cx="14" cy="8" r="1.5" fill="currentColor"/>
+              </svg>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onSelect={() => onView(set.id)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              See all cards
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDelete(true)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete flashcard set?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Are you sure you want to delete "${set.name}"? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => onDelete(set.id)}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex flex-col items-center justify-center p-6">
         {/* Illustration */}
@@ -228,20 +212,16 @@ function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: 
             )}
           </div>
         </div>
-        
+
         {/* Content */}
         <div className="text-center w-full">
-          <h3 className="text-[16px] leading-[24px] font-medium" style={{ color: FIGMA_COLORS.textPrimary }}>{set.name}</h3>
-          <p className="text-[14px] leading-[21px] mb-6" style={{ color: FIGMA_COLORS.textSecondary }}>{set.flashcardCount} cards</p>
-          
+          <h3 className="text-[16px] leading-[24px] font-medium text-foreground">{set.name}</h3>
+          <p className="text-[14px] leading-[21px] mb-6 text-muted-foreground">{set.flashcardCount} cards</p>
+
           {/* Button */}
-          <Button 
-            variant="Primary"
-            text="Start lesson"
-            onClick={onClick}
-            className="w-fit mx-auto px-5 py-3 rounded-[8px] transition-colors duration-200"
-            style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
-          />
+          <Button onClick={onClick} className="w-fit mx-auto">
+            Start lesson
+          </Button>
         </div>
       </div>
     </Card>
@@ -251,14 +231,13 @@ function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: 
 // Navigation item component
 function NavItem({ selected = false, icon, label, onClick }: { selected?: boolean; icon: string; label: string; onClick: () => void }) {
   return (
-    <button 
-      className={`flex flex-col items-center justify-center px-5 py-2 rounded-[8px] h-[61px] transition-colors duration-200 ${
-        selected 
-          ? 'bg-white shadow-sm' 
-          : 'hover:bg-white/60'
+    <button
+      className={`flex flex-col items-center justify-center px-5 py-2 rounded-sm h-[61px] text-muted-foreground transition-colors duration-200 ${
+        selected
+          ? 'bg-card shadow-sm'
+          : 'hover:bg-card/60'
       }`}
       onClick={onClick}
-      style={{ color: FIGMA_COLORS.textSecondary }}
     >
       <div className="text-2xl mb-1">{icon}</div>
       <span className="text-[14px] leading-[21px]">{label}</span>
@@ -289,8 +268,8 @@ function FlashcardsBody({
       {/* Upload Form (conditionally shown) */}
       {showUploadForm && (
         <div className="mb-8">
-          <UploadForm 
-            onUploadSuccess={onUploadSuccess} 
+          <UploadForm
+            onUploadSuccess={onUploadSuccess}
             onClose={onCloseUpload}
           />
         </div>
@@ -301,37 +280,33 @@ function FlashcardsBody({
         <div className="space-y-6">
           {flashcardSets.length === 0 ? (
             // Empty State
-            <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
+            <Card className="gap-0 py-0 ring-0 bg-card shadow-lg rounded-xl overflow-hidden">
               <div className="p-8 text-center">
                 <div className="mb-6">
                   <div className="w-32 h-32 bg-white/70 rounded-full flex items-center justify-center mx-auto shadow-inner">
                     <span className="text-6xl">📚</span>
                   </div>
                 </div>
-                
-                <h2 className="text-xl font-semibold mb-2" style={{ color: FIGMA_COLORS.textPrimary }}>No flashcard sets yet</h2>
-                <p className="mb-8" style={{ color: FIGMA_COLORS.textSecondary }}>Create your first set to start learning Cantonese</p>
-                
-                <Button 
-                  variant="Primary"
-                  text="Upload First Set"
-                  onClick={() => onCloseUpload()}
-                  className="font-medium py-3 px-8 rounded-[8px] transition-colors duration-200"
-                  style={{ backgroundColor: FIGMA_COLORS.buttonBg, color: FIGMA_COLORS.buttonText }}
-                />
+
+                <h2 className="text-xl font-semibold mb-2 text-foreground">No flashcard sets yet</h2>
+                <p className="mb-8 text-muted-foreground">Create your first set to start learning Cantonese</p>
+
+                <Button onClick={() => onCloseUpload()} className="px-8 font-medium">
+                  Upload First Set
+                </Button>
               </div>
             </Card>
           ) : (
             // Flashcard Sets
             flashcardSets.map((set, idx) => {
-              // Cycle Figma deck background colors
-              const bg = [FIGMA_COLORS.deckBlue, FIGMA_COLORS.deckGreen, FIGMA_COLORS.deckPink][idx % 3]
-              // Attach color to set.theme so Deck can read it without changing props
-              const themedSet = { ...set, theme: bg }
+              // Cycle deck pastel token classes
+              const toneClass = DECK_TONES[idx % DECK_TONES.length]
+              // Attach class to set.toneClass so Deck can read it without changing props
+              const themedSet = { ...set, toneClass }
               return (
-                <Deck 
-                  key={set.id} 
-                  set={themedSet} 
+                <Deck
+                  key={set.id}
+                  set={themedSet}
                   onClick={() => onDeckClick(set.id)}
                   onDelete={onDeleteDeck}
                   onView={onViewDeck}
@@ -349,7 +324,7 @@ export default function FlashcardsPage() {
   // Authentication and navigation
   const { user: session, status } = useUser()
   const router = useRouter()
-  
+
   // Component state
   const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -415,12 +390,12 @@ export default function FlashcardsPage() {
   // Show loading while checking authentication
   if (status === "loading" || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-2xl">📚</span>
           </div>
-          <p className="text-lg font-medium" style={{ color: FIGMA_COLORS.textSecondary }}>Loading flashcards...</p>
+          <p className="text-lg font-medium text-muted-foreground">Loading flashcards...</p>
         </div>
       </div>
     )
@@ -432,10 +407,10 @@ export default function FlashcardsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
+    <div className="min-h-screen bg-background">
       {/* Main Content */}
       <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
-        <Suspense fallback={<div />}> 
+        <Suspense fallback={<div />}>
           <FlashcardsBody
             flashcardSets={flashcardSets}
             onUploadSuccess={handleUploadSuccess}

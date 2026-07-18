@@ -3,7 +3,7 @@
 // This teaches: React component props, conditional rendering, CSS styling
 
 import React, { useState, useEffect } from 'react'
-import { IconButton } from '@/components/legacy'
+import { Button } from '@/components/ui/button'
 import { speakCantonese, stopSpeech, isTTSSupported } from '@/utils/textToSpeech'
 import { toast } from 'sonner'
 
@@ -176,7 +176,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div
-        className={`max-w-[85%] rounded-[12px] ${isUser ? 'bg-white border border-[#efefef]' : 'bg-[#dff5e8]'} shadow-sm`}
+        className={`max-w-[85%] rounded-md ${isUser ? 'bg-card border border-bubble-assistant' : 'bg-bubble-user'} shadow-sm`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -190,17 +190,19 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
         <div className="px-4 py-3">
           <div className="flex items-start gap-3">
             {ttsSupported && (
-              <IconButton
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
                 aria-label={isSpeaking ? 'Stop pronunciation' : 'Play pronunciation'}
-                size="32px"
-                className="rounded-full text-[#6e6c66] hover:bg-transparent focus:bg-transparent"
+                className="rounded-full text-muted-foreground hover:bg-transparent focus:bg-transparent"
                 onClick={(e) => { e.stopPropagation(); void handleSpeak() }}
                 title={isSpeaking ? 'Stop pronunciation' : 'Listen'}
               >
                 <span className="text-[14px]">{isSpeaking ? '⏸' : '▶'}</span>
-              </IconButton>
+              </Button>
             )}
-            <div className={`text-[14px] leading-[21px] ${isUser ? 'text-[#1e1e1e]' : 'text-[#1e1e1e]'}`}>
+            <div className="text-[14px] leading-[21px] text-foreground">
               {showingTranslation ? (translationText ?? (isTranslating ? 'Translating…' : content)) : content}
             </div>
           </div>

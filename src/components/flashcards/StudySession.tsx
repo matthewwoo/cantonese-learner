@@ -4,8 +4,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/legacy/Button"
-import { Card } from "@/components/legacy/Card"
 import { ResponseQuality } from "@/lib/srs/sm2"
 import { toast } from "sonner"
 import QuestionCard from "./QuestionCard"
@@ -126,7 +124,7 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
   }
 
   return (
-    <div className="min-h-screen bg-[#f9f2ec] relative"> 
+    <div className="min-h-screen bg-background relative">
     
       {/* Main Content */}
       <div className="flex flex-col items-center justify-center p-4">

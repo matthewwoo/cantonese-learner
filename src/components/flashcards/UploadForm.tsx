@@ -4,9 +4,13 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Button } from "@/components/legacy/Button"
-import { Input } from "@/components/legacy/Input"
-import { Card } from "@/components/legacy/Card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/shared/spinner"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { createSetWithCards } from "@/lib/data/flashcards"
@@ -312,55 +316,71 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
   }
 
   return (
-    <Card className="bg-white border-0 shadow-lg rounded-[20px] overflow-hidden">
-      <div className="p-6">
-        {/* Header */}
-        <div className="relative mb-4">
-          {onClose && (
-            <button
+    <Card className="border-0 shadow-lg overflow-hidden [--card-spacing:--spacing(6)]">
+      {/* Header */}
+      <CardHeader>
+        <CardTitle className="text-[24px] leading-[1.2] font-semibold text-foreground">
+          Create new deck
+        </CardTitle>
+        {onClose && (
+          <CardAction>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="absolute top-0 right-0 w-8 h-8 rounded-full flex items-center justify-center text-[#6e6c66] hover:bg-[#f9f2ec] transition-colors"
+              className="rounded-full text-muted-foreground hover:bg-background"
               aria-label="Close"
             >
               ✕
-            </button>
-          )}
-          <h2 className="text-[24px] leading-[1.2] font-semibold text-[#1e1e1e] font-['Inter']">Create new deck</h2>
-          <div className="mt-3 border-t" style={{ borderColor: '#f2e2c4' }} />
-        </div>
+            </Button>
+          </CardAction>
+        )}
+        <Separator className="mt-3 col-span-full" />
+      </CardHeader>
 
+      <CardContent>
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Mode Toggle */}
           <div className="py-2">
-            <div className="inline-flex rounded-[10px] overflow-hidden border" style={{ borderColor: '#f2e2c4' }}>
-              <button
+            <div className="inline-flex rounded-md overflow-hidden border border-border">
+              <Button
                 type="button"
+                size="compact"
+                variant={mode === 'upload' ? 'default' : 'ghost'}
                 onClick={() => setMode('upload')}
-                className={`px-4 py-2 text-sm ${mode === 'upload' ? 'bg-[#171515] text-white' : 'bg-white text-[#171515]'}`}
+                className="rounded-none px-4"
               >
                 Upload CSV
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                size="compact"
+                variant={mode === 'generate' ? 'default' : 'ghost'}
                 onClick={() => setMode('generate')}
-                className={`px-4 py-2 text-sm ${mode === 'generate' ? 'bg-[#171515] text-white' : 'bg-white text-[#171515]'}`}
+                className="rounded-none px-4"
               >
                 Generate with AI
-              </button>
+              </Button>
             </div>
           </div>
           {/* Set Name */}
           <div className="py-5">
-            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Set Name *</label>
+            <Label
+              htmlFor="set-name"
+              className="text-[14px] leading-[21px] font-normal text-muted-foreground mb-2"
+            >
+              Set Name *
+            </Label>
             <div className="relative">
               <Input
+                id="set-name"
                 type="text"
                 placeholder="e.g., Daily Conversations"
                 value={setName}
                 onChange={(e) => setSetName(e.target.value)}
                 required
-                className="h-12 px-3 rounded-[8px] border bg-white text-[#171515] placeholder:text-[#7d7a74] focus:ring-[#171515] focus:border-[#171515]"
-                style={{ borderColor: '#f9f2ec' }}
+                className="h-12 px-3 rounded-sm bg-card text-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
@@ -368,8 +388,13 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
           {/* CSV File - Custom control (Upload mode only) */}
           {mode === 'upload' && (
             <div className="py-5">
-              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">CSV File *</label>
-              <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
+              <Label
+                htmlFor="csv-file"
+                className="text-[14px] leading-[21px] font-normal text-muted-foreground mb-2"
+              >
+                CSV File *
+              </Label>
+              <div className="bg-card relative flex items-center h-[62px] px-3 rounded-sm border border-border">
                 <input
                   id="csv-file"
                   ref={fileInputRef}
@@ -378,46 +403,52 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <button
+                <Button
                   type="button"
+                  size="xs"
                   onClick={openFilePicker}
-                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-medium px-2 py-1 rounded-[8px]"
+                  className="bg-muted-foreground text-background hover:bg-muted-foreground/90"
                 >
                   Choose File
-                </button>
-                <div className="px-3 text-[14px] leading-[21px] text-[#171515] truncate">
+                </Button>
+                <div className="px-3 text-[14px] leading-[21px] text-foreground truncate">
                   {csvFile ? csvFile.name : 'No file chosen'}
                 </div>
               </div>
-              <p className="text-xs text-[#7d7a74] mt-2">Maximum file size: 5MB</p>
+              <p className="text-xs text-muted-foreground mt-2">Maximum file size: 5MB</p>
             </div>
           )}
 
           {/* Sample CSV download / CSV format helper */}
           {mode === 'upload' ? (
             <div className="py-5">
-              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Sample CSV</label>
-              <div className="bg-white relative flex items-center h-[62px] px-3 rounded-[8px]" style={{ border: '1px solid #f9f2ec' }}>
-                <button
+              <Label className="text-[14px] leading-[21px] font-normal text-muted-foreground mb-2">
+                Sample CSV
+              </Label>
+              <div className="bg-card relative flex items-center h-[62px] px-3 rounded-sm border border-border">
+                <Button
                   type="button"
+                  size="xs"
                   onClick={downloadSampleCsv}
-                  className="bg-[#5a5a5a] text-white text-[10px] leading-[14px] font-medium px-2 py-1 rounded-[8px]"
+                  className="bg-muted-foreground text-background hover:bg-muted-foreground/90"
                 >
                   Download
-                </button>
-                <div className="px-3 text-[14px] leading-[21px] text-[#171515]">
+                </Button>
+                <div className="px-3 text-[14px] leading-[21px] text-foreground">
                   Get a template to format your cards
                 </div>
               </div>
             </div>
           ) : (
             <div className="py-5">
-              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">CSV Format Needed</label>
-              <div className="rounded-[12px] p-4" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
-                <p className="text-[14px] leading-[21px] text-[#171515]">
+              <Label className="text-[14px] leading-[21px] font-normal text-muted-foreground mb-2">
+                CSV Format Needed
+              </Label>
+              <div className="rounded-md p-4 bg-background border border-border">
+                <p className="text-[14px] leading-[21px] text-foreground">
                   Chinese Word, English Translation, Pronunciation, Example Sentence (English), Example Sentence (Chinese)
                 </p>
-                <p className="text-xs text-[#7d7a74] mt-1">AI will generate 100 rows in this format using Traditional characters and Jyutping.</p>
+                <p className="text-xs text-muted-foreground mt-1">AI will generate 100 rows in this format using Traditional characters and Jyutping.</p>
               </div>
             </div>
           )}
@@ -425,11 +456,13 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
           {/* Seed Words (Generate mode only) */}
           {mode === 'generate' && (
             <div className="py-5">
-              <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Cantonese Words (Optional)</label>
-              <div className="rounded-[12px] p-4 space-y-3" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
-                <p className="text-xs text-[#6e6c66]">Add Traditional characters and Jyutping to guide generation. Leave empty to let AI choose.</p>
+              <Label className="text-[14px] leading-[21px] font-normal text-muted-foreground mb-2">
+                Cantonese Words (Optional)
+              </Label>
+              <div className="rounded-md p-4 space-y-3 bg-background border border-border">
+                <p className="text-xs text-muted-foreground">Add Traditional characters and Jyutping to guide generation. Leave empty to let AI choose.</p>
                 {seedWords.length === 0 && (
-                  <div className="text-xs text-[#7d7a74]">No seed words added.</div>
+                  <div className="text-xs text-muted-foreground">No seed words added.</div>
                 )}
                 {seedWords.map((w, idx) => (
                   <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -442,8 +475,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                         next[idx] = { ...next[idx], traditional: e.target.value }
                         setSeedWords(next)
                       }}
-                      className="h-10 px-3 rounded-[8px] border bg-white text-[#171515] placeholder:text-[#7d7a74]"
-                      style={{ borderColor: '#f9f2ec' }}
+                      className="h-10 px-3 rounded-sm bg-card text-foreground placeholder:text-muted-foreground"
                     />
                     <div className="flex gap-2">
                       <Input
@@ -455,28 +487,29 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                           next[idx] = { ...next[idx], jyutping: e.target.value }
                           setSeedWords(next)
                         }}
-                        className="h-10 px-3 rounded-[8px] border bg-white text-[#171515] placeholder:text-[#7d7a74]"
-                        style={{ borderColor: '#f9f2ec' }}
+                        className="h-10 px-3 rounded-sm bg-card text-foreground placeholder:text-muted-foreground"
                       />
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => setSeedWords(seedWords.filter((_, i) => i !== idx))}
-                        className="px-3 rounded-[8px] text-[#6e6c66] hover:bg-[#f5f5f5]"
+                        className="h-10 rounded-sm text-muted-foreground hover:bg-secondary"
                         aria-label="Remove seed word"
                       >
                         ✕
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
                 <div className="flex">
                   <Button
                     type="button"
-                    variant="Secondary"
-                    text="Add word"
+                    variant="secondary"
                     onClick={() => setSeedWords([...seedWords, { traditional: '', jyutping: '' }])}
-                    className="bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
-                  />
+                  >
+                    Add word
+                  </Button>
                 </div>
               </div>
             </div>
@@ -484,73 +517,79 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
 
           {/* Image Generation (optional) */}
           <div className="py-2">
-            <label className="block text-[14px] leading-[21px] text-[#7d7a74] mb-2">Deck Image (Optional)</label>
+            <Label className="text-[14px] leading-[21px] font-normal text-muted-foreground mb-2">
+              Deck Image (Optional)
+            </Label>
             {!showImageGeneration ? (
               <Button
                 type="button"
-                variant="Secondary"
-                text={isGeneratingImage ? 'Generating...' : 'Generate Image for Deck'}
+                variant="secondary"
                 onClick={generateImage}
                 disabled={isGeneratingImage || !setName.trim()}
-                className="w-full bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
-              />
+                className="w-full"
+              >
+                {isGeneratingImage && <Spinner size="sm" />}
+                {isGeneratingImage ? 'Generating...' : 'Generate Image for Deck'}
+              </Button>
             ) : (
               <div className="space-y-3">
                 <div className="flex justify-end">
                   <Button
                     type="button"
-                    variant="Secondary"
-                    text="✕ Close"
+                    variant="secondary"
                     onClick={() => {
                       setShowImageGeneration(false)
                       setGeneratedImage(null)
                     }}
-                    className="bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
-                  />
+                  >
+                    ✕ Close
+                  </Button>
                 </div>
 
                 {generatedImage ? (
-                  <div className="rounded-[12px] p-3" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
+                  <div className="rounded-md p-3 bg-background border border-border">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-[#171515] flex items-center">🖼️ Generated Image</h4>
+                      <h4 className="font-medium text-foreground flex items-center">🖼️ Generated Image</h4>
                       <Button
                         type="button"
-                        variant="Secondary"
-                        text={isGeneratingImage ? 'Generating...' : 'Regenerate'}
+                        variant="secondary"
                         onClick={regenerateImage}
                         disabled={isGeneratingImage}
-                        className="text-sm bg-[#f5f5f5] hover:bg-[#e5e5e5] text-[#1e1e1e]"
-                      />
+                        className="text-sm"
+                      >
+                        {isGeneratingImage && <Spinner size="sm" />}
+                        {isGeneratingImage ? 'Generating...' : 'Regenerate'}
+                      </Button>
                     </div>
                     <div className="relative">
                       <img
                         src={generatedImage.url}
                         alt="Generated deck image"
-                        className="w-full h-48 object-cover rounded-[8px]"
+                        className="w-full h-48 object-cover rounded-sm"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none'
                           const fallback = document.createElement('div')
-                          fallback.className = 'w-full h-48 rounded-[8px] flex items-center justify-center text-[#7d7a74]'
+                          fallback.className = 'w-full h-48 rounded-sm flex items-center justify-center text-muted-foreground'
                           fallback.innerHTML = '🖼️ Image failed to load'
                           e.currentTarget.parentNode?.appendChild(fallback)
                         }}
                       />
                     </div>
-                    <p className="text-xs text-[#6e6c66] mt-2 italic">"{generatedImage.prompt}"</p>
+                    <p className="text-xs text-muted-foreground mt-2 italic">"{generatedImage.prompt}"</p>
                   </div>
                 ) : (
-                  <div className="rounded-[12px] p-4 text-center" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
-                    <p className="text-[#6e6c66]">No image generated yet</p>
+                  <div className="rounded-md p-4 text-center bg-background border border-border">
+                    <p className="text-muted-foreground">No image generated yet</p>
                   </div>
                 )}
 
                 {isGeneratingImage && !generatedImage && (
-                  <div className="rounded-[12px] p-6 text-center" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
-                    <div className="w-16 h-16 bg-[#FFEFD8] rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
+                  <div className="rounded-md p-6 text-center bg-background border border-border">
+                    <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
                       <span className="text-2xl">🎨</span>
                     </div>
-                    <p className="text-[#171515] font-medium">Generating your custom image...</p>
-                    <p className="text-sm text-[#6e6c66] mt-1">This may take a few moments</p>
+                    <p className="text-foreground font-medium">Generating your custom image...</p>
+                    <p className="text-sm text-muted-foreground mt-1">This may take a few moments</p>
                   </div>
                 )}
               </div>
@@ -559,36 +598,36 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
 
           {/* Preview */}
           {previewData.length > 0 && (
-            <div className="rounded-[12px] p-4" style={{ backgroundColor: '#f9f2ec', border: '1px solid #f2e2c4' }}>
-              <h3 className="font-medium text-[#171515] mb-3">Preview (first 3 cards)</h3>
+            <div className="rounded-md p-4 bg-background border border-border">
+              <h3 className="font-medium text-foreground mb-3">Preview (first 3 cards)</h3>
               <div className="space-y-3">
                 {previewData.map((card, index) => (
-                  <div key={index} className="bg-white p-3 rounded-[8px]" style={{ border: '1px solid #f2e2c4' }}>
+                  <div key={index} className="bg-card p-3 rounded-sm border border-border">
                     <div className="grid grid-cols-1 gap-2 text-[14px] leading-[21px]">
-                      <div className="flex items-center">
-                        <span className="text-[#7d7a74] w-24">Chinese:</span>
-                        <span className="text-[#171515]">{card.chineseWord}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="w-24 shrink-0 justify-start">Chinese:</Badge>
+                        <span className="text-foreground">{card.chineseWord}</span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="text-[#7d7a74] w-24">English:</span>
-                        <span className="text-[#171515]">{card.englishTranslation}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="w-24 shrink-0 justify-start">English:</Badge>
+                        <span className="text-foreground">{card.englishTranslation}</span>
                       </div>
                       {card.pronunciation && (
-                        <div className="flex items-center">
-                          <span className="text-[#7d7a74] w-24">Pronunciation:</span>
-                          <span className="text-[#171515]">{card.pronunciation}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="w-24 shrink-0 justify-start">Pronunciation:</Badge>
+                          <span className="text-foreground">{card.pronunciation}</span>
                         </div>
                       )}
                       {card.exampleSentenceEnglish && (
-                        <div className="flex items-start">
-                          <span className="text-[#7d7a74] w-24 mt-1">Example (EN):</span>
-                          <span className="text-[#171515]">{card.exampleSentenceEnglish}</span>
+                        <div className="flex items-start gap-2">
+                          <Badge variant="secondary" className="w-24 shrink-0 justify-start mt-0.5">Example (EN):</Badge>
+                          <span className="text-foreground">{card.exampleSentenceEnglish}</span>
                         </div>
                       )}
                       {card.exampleSentenceChinese && (
-                        <div className="flex items-start">
-                          <span className="text-[#7d7a74] w-24 mt-1">Example (CN):</span>
-                          <span className="text-[#171515]">{card.exampleSentenceChinese}</span>
+                        <div className="flex items-start gap-2">
+                          <Badge variant="secondary" className="w-24 shrink-0 justify-start mt-0.5">Example (CN):</Badge>
+                          <span className="text-foreground">{card.exampleSentenceChinese}</span>
                         </div>
                       )}
                     </div>
@@ -600,13 +639,15 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
 
           {/* Submit */}
           <Button
-            variant="Primary"
-            text={isLoading ? (mode === 'upload' ? 'Saving...' : 'Generating...') : (mode === 'upload' ? 'Save' : 'Generate Deck')}
+            type="submit"
             className="w-full"
             disabled={isLoading || (mode === 'upload' && !csvFile)}
-          />
+          >
+            {isLoading && <Spinner size="sm" tone="inverse" />}
+            {isLoading ? (mode === 'upload' ? 'Saving...' : 'Generating...') : (mode === 'upload' ? 'Save' : 'Generate Deck')}
+          </Button>
         </form>
-      </div>
+      </CardContent>
     </Card>
   )
 }

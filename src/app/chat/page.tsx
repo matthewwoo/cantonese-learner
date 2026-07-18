@@ -184,8 +184,8 @@ function ChatPageContent() {
   // ============ LOADING STATE ============
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f9f2ec]">
-        <p className="text-lg text-[#6e6c66]">Loading chat...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-lg text-muted-foreground">Loading chat...</p>
       </div>
     )
   }
@@ -197,7 +197,7 @@ function ChatPageContent() {
 
   // ============ MAIN CHAT UI ============
   return (
-    <div className="min-h-screen bg-[#f9f2ec]">
+    <div className="min-h-screen bg-background">
       {/* Messages area */}
       <div className="mx-auto w-full max-w-[480px] px-4 pt-[88px] pb-[220px]">
         {/* Welcome message */}
@@ -212,7 +212,7 @@ function ChatPageContent() {
             />
           ))}
           {isLoading && (
-            <div className="text-[#6e6c66]">AI is thinking…</div>
+            <div className="text-muted-foreground">AI is thinking…</div>
           )}
           <div ref={messagesEndRef} />
         </div>

@@ -7,16 +7,9 @@ import { useUser } from "@/lib/supabase/use-user"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Card } from "@/components/legacy/Card"
-import { LoadingSpinner } from "@/components/legacy/LoadingSpinner"
-import { QuickActions } from "@/components/legacy/QuickActions"
-
-// Figma-derived color tokens used on the Cards page
-const FIGMA_COLORS = {
-  surfaceBackground: '#f9f2ec',
-  textPrimary: '#171515',
-  textSecondary: '#6e6c66',
-}
+import { Card, CardContent } from "@/components/ui/card"
+import { Spinner } from "@/components/shared/spinner"
+import { QuickActions } from "@/components/shared/quick-actions"
 
 export default function DashboardPage() {
   const { user, status } = useUser()
@@ -32,13 +25,13 @@ export default function DashboardPage() {
   // Show loading while checking authentication
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <LoadingSpinner size="xl" className="mb-4" />
-          <p className="text-lg font-medium" style={{ color: FIGMA_COLORS.textSecondary }}>
+          <Spinner size="xl" className="mb-4" />
+          <p className="text-lg font-medium text-muted-foreground">
             Loading your learning dashboard...
           </p>
-          <p className="text-sm mt-2" style={{ color: FIGMA_COLORS.textSecondary }}>
+          <p className="text-sm mt-2 text-muted-foreground">
             正在載入您的學習儀表板...
           </p>
         </div>
@@ -119,28 +112,25 @@ export default function DashboardPage() {
       labelChinese: "登出",
       icon: "🚪",
       onClick: handleSignOut,
-      variant: "Secondary" as const,
+      variant: "secondary" as const,
     }
   ]
 
   return (
-    <div 
-      className="min-h-screen p-8"
-      style={{ backgroundColor: FIGMA_COLORS.surfaceBackground }}
-    >
+    <div className="min-h-screen p-8 bg-background">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Welcome Header */}
-        <Card className="p-8 text-center">
-          <h1 className="text-4xl font-bold mb-3" style={{ color: FIGMA_COLORS.textPrimary }}>
-            Cantonese Learner
-          </h1>
-          {user.user_metadata?.name && (
-            <p className="break-words whitespace-normal" style={{ color: FIGMA_COLORS.textSecondary }}>
-              Name: <strong className="break-words" style={{ color: FIGMA_COLORS.textPrimary }}>{user.user_metadata.name}</strong>
-            </p>
-          )}
-        
-          
+        <Card className="text-center">
+          <CardContent className="p-8">
+            <h1 className="text-4xl font-bold mb-3 text-foreground">
+              Cantonese Learner
+            </h1>
+            {user.user_metadata?.name && (
+              <p className="break-words whitespace-normal text-muted-foreground">
+                Name: <strong className="break-words text-foreground">{user.user_metadata.name}</strong>
+              </p>
+            )}
+          </CardContent>
         </Card>
 
         <QuickActions

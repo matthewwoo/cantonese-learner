@@ -6,9 +6,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/legacy/Button"
-import { Input } from "@/components/legacy/Input"
-import { Card } from "@/components/legacy/Card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import { toast } from "sonner"
 
@@ -56,58 +57,66 @@ export default function SignUpForm() {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto p-6">
-      {/* Bilingual header */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">開始學習</h1>
-        <p className="text-gray-600 mt-1">Start lesson</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Input
-            type="text"
-            placeholder="Name (optional)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+    <Card className="w-full max-w-md mx-auto">
+      <CardContent className="p-6">
+        {/* Bilingual header */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-foreground">開始學習</h1>
+          <p className="text-muted-foreground mt-1">Start lesson</p>
         </div>
 
-        <div>
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="signup-name">Name (optional)</Label>
+            <Input
+              id="signup-name"
+              type="text"
+              placeholder="Name (optional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
 
-        <div>
-          <Input
-            type="password"
-            placeholder="Password (min 6 characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-        </div>
+          <div className="space-y-2">
+            <Label htmlFor="signup-email">Email</Label>
+            <Input
+              id="signup-email"
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
 
-        <Button
-          variant="Primary"
-          text={isLoading ? "Creating Account..." : "Sign Up"}
-          className="w-full"
-          disabled={isLoading}
-        />
-      </form>
+          <div className="space-y-2">
+            <Label htmlFor="signup-password">Password</Label>
+            <Input
+              id="signup-password"
+              type="password"
+              placeholder="Password (min 6 characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          </div>
 
-      <p className="text-center mt-4 text-sm text-gray-600">
-        Already have an account?{" "}
-        <Link href="/auth/signin" className="text-blue-600 hover:underline">
-          Sign in
-        </Link>
-      </p>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Creating Account..." : "Sign Up"}
+          </Button>
+        </form>
+
+        <p className="text-center mt-4 text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link
+            href="/auth/signin"
+            className="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground"
+          >
+            Sign in
+          </Link>
+        </p>
+      </CardContent>
     </Card>
   )
 }
