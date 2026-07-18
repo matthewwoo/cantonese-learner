@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { ttsService, speakCantonese, stopSpeech } from '@/utils/textToSpeech';
 import { speakAndPlayCantonese as speakWithOpenAI, stopOpenAITTS, isOpenAITTSAvailable } from '@/utils/openaiTTS';
 import ChatMessage from '@/components/chat/ChatMessage';

@@ -5,11 +5,12 @@
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google" // Google Fonts integration
 import "./globals.css"                   // Global CSS styles (includes Tailwind)
-import Providers from "./providers"       // Our providers component
+import Providers from "./providers"
+import { cn } from "@/lib/utils";
 
-// Load the Inter font from Google Fonts
-// This creates a font object we can use in our CSS
-const inter = Inter({ subsets: ["latin"] })
+// Inter is the app font, exposed as a CSS variable consumed by
+// --font-sans in globals.css
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 // Metadata that appears in the browser tab and search engines
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#0f766e",
+  themeColor: "#f9f2ec",
 };
 
 // This is the root layout component
@@ -38,13 +39,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      {/* This generates the <html> tag */}
-      {/* 
-        This generates the <body> tag
-        className={inter.className} applies the Inter font to all text
-      */}
-      <body className={inter.className} style={{ backgroundColor: '#f9f2ec' }}>
+    <html lang="en" className={cn("font-sans", inter.variable)}>
+      {/* Theme (background, text color, font) comes from globals.css tokens */}
+      <body className="bg-background text-foreground">
         {/* 
           Providers component wraps all pages with:
           - NextAuth session management 

@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react'
 import { IconButton } from '@/components/legacy'
 import { speakCantonese, stopSpeech, isTTSSupported } from '@/utils/textToSpeech'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 
 // Define the props (properties) this component expects
 interface ChatMessageProps {

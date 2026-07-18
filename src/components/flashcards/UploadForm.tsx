@@ -7,7 +7,7 @@ import { useRef, useState } from "react"
 import { Button } from "@/components/legacy/Button"
 import { Input } from "@/components/legacy/Input"
 import { Card } from "@/components/legacy/Card"
-import { toast } from "react-hot-toast"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { createSetWithCards } from "@/lib/data/flashcards"
 

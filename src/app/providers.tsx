@@ -5,7 +5,7 @@
 "use client" // Must be client component since providers use React Context
 
 import { useUser } from "@/lib/supabase/use-user" // Supabase auth state
-import { Toaster } from "react-hot-toast" // Provides toast notification system
+import { Toaster } from "@/components/ui/sonner" // Toast notification system
 import BottomNav from "@/components/legacy/BottomNav"
 import TopHeader from "@/components/legacy/TopHeader"
 import { usePathname } from "next/navigation"
@@ -52,19 +52,10 @@ export default function Providers({
       </AuthenticatedNavWrapper>
 
       {/*
-        Toaster component renders toast notifications anywhere in the app
-        When you call toast.success() or toast.error(), this component displays them
+        Toaster (sonner) renders toast notifications anywhere in the app.
+        Styling comes from the design-system tokens in globals.css.
       */}
-      <Toaster
-        position="top-right"          // Show toasts in top-right corner
-        toastOptions={{
-          duration: 4000,             // Show each toast for 4 seconds
-          style: {
-            background: "#fff",       // White background
-            color: "#363636",         // Dark text color
-          },
-        }}
-      />
+      <Toaster position="top-right" duration={4000} />
     </>
   )
 }

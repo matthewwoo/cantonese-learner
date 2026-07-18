@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/lib/supabase/use-user'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { Button } from '@/components/legacy/Button'
 import { Card } from '@/components/legacy/Card'
@@ -101,7 +101,7 @@ export default function ArticlesPage() {
       return
     }
     setIsAdding(true)
-    let loadingToast: string | undefined
+    let loadingToast: string | number | undefined
     try {
       if (articleUrl && !articleContent.trim()) {
         loadingToast = toast.loading('Fetching article content from URL...')

@@ -10,7 +10,7 @@ import { Button } from "@/components/legacy/Button"
 import { Input } from "@/components/legacy/Input"
 import { Card } from "@/components/legacy/Card"
 import Link from "next/link"
-import { toast } from "react-hot-toast"
+import { toast } from "sonner"
 
 export default function SignUpForm() {
   const [email, setEmail] = useState("")

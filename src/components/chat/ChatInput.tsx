@@ -5,7 +5,7 @@
 import React, { useState, KeyboardEvent, useEffect } from 'react'
 import { Button } from '@/components/legacy/Button'
 import { startOpenAIRecording, stopOpenAIRecording, isOpenAISTTSupported } from '@/utils/openaiSpeechToText'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 
 // Props interface - defines what properties this component accepts
 interface ChatInputProps {

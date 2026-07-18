@@ -1,101 +1,156 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens — single source of truth.
+ *
+ * The app's look is the "warm" palette from the Figma designs:
+ * cream background, near-black primary, sand borders, pastel deck colors.
+ * Change the palette HERE (both :root and .dark) — never in components.
+ * See DESIGN.md for the full reference.
+ */
 :root {
-  /* Design System Tokens */
-  --background: #ffffff;
-  --foreground: #171717;
-  
-  /* Primary Colors */
-  --color-primary-blue: #3B82F6;
-  --color-primary-purple: #8B5CF6;
-  --color-primary-green: #16A34A;
-  --color-primary-cyan: #0891B2;
-  --color-primary-orange: #EA580C;
-  
-  /* Neutral Colors */
-  --color-neutral-white: #FFFFFF;
-  --color-neutral-gray-50: #F9FAFB;
-  --color-neutral-gray-100: #F3F4F6;
-  --color-neutral-gray-200: #E5E7EB;
-  --color-neutral-gray-300: #D1D5DB;
-  --color-neutral-gray-400: #9CA3AF;
-  --color-neutral-gray-500: #6B7280;
-  --color-neutral-gray-600: #4B5563;
-  --color-neutral-gray-700: #374151;
-  --color-neutral-gray-800: #1F2937;
-  --color-neutral-gray-900: #111827;
-  
-  /* Semantic Colors */
-  --color-semantic-success: #10B981;
-  --color-semantic-warning: #F59E0B;
-  --color-semantic-error: #EF4444;
-  --color-semantic-info: #3B82F6;
-  
-  /* Typography */
-  --font-family-sans: Inter, Arial, Helvetica, sans-serif;
-  --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-  
-  /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-2xl: 3rem;
-  --spacing-3xl: 4rem;
-  
-  /* Border Radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-full: 9999px;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  
-  /* Animation */
-  --animation-duration-fast: 150ms;
-  --animation-duration-normal: 300ms;
-  --animation-duration-slow: 500ms;
-  --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --background: #f9f2ec;            /* warm cream */
+  --foreground: #171515;            /* near-black */
+  --card: #ffffff;
+  --card-foreground: #171515;
+  --popover: #ffffff;
+  --popover-foreground: #171515;
+  --primary: #171515;               /* primary buttons / emphasis */
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;             /* secondary buttons */
+  --secondary-foreground: #1e1e1e;
+  --muted: #f2e9dd;                 /* warm muted surface */
+  --muted-foreground: #6e6c66;      /* secondary text */
+  --accent: #f6ead7;                /* warm hover surface */
+  --accent-foreground: #171515;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #f2e2c4;                /* warm sand border */
+  --input: #f2e2c4;
+  --ring: #171515;
+
+  /* Deck pastels (flashcard deck backgrounds, feature accents) */
+  --deck-sky: #e8f4ff;
+  --deck-mint: #cff7d3;
+  --deck-blush: #fdd3d0;
+
+  /* Chat bubbles */
+  --bubble-assistant: #efefef;
+  --bubble-user: #dff5e8;
+
+  /* Radius scale: 8 / 12 / 16 / 20px (Figma) via the calcs in @theme */
+  --radius: 1rem;
+
+  --chart-1: #e8f4ff;
+  --chart-2: #cff7d3;
+  --chart-3: #fdd3d0;
+  --chart-4: #f2e2c4;
+  --chart-5: #6e6c66;
+}
+
+.dark {
+  /* Warm-tinted dark theme. Nothing toggles .dark yet — these values exist
+     so shadcn components render correctly when a theme toggle ships. */
+  --background: #1c1917;
+  --foreground: #f5efe9;
+  --card: #262220;
+  --card-foreground: #f5efe9;
+  --popover: #262220;
+  --popover-foreground: #f5efe9;
+  --primary: #f9f2ec;
+  --primary-foreground: #171515;
+  --secondary: #2e2a27;
+  --secondary-foreground: #f5efe9;
+  --muted: #2e2a27;
+  --muted-foreground: #a8a29e;
+  --accent: #37322d;
+  --accent-foreground: #f5efe9;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #3a332c;
+  --input: #3a332c;
+  --ring: #f5efe9;
+
+  --deck-sky: #1e3a5f;
+  --deck-mint: #1e4d2b;
+  --deck-blush: #5f2b28;
+
+  --bubble-assistant: #2e2a27;
+  --bubble-user: #1e4d2b;
+
+  --chart-1: #1e3a5f;
+  --chart-2: #1e4d2b;
+  --chart-3: #5f2b28;
+  --chart-4: #3a332c;
+  --chart-5: #a8a29e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-family-sans);
-  --font-mono: var(--font-family-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-deck-sky: var(--deck-sky);
+  --color-deck-mint: var(--deck-mint);
+  --color-deck-blush: var(--deck-blush);
+  --color-bubble-assistant: var(--bubble-assistant);
+  --color-bubble-user: var(--bubble-user);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, Menlo, monospace;
+  --font-heading: var(--font-sans);
+
+  /* Figma radius scale: sm=8px, md=12px, lg=16px, xl=20px */
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-family-sans);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    line-height: 1.5;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* Focus styles for accessibility */
 *:focus-visible {
-  outline: 2px solid var(--color-primary-blue);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
-}
-
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
 }
 
 /* Custom scrollbar */
@@ -104,14 +159,14 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-neutral-gray-100);
+  background: var(--muted);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-neutral-gray-300);
-  border-radius: var(--radius-full);
+  background: var(--border);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-neutral-gray-400);
+  background: var(--muted-foreground);
 }

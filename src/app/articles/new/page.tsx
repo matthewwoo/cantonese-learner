@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useUser } from '@/lib/supabase/use-user'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { Card } from '@/components/legacy/Card'
 import { Button } from '@/components/legacy/Button'
 
@@ -85,7 +85,7 @@ export default function NewArticlePage() {
       return
     }
     setIsSubmitting(true)
-    let loadingToast: string | undefined
+    let loadingToast: string | number | undefined
     try {
       // Auto-fetch if URL provided but content empty
       if (articleUrl && !articleContent.trim()) {
