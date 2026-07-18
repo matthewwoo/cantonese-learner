@@ -6,16 +6,18 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
-import { ResponseQuality } from "@/utils/spaced-repetition"
+import { ResponseQuality } from "@/lib/srs/sm2"
 import { toast } from "react-hot-toast"
 import QuestionCard from "./QuestionCard"
+import { createClient } from "@/lib/supabase/client"
+import { recordStudyResponse } from "@/lib/data/study"
 
 // Types for study session data
 interface Flashcard {
   id: string
   chineseWord: string
   englishTranslation: string
-  pronunciation?: string
+  pronunciation?: string | null
   exampleSentenceEnglish?: string | null
   exampleSentenceChinese?: string | null
 }
@@ -31,7 +33,6 @@ interface StudySessionData {
   id: string
   totalCards: number
   flashcardSetName: string
-  theme: string
   studyCards: StudyCard[]
 }
 
@@ -67,24 +68,13 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
       // Calculate response time
       const responseTime = Date.now() - startTime.getTime()
 
-      // Send response to API
-      const response = await fetch('/api/study/respond', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          studyCardId: currentCard.id,
-          responseQuality: quality,
-          responseTime,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to record response')
-      }
-
-      const data = await response.json()
+      // Run SM-2 locally and persist via Supabase (RLS-scoped)
+      const data = await recordStudyResponse(
+        createClient(),
+        currentCard.id,
+        quality,
+        responseTime
+      )
 
       // Update local state
       setAnsweredCards(data.sessionProgress.answered)

@@ -2,9 +2,8 @@
 // API endpoint to generate a flashcard set using OpenAI and save it
 
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { createRouteClient } from "@/lib/supabase/server"
+import { createSetWithCards } from "@/lib/data/flashcards"
 import { z } from "zod"
 import OpenAI from "openai"
 
@@ -65,8 +64,9 @@ function deduplicateFlashcards(cards: ReturnType<typeof parseStrictCsv>) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const supabase = await createRouteClient(request)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -147,23 +147,11 @@ ${seedSection}`
       console.log(`Removed ${initialCount - flashcards.length} duplicate cards`)
     }
 
-    // Create the set in DB
-    const created = await db.flashcardSet.create({
-      data: {
-        name,
-        userId: session.user.id,
-        imageUrl: imageUrl || null,
-        flashcards: {
-          create: flashcards.map(fc => ({
-            chineseWord: fc.chineseWord,
-            englishTranslation: fc.englishTranslation,
-            pronunciation: fc.pronunciation,
-            exampleSentenceEnglish: fc.exampleSentenceEnglish,
-            exampleSentenceChinese: fc.exampleSentenceChinese,
-          }))
-        }
-      },
-      include: { flashcards: { select: { id: true } } }
+    // Create the set via the shared data layer (writes as the user; RLS applies)
+    const created = await createSetWithCards(supabase, user.id, {
+      name,
+      imageUrl: imageUrl || null,
+      flashcards,
     })
 
     return NextResponse.json({
@@ -171,7 +159,7 @@ ${seedSection}`
       flashcardSet: {
         id: created.id,
         name: created.name,
-        flashcardCount: created.flashcards.length,
+        flashcardCount: created.flashcardCount,
         createdAt: created.createdAt
       },
       previewCards: flashcards.slice(0, 3)

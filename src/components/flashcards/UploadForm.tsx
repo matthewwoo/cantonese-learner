@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Card } from "@/components/ui/Card"
 import { toast } from "react-hot-toast"
+import { createClient } from "@/lib/supabase/client"
+import { createSetWithCards } from "@/lib/data/flashcards"
 
 // Define the structure of a single flashcard
 interface Flashcard {
@@ -238,22 +240,15 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
         const content = await csvFile.text()
         const flashcards = parseCSV(content)
 
-        const response = await fetch('/api/flashcards/upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: setName.trim(),
-            flashcards,
-            imageUrl: generatedImage?.url || null,
-          }),
-        })
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Authentication required')
 
-        const data = await response.json()
-        if (!response.ok) {
-          throw new Error(data.error || 'Upload failed')
-        }
+        await createSetWithCards(supabase, user.id, {
+          name: setName.trim(),
+          imageUrl: generatedImage?.url || null,
+          flashcards,
+        })
 
         toast.success(`Successfully uploaded ${flashcards.length} flashcards!`)
         

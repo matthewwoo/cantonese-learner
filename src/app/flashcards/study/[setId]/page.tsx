@@ -8,32 +8,11 @@ import { useUser } from "@/lib/supabase/use-user"
 import { useRouter, useParams } from "next/navigation"
 import StudySession from "@/components/flashcards/StudySession"
 import { toast } from "react-hot-toast"
+import { createClient } from "@/lib/supabase/client"
+import { startStudySession as startStudySessionQuery } from "@/lib/data/study"
+import type { StartedStudySession } from "@/lib/data/types"
 
-// Types for study session data
-interface StudyCard {
-  id: string
-  position: number
-  flashcard: {
-    id: string
-    chineseWord: string
-    englishTranslation: string
-    pronunciation?: string
-    exampleSentence?: string
-  }
-  easeFactor: number
-  interval: number
-  repetitions: number
-  nextReviewDate: string
-  wasCorrect: boolean | null
-}
-
-interface StudySessionData {
-  id: string
-  totalCards: number
-  flashcardSetName: string
-  theme: string
-  studyCards: StudyCard[]
-}
+type StudySessionData = StartedStudySession
 
 export default function StudyPage() {
   const { user: session, status } = useUser()
@@ -52,26 +31,13 @@ export default function StudyPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/study/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          flashcardSetId: setId,
-          maxCards: 15, // Always use 15 cards
-        }),
-      })
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Authentication required')
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to start study session')
-      }
-
-      const data = await response.json()
-      setStudySession(data.studySession)
-      toast.success(`Started studying ${data.studySession.totalCards} cards!`)
+      const started = await startStudySessionQuery(supabase, user.id, setId, 15)
+      setStudySession(started)
+      toast.success(`Started studying ${started.totalCards} cards!`)
 
     } catch (error) {
       console.error('Error starting study session:', error)

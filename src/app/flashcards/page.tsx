@@ -13,13 +13,14 @@ import { IconButton } from "@/components/ui/IconButton"
 import UploadForm from "@/components/flashcards/UploadForm"
 import { toast } from "react-hot-toast"
 import { featureColors } from "@/lib/design-tokens"
+import { createClient } from "@/lib/supabase/client"
+import { listFlashcardSets, deleteFlashcardSet } from "@/lib/data/flashcards"
 
 // Define the structure of a flashcard set
 interface FlashcardSet {
   id: string
   name: string
-  description: string | null
-  theme: string
+  theme?: string // client-side deck color, attached at render time
   imageUrl: string | null
   flashcardCount: number
   createdAt: string
@@ -367,18 +368,12 @@ export default function FlashcardsPage() {
     }
   }, [session])
 
-  // Function to fetch flashcard sets from API
+  // Function to fetch flashcard sets from Supabase
   const fetchFlashcardSets = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/flashcards')
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch flashcard sets')
-      }
-      
-      const data = await response.json()
-      setFlashcardSets(data.flashcardSets)
+      const sets = await listFlashcardSets(createClient())
+      setFlashcardSets(sets)
     } catch (error) {
       console.error('Error fetching flashcard sets:', error)
       toast.error('Failed to load flashcard sets')
@@ -406,14 +401,8 @@ export default function FlashcardsPage() {
   // Handle deck deletion
   const handleDeleteDeck = async (setId: string) => {
     try {
-      const response = await fetch(`/api/flashcards/${setId}`, {
-        method: 'DELETE',
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete flashcard set')
-      }
-      
+      await deleteFlashcardSet(createClient(), setId)
+
       // Refresh the list after successful deletion
       fetchFlashcardSets()
       toast.success('Flashcard set deleted successfully')

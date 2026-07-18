@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ResponseQuality } from '@/utils/spaced-repetition';
+import { ResponseQuality } from '@/lib/srs/sm2';
 import { speakCantonese, stopSpeech, isTTSSupported } from '@/utils/textToSpeech';
 
 interface Flashcard {
   id: string
   chineseWord: string
   englishTranslation: string
-  pronunciation?: string
+  pronunciation?: string | null
   exampleSentenceEnglish?: string | null
   exampleSentenceChinese?: string | null
 }

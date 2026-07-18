@@ -6,23 +6,11 @@ import { useRouter, useParams } from "next/navigation"
 import { Card } from "@/components/ui/Card"
 import { IconButton } from "@/components/ui/IconButton"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
+import { getFlashcardSet } from "@/lib/data/flashcards"
+import type { FlashcardSetDetail } from "@/lib/data/types"
 
-interface Flashcard {
-  id: string
-  chineseWord: string
-  englishTranslation: string
-  pronunciation?: string
-  exampleSentence?: string
-  nextReviewDate: string | null
-  lastWasCorrect: boolean | null
-}
-
-interface FlashcardSet {
-  id: string
-  name: string
-  description: string | null
-  flashcards: Flashcard[]
-}
+type FlashcardSet = FlashcardSetDetail
 
 const FIGMA_COLORS = {
   surfaceBackground: '#f9f2ec',
@@ -71,10 +59,8 @@ export default function FlashcardSetPage() {
       const fetchSet = async () => {
         try {
           setIsLoading(true)
-          const response = await fetch(`/api/flashcards/${id}`)
-          if (!response.ok) throw new Error('Failed to fetch set')
-          const data = await response.json()
-          setSet(data.flashcardSet)
+          const detail = await getFlashcardSet(createClient(), id)
+          setSet(detail)
         } catch (error) {
           console.error(error)
         } finally {
