@@ -1,34 +1,31 @@
 # Cantonese Learner App
 
-<!-- Deployment test - checking environment variables -->
-
 Learn Cantonese through flashcards and AI conversations.
 
 ## Features
 
 ### 🎯 Core Learning Tools
-- **Smart Flashcards**: Spaced repetition learning with Traditional Chinese support
-- **AI Conversations**: Practice real conversations with AI tutor
+- **Smart Flashcards**: Spaced repetition (SM-2) with Traditional Chinese support
+- **AI Conversations**: Practice real conversations with an AI tutor
 - **Article Reading**: English articles automatically translated to Traditional Chinese
-- **Progress Tracking**: Monitor your learning journey with detailed analytics
+- **Progress Tracking**: Monitor your learning journey
 
 ### 📚 Article Translation Feature
 - **Automatic Translation**: English articles translated to Traditional Chinese line by line
-- **Interactive Reading**: Click Chinese characters for definitions and pronunciation
-- **TTS Support**: Text-to-speech for proper pronunciation practice
-- **Reading Progress**: Track your position and reading speed
+- **Interactive Reading**: Tap Chinese words for definitions and pronunciation
+- **TTS Support**: Text-to-speech for pronunciation practice
 
 ### 🤖 AI-Powered Features
-- **Speech-to-Text**: Multiple options (Web Speech API, OpenAI Whisper, Google Cloud STT)
-- **Text-to-Speech**: Natural pronunciation for Cantonese learning
-- **Smart Corrections**: AI-powered feedback on conversations
+- **Speech-to-Text**: OpenAI Whisper
+- **Text-to-Speech**: Natural Cantonese pronunciation
+- **Deck Generation**: AI-generated flashcard decks and cover images
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- PostgreSQL database
-- Translation API key (Google Translate or OpenAI)
+- Node.js 18+
+- A [Supabase](https://supabase.com) project (database + auth)
+- OpenAI API key (AI conversations, translation, TTS/STT, image generation)
 
 ### Quick Setup
 
@@ -39,17 +36,19 @@ Learn Cantonese through flashcards and AI conversations.
    npm install
    ```
 
-2. **Set up environment variables:**
+2. **Set up environment variables** in `.env.local`:
    ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your configuration
+   NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+   OPENAI_API_KEY=<openai key>
+   # Optional fallback for article translation:
+   # GOOGLE_TRANSLATE_API_KEY=<google key>
    ```
 
-3. **Set up the database:**
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
+3. **Set up the database:** run the SQL in
+   [`supabase/migrations/`](./supabase/migrations) against your Supabase
+   project (SQL editor, or `supabase db push` with the CLI). This creates all
+   tables, Row Level Security policies, and triggers.
 
 4. **Start the development server:**
    ```bash
@@ -58,43 +57,30 @@ Learn Cantonese through flashcards and AI conversations.
 
 5. **Open [http://localhost:3000](http://localhost:3000)** to see the app
 
-## Environment Variables
+### Regenerating database types
 
-See [SETUP.md](./SETUP.md) for detailed environment variable configuration.
+```bash
+SUPABASE_PROJECT_ID=<project-ref> npm run types:gen
+```
 
-Required variables:
-- `DATABASE_URL`: PostgreSQL connection string
-- `NEXTAUTH_URL`: Your app URL
-- `NEXTAUTH_SECRET`: Authentication secret key
+## Architecture
 
-Optional (for enhanced features):
-- `OPENAI_API_KEY`: For AI conversations and translation
-- `GOOGLE_TRANSLATE_API_KEY`: For article translation
-- `GOOGLE_APPLICATION_CREDENTIALS`: For speech recognition
-
-## Documentation
-
-- [Setup Guide](./SETUP.md) - Complete setup instructions
-- [Article Translation Feature](./TRANSLATION_FEATURE.md) - Detailed translation feature documentation
-- [Articles Feature](./ARTICLES_FEATURE.md) - Article reading functionality
-- [TTS Troubleshooting](./TTS_TROUBLESHOOTING.md) - Speech synthesis help
+- **CRUD goes straight to Supabase** from the client (`src/lib/data/`),
+  protected by Row Level Security — the same tables/policies a future iOS
+  app (supabase-swift) would use.
+- **API routes exist only for AI features** that need server-side secrets:
+  chat, flashcard generation, translation, TTS/Whisper, image generation,
+  article fetching. They authenticate via the Supabase session (cookies, or
+  `Authorization: Bearer` for native clients) and write as the user.
+- **SM-2 spaced repetition** is a pure TypeScript util (`src/lib/srs/sm2.ts`)
+  executed client-side — portable to Swift for iOS.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, Prisma ORM
-- **Database**: PostgreSQL
-- **Authentication**: NextAuth.js
-- **AI Services**: OpenAI API, Google Cloud APIs
-- **Translation**: Google Translate API, OpenAI GPT
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4
+- **Backend**: Supabase (Postgres + Auth + RLS), Next.js API routes for AI
+- **AI Services**: OpenAI (chat, Whisper, TTS, DALL·E), Anthropic (chat fallback)
+- **Translation**: OpenAI GPT, Google Translate (fallback)
 
 ## License
 

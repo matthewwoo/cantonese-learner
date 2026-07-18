@@ -7,13 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prebuild": "prisma generate",
-    "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:generate": "prisma generate",
     "types:gen": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID --schema public > src/lib/supabase/database.types.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.13.0",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "class-variance-authority": "^0.7.1",
@@ -36,7 +32,6 @@
     "baseline-browser-mapping": "^2.9.7",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
-    "prisma": "^6.13.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
