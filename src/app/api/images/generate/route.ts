@@ -3,6 +3,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { getServerSession } from 'next-auth/next'
+import type { Session } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -11,6 +14,14 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions) as Session | null
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { prompt } = await request.json()
 
     if (!prompt) {
