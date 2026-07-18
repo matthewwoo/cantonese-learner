@@ -7,7 +7,7 @@ import SignUpForm from "@/components/auth/SignUpForm"
 export default function SignUpPage() {
   return (
     /* Same layout as sign-in page for consistency */
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       {/* Render the SignUpForm component */}
       <SignUpForm />
     </div>

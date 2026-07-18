@@ -7,16 +7,8 @@ import SignInForm from "@/components/auth/SignInForm"
 // It renders the sign-in page layout
 export default function SignInPage() {
   return (
-    /* Full-screen container with gradient background */
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      {/* 
-        min-h-screen: full viewport height
-        bg-gradient-to-br: gradient from top-left to bottom-right  
-        from-blue-50 to-indigo-100: light blue gradient
-        flex items-center justify-center: center content horizontally and vertically
-        p-4: padding on all sides for mobile spacing
-      */}
-      
+    /* Full-screen container on the app background */
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       {/* Render the SignInForm component */}
       <SignInForm />
     </div>
