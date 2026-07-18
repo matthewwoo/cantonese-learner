@@ -6,8 +6,8 @@
 
 import { useUser } from "@/lib/supabase/use-user" // Supabase auth state
 import { Toaster } from "@/components/ui/sonner" // Toast notification system
-import BottomNav from "@/components/legacy/BottomNav"
-import TopHeader from "@/components/legacy/TopHeader"
+import BottomNav from "@/components/shared/bottom-nav"
+import TopHeader from "@/components/shared/top-header"
 import { usePathname } from "next/navigation"
 import { Suspense } from "react"
 
