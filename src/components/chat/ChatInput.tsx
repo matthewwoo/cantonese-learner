@@ -3,7 +3,7 @@
 // This teaches: Form handling, React events, controlled components
 
 import React, { useState, KeyboardEvent, useEffect } from 'react'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/legacy/Button'
 import { startOpenAIRecording, stopOpenAIRecording, isOpenAISTTSupported } from '@/utils/openaiSpeechToText'
 import { toast } from 'react-hot-toast'
 

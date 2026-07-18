@@ -5,8 +5,8 @@ import { useUser } from '@/lib/supabase/use-user'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/legacy/Card'
+import { Button } from '@/components/legacy/Button'
 
 // Figma-derived colors (consistent with flashcards/articles index)
 const FIGMA_COLORS = {

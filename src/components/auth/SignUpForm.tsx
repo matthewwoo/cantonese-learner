@@ -6,9 +6,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Card } from "@/components/ui/Card"
+import { Button } from "@/components/legacy/Button"
+import { Input } from "@/components/legacy/Input"
+import { Card } from "@/components/legacy/Card"
 import Link from "next/link"
 import { toast } from "react-hot-toast"
 

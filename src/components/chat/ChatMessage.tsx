@@ -3,7 +3,7 @@
 // This teaches: React component props, conditional rendering, CSS styling
 
 import React, { useState, useEffect } from 'react'
-import { IconButton } from '@/components/ui'
+import { IconButton } from '@/components/legacy'
 import { speakCantonese, stopSpeech, isTTSSupported } from '@/utils/textToSpeech'
 import { toast } from 'react-hot-toast'
 

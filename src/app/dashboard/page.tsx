@@ -7,9 +7,9 @@ import { useUser } from "@/lib/supabase/use-user"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Card } from "@/components/ui/Card"
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
-import { QuickActions } from "@/components/ui/QuickActions"
+import { Card } from "@/components/legacy/Card"
+import { LoadingSpinner } from "@/components/legacy/LoadingSpinner"
+import { QuickActions } from "@/components/legacy/QuickActions"
 
 // Figma-derived color tokens used on the Cards page
 const FIGMA_COLORS = {

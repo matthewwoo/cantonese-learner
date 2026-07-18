@@ -4,7 +4,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/legacy/Button"
 
 export default async function Home() {
   // Check if user is logged in - if so, redirect to dashboard

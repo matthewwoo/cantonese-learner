@@ -4,8 +4,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/Button"
-import { Card } from "@/components/ui/Card"
+import { Button } from "@/components/legacy/Button"
+import { Card } from "@/components/legacy/Card"
 import { ResponseQuality } from "@/lib/srs/sm2"
 import { toast } from "react-hot-toast"
 import QuestionCard from "./QuestionCard"
