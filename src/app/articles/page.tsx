@@ -8,11 +8,13 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconButton } from '@/components/ui/IconButton'
+import { createClient } from '@/lib/supabase/client'
+import { listArticles, deleteArticle } from '@/lib/data/articles'
 
 interface Article {
   id: string
   title: string
-  sourceUrl?: string
+  sourceUrl?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -54,10 +56,8 @@ export default function ArticlesPage() {
 
   const fetchArticles = async () => {
     try {
-      const response = await fetch('/api/articles')
-      if (!response.ok) throw new Error('獲取文章失敗')
-      const data = await response.json()
-      setArticles(data.articles)
+      const articleList = await listArticles(createClient())
+      setArticles(articleList)
     } catch (error) {
       console.error('獲取文章失敗:', error)
       toast.error('Unable to load articles')
@@ -162,8 +162,7 @@ export default function ArticlesPage() {
   const handleDeleteArticle = async (articleId: string) => {
     if (!confirm('Are you sure you want to delete this article?')) return
     try {
-      const response = await fetch(`/api/articles/${articleId}`, { method: 'DELETE' })
-      if (!response.ok) throw new Error('刪除文章失敗')
+      await deleteArticle(createClient(), articleId)
       toast.success('Article deleted')
       await fetchArticles()
     } catch (error) {

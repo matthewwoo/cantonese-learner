@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { PrismaClient } from '@/generated/prisma';
+import { createRouteClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-
-// Initialize Prisma client
-const prisma = new PrismaClient();
 
 // Article creation validation schema
 const createArticleSchema = z.object({
@@ -13,56 +9,9 @@ const createArticleSchema = z.object({
   content: z.string().min(1),
 });
 
-/**
- * GET /api/articles - Get all articles for the user
- * This endpoint returns a list of all articles created by the current user
- */
-export async function GET(request: NextRequest) {
-  try {
-    // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Please sign in first' },
-        { status: 401 }
-      );
-    }
-
-    // Get user information from database
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Get all articles for the user
-    const articles = await prisma.article.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }, // Sort by creation time in descending order
-      select: {
-        id: true,
-        title: true,
-        sourceUrl: true,
-        createdAt: true,
-        updatedAt: true,
-        // Don't return full content to improve performance
-      },
-    });
-
-    return NextResponse.json({ articles });
-  } catch (error) {
-    console.error('Failed to get articles list:', error);
-    return NextResponse.json(
-      { error: 'Failed to get articles list' },
-      { status: 500 }
-    );
-  }
-}
+// NOTE: listing/reading/deleting articles happens client-side via
+// src/lib/data/articles.ts. This route only handles CREATION, which needs
+// server-side translation APIs (OpenAI / Google Translate).
 
 /**
  * POST /api/articles - Create new article
@@ -70,31 +19,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Debug environment variables
-    console.log('Article creation: Environment check');
-    console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-    console.log('GOOGLE_TRANSLATE_API_KEY exists:', !!process.env.GOOGLE_TRANSLATE_API_KEY);
-    console.log('OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
-    console.log('OPENAI_API_KEY starts with:', process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined');
-    
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const supabase = await createRouteClient(request);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json(
         { error: 'Please sign in first' },
         { status: 401 }
-      );
-    }
-
-    // Get user information
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
       );
     }
 
@@ -116,27 +47,24 @@ export async function POST(request: NextRequest) {
     // Extract all Chinese vocabulary and get definitions
     const wordDefinitions = await extractWordDefinitions(translatedLines);
 
-    // Create article record
-    console.log('Article creation: Storing in database...');
-    console.log('Article creation: Original content (first 2 lines):', lines.slice(0, 2));
-    console.log('Article creation: Translated content (first 2 lines):', translatedLines.slice(0, 2));
-    
-    const article = await prisma.article.create({
-      data: {
-        userId: user.id,
+    // Create article record (as the user; RLS applies)
+    const { data: article, error: insertError } = await supabase
+      .from('articles')
+      .insert({
+        user_id: user.id,
         title: validatedData.title,
-        sourceUrl: validatedData.url,
-        originalContent: lines,
-        translatedContent: translatedLines,
-        wordDefinitions: wordDefinitions,
-      },
-    });
-    
-    console.log('Article creation: Article created with ID:', article.id);
+        source_url: validatedData.url ?? null,
+        original_content: lines,
+        translated_content: translatedLines,
+        word_definitions: wordDefinitions,
+      })
+      .select('id')
+      .single();
+    if (insertError) throw insertError;
 
-    return NextResponse.json({ 
-      success: true, 
-      articleId: article.id 
+    return NextResponse.json({
+      success: true,
+      articleId: article.id
     });
   } catch (error) {
     console.error('Failed to create article:', error);

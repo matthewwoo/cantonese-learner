@@ -8,11 +8,13 @@ import { ttsService, speakCantonese, stopSpeech } from '@/utils/textToSpeech';
 import { speakAndPlayCantonese as speakWithOpenAI, stopOpenAITTS, isOpenAITTSAvailable } from '@/utils/openaiTTS';
 import ChatMessage from '@/components/chat/ChatMessage';
 import { processArticleIntoSentences, type SentenceCard } from '@/utils/sentenceProcessor';
+import { createClient } from '@/lib/supabase/client';
+import { getArticleWithSession } from '@/lib/data/articles';
 
 interface Article {
   id: string;
   title: string;
-  sourceUrl?: string;
+  sourceUrl?: string | null;
   originalContent: string[];
   translatedContent: string[];
   wordDefinitions: Record<string, any>;
@@ -89,15 +91,25 @@ export default function ArticleReadingPage() {
    */
   const fetchArticle = async () => {
     try {
-      const response = await fetch(`/api/articles/${articleId}`);
-      if (!response.ok) throw new Error('獲取文章失敗');
-      
-      const data = await response.json();
-      console.log('Article display: Received article data:', data.article);
-      console.log('Article display: Original content (first 2 lines):', data.article.originalContent?.slice(0, 2));
-      console.log('Article display: Translated content (first 2 lines):', data.article.translatedContent?.slice(0, 2));
-      
-      setArticle(data.article);
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Authentication required');
+
+      const data = await getArticleWithSession(supabase, user.id, articleId);
+      if (!data) throw new Error('獲取文章失敗');
+
+      const originalContent = (data.article.originalContent as string[]) ?? [];
+      const translatedContent = (data.article.translatedContent as string[]) ?? [];
+      const loadedArticle: Article = {
+        id: data.article.id,
+        title: data.article.title,
+        sourceUrl: data.article.sourceUrl,
+        originalContent,
+        translatedContent,
+        wordDefinitions: (data.article.wordDefinitions as Record<string, any>) ?? {},
+      };
+
+      setArticle(loadedArticle);
       setReadingSession(data.readingSession);
       setCurrentLineIndex(data.readingSession.currentPosition);
       // Default to Chinese view for bubbles (do not auto-enable English)
@@ -105,17 +117,14 @@ export default function ArticleReadingPage() {
 
       // Process article into sentence-level cards for chat-style bubbles
       try {
-        const processed = processArticleIntoSentences(
-          data.article.originalContent ?? [],
-          data.article.translatedContent ?? []
-        );
+        const processed = processArticleIntoSentences(originalContent, translatedContent);
         setSentences(processed.sentences);
       } catch (e) {
         console.warn('Sentence processing failed, falling back to paragraph-level.', e);
         // Fallback: map paragraph pairs into pseudo-sentences
-        const fallbackSentences: SentenceCard[] = (data.article.translatedContent ?? []).map((cn: string, i: number) => ({
+        const fallbackSentences: SentenceCard[] = translatedContent.map((cn: string, i: number) => ({
           chinese: cn,
-          english: (data.article.originalContent ?? [])[i] ?? '',
+          english: originalContent[i] ?? '',
           cardIndex: i,
         }));
         setSentences(fallbackSentences);

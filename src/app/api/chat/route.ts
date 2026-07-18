@@ -3,10 +3,7 @@
 // This handles communication between our frontend and AI services (OpenAI/Claude)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { Session } from 'next-auth'
+import { createRouteClient } from '@/lib/supabase/server'
 
 // Define the structure of a chat message
 interface ChatMessage {
@@ -28,11 +25,10 @@ export async function POST(request: NextRequest) {
     
     // 1. AUTHENTICATION CHECK
     // Always verify the user is logged in before processing chat requests
-    const session = await getServerSession(authOptions) as Session | null
-    console.log('Chat API: Session check result:', !!session?.user?.email)
-    
-    if (!session || !session.user?.email) {
-      console.log('Chat API: Authentication failed - no session or email')
+    const supabase = await createRouteClient(request)
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -55,52 +51,41 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. GET OR CREATE CHAT SESSION
-    // If no sessionId provided, create a new chat session in the database
-    let chatSession
+    // If no sessionId provided, create a new chat session in the database.
+    // All queries run as the user (RLS scopes rows to them).
+    type ChatSessionWithMessages = {
+      id: string
+      theme: string
+      target_words: unknown
+      messages: { role: string; content: string }[]
+    }
+
+    let chatSession: ChatSessionWithMessages | null = null
     if (sessionId) {
-      console.log('Chat API: Looking for existing session:', sessionId)
-      // Find existing session
-      chatSession = await db.chatSession.findFirst({
-        where: {
-          id: sessionId,
-          user: { email: session.user.email }
-        },
-        include: {
-          messages: {
-            orderBy: { createdAt: 'asc' },
-            take: 20 // Limit to last 20 messages for context
-          }
-        }
-      })
-      console.log('Chat API: Existing session found:', !!chatSession)
+      const { data: existing, error: findError } = await supabase
+        .from('chat_sessions')
+        .select('id, theme, target_words, messages:chat_messages(role, content, created_at)')
+        .eq('id', sessionId)
+        .order('created_at', { referencedTable: 'chat_messages', ascending: true })
+        .limit(20, { referencedTable: 'chat_messages' }) // last 20 messages for context
+        .maybeSingle()
+      if (findError) throw findError
+      chatSession = existing
     }
 
     // If no existing session found, create a new one
     if (!chatSession) {
-      console.log('Chat API: Creating new chat session')
-      const user = await db.user.findUnique({
-        where: { email: session.user.email }
-      })
-
-      if (!user) {
-        console.log('Chat API: User not found in database')
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        )
-      }
-
-      chatSession = await db.chatSession.create({
-        data: {
-          userId: user.id,
+      const { data: created, error: createError } = await supabase
+        .from('chat_sessions')
+        .insert({
+          user_id: user.id,
           theme: theme || 'general',
-          targetWords: targetWords || []
-        },
-        include: {
-          messages: true
-        }
-      })
-      console.log('Chat API: New session created:', chatSession.id)
+          target_words: targetWords || [],
+        })
+        .select('id, theme, target_words')
+        .single()
+      if (createError) throw createError
+      chatSession = { ...created, messages: [] }
     }
 
     // 4. BUILD CONVERSATION CONTEXT
@@ -108,7 +93,7 @@ export async function POST(request: NextRequest) {
     const conversationHistory: ChatMessage[] = [
       {
         role: 'system',
-        content: createSystemPrompt(chatSession.theme, chatSession.targetWords as string[])
+        content: createSystemPrompt(chatSession.theme, (chatSession.target_words as string[]) || [])
       },
       // Add previous messages from this chat session
       ...chatSession.messages.map(msg => ({
@@ -136,23 +121,22 @@ export async function POST(request: NextRequest) {
 
     // 7. SAVE MESSAGES TO DATABASE
     // Store both user message and AI response with separated content
-    console.log('Chat API: Saving messages to database')
-    await db.chatMessage.createMany({
-      data: [
-        {
-          chatSessionId: chatSession.id,
-          role: 'user',
-          content: message
-        },
-        {
-          chatSessionId: chatSession.id,
-          role: 'assistant',
-          content: chineseContent,
-          translation: englishTranslation
-        }
-      ]
-    })
-    console.log('Chat API: Messages saved successfully')
+    const { error: saveError } = await supabase.from('chat_messages').insert([
+      {
+        user_id: user.id,
+        chat_session_id: chatSession.id,
+        role: 'user',
+        content: message,
+      },
+      {
+        user_id: user.id,
+        chat_session_id: chatSession.id,
+        role: 'assistant',
+        content: chineseContent,
+        translation: englishTranslation,
+      },
+    ])
+    if (saveError) throw saveError
 
     // 8. RETURN RESPONSE
     console.log('Chat API: Returning success response')
@@ -162,7 +146,7 @@ export async function POST(request: NextRequest) {
       message: chineseContent,
       translation: englishTranslation,
       theme: chatSession.theme,
-      targetWords: chatSession.targetWords
+      targetWords: chatSession.target_words
     })
 
   } catch (error) {
