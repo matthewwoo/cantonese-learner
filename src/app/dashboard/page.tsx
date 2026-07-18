@@ -3,7 +3,8 @@
 
 "use client"
 
-import { useSession, signOut } from "next-auth/react"
+import { useUser } from "@/lib/supabase/use-user"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Card } from "@/components/ui/Card"
@@ -18,7 +19,7 @@ const FIGMA_COLORS = {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
+  const { user, status } = useUser()
   const router = useRouter()
 
   // Redirect to sign-in if not authenticated
@@ -46,12 +47,15 @@ export default function DashboardPage() {
   }
 
   // If not authenticated, don't render anything (redirect is happening)
-  if (!session) {
+  if (!user) {
     return null
   }
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: "/auth/signin" })
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/auth/signin")
+    router.refresh()
   }
 
   // Feature cards data
@@ -130,9 +134,9 @@ export default function DashboardPage() {
           <h1 className="text-4xl font-bold mb-3" style={{ color: FIGMA_COLORS.textPrimary }}>
             Cantonese Learner
           </h1>
-          {session.user?.name && (
+          {user.user_metadata?.name && (
             <p className="break-words whitespace-normal" style={{ color: FIGMA_COLORS.textSecondary }}>
-              Name: <strong className="break-words" style={{ color: FIGMA_COLORS.textPrimary }}>{session.user.name}</strong>
+              Name: <strong className="break-words" style={{ color: FIGMA_COLORS.textPrimary }}>{user.user_metadata.name}</strong>
             </p>
           )}
         

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { createRouteClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 // Validation schema
@@ -14,8 +14,9 @@ const fetchArticleSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check if user is logged in
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const supabase = await createRouteClient(request);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json(
         { error: 'Please sign in first' },
         { status: 401 }

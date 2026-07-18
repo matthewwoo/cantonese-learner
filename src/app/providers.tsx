@@ -4,7 +4,7 @@
 
 "use client" // Must be client component since providers use React Context
 
-import { SessionProvider, useSession } from "next-auth/react" // Provides authentication state to all components
+import { useUser } from "@/lib/supabase/use-user" // Supabase auth state
 import { Toaster } from "react-hot-toast" // Provides toast notification system
 import BottomNav from "@/components/ui/BottomNav"
 import TopHeader from "@/components/ui/TopHeader"
@@ -13,10 +13,10 @@ import { Suspense } from "react"
 
 // Renders BottomNav only when authenticated and adds spacer to prevent overlap
 function AuthenticatedNavWrapper({ children }: { children: React.ReactNode }) {
-  const { status, data: session } = useSession()
+  const { status, user } = useUser()
   const pathname = usePathname()
 
-  const isAuthed = status === "authenticated" && !!session?.user
+  const isAuthed = status === "authenticated" && !!user
   const isAuthRoute = pathname?.startsWith("/auth")
   const allowedNavRoots = ["/dashboard", "/flashcards", "/chat", "/articles"]
   const isOnAllowedPage = !!pathname && allowedNavRoots.some(root => pathname === root || pathname.startsWith(`${root}/`))
@@ -45,18 +45,17 @@ export default function Providers({
   children: React.ReactNode
 }) {
   return (
-    /* SessionProvider gives all child components access to user session data */
-    <SessionProvider>
+    <>
       {/* Render all our app's pages and components */}
       <AuthenticatedNavWrapper>
         {children}
       </AuthenticatedNavWrapper>
-      
-      {/* 
+
+      {/*
         Toaster component renders toast notifications anywhere in the app
         When you call toast.success() or toast.error(), this component displays them
       */}
-      <Toaster 
+      <Toaster
         position="top-right"          // Show toasts in top-right corner
         toastOptions={{
           duration: 4000,             // Show each toast for 4 seconds
@@ -66,6 +65,6 @@ export default function Providers({
           },
         }}
       />
-    </SessionProvider>
+    </>
   )
 }

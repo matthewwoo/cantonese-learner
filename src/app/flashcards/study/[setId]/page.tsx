@@ -4,7 +4,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useSession } from "next-auth/react"
+import { useUser } from "@/lib/supabase/use-user"
 import { useRouter, useParams } from "next/navigation"
 import StudySession from "@/components/flashcards/StudySession"
 import { toast } from "react-hot-toast"
@@ -36,7 +36,7 @@ interface StudySessionData {
 }
 
 export default function StudyPage() {
-  const { data: session, status } = useSession()
+  const { user: session, status } = useUser()
   const router = useRouter()
   const params = useParams()
   const setId = params.setId as string

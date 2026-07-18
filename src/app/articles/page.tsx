@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useUser } from '@/lib/supabase/use-user'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
@@ -29,7 +29,7 @@ const FIGMA_COLORS = {
 
 export default function ArticlesPage() {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { user: session, status } = useUser()
   const [articles, setArticles] = useState<Article[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showAddPanel, setShowAddPanel] = useState(false)

@@ -2,8 +2,7 @@
 // OpenAI Chat Completions API endpoint for text translation
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+import { createRouteClient } from '@/lib/supabase/server';
 
 interface TranslateRequest {
   text: string
@@ -14,8 +13,9 @@ interface TranslateRequest {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+    const supabase = await createRouteClient(request);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }

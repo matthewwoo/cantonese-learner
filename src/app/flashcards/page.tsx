@@ -4,7 +4,7 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useSession } from "next-auth/react"
+import { useUser } from "@/lib/supabase/use-user"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
@@ -346,7 +346,7 @@ function FlashcardsBody({
 
 export default function FlashcardsPage() {
   // Authentication and navigation
-  const { data: session, status } = useSession()
+  const { user: session, status } = useUser()
   const router = useRouter()
   
   // Component state

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
+import { useUser } from "@/lib/supabase/use-user"
 import { useRouter, useParams } from "next/navigation"
 import { Card } from "@/components/ui/Card"
 import { IconButton } from "@/components/ui/IconButton"
@@ -52,7 +52,7 @@ function formatReviewDate(dateString: string | null) {
 }
 
 export default function FlashcardSetPage() {
-  const { data: session, status } = useSession()
+  const { user: session, status } = useUser()
   const router = useRouter()
   const params = useParams()
   const id = params.id as string

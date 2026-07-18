@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useUser } from '@/lib/supabase/use-user'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -19,7 +19,7 @@ const FIGMA_COLORS = {
 }
 
 export default function NewArticlePage() {
-  const { data: session, status } = useSession()
+  const { user: session, status } = useUser()
   const router = useRouter()
 
   const [articleUrl, setArticleUrl] = useState('')

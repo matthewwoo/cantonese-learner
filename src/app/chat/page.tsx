@@ -5,7 +5,7 @@
 "use client"
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { useSession } from 'next-auth/react'
+import { useUser } from '@/lib/supabase/use-user'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ChatMessage from '@/components/chat/ChatMessage'
 import ChatInput from '@/components/chat/ChatInput'
@@ -31,7 +31,7 @@ function ChatPageContent() {
   // ============ REACT HOOKS FOR STATE MANAGEMENT ============
   
   // Authentication and routing
-  const { data: session, status } = useSession()
+  const { user: session, status } = useUser()
   const router = useRouter()
   const searchParams = useSearchParams()
   
