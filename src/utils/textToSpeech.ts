@@ -1,11 +1,17 @@
 // src/utils/textToSpeech.ts
-// Text-to-speech utility for Cantonese pronunciation
+// Text-to-speech utility for Cantonese pronunciation.
+//
+// Preference order:
+//   1. Server TTS (/api/speech/tts -> Azure zh-HK neural voices) — natural,
+//      consistent Cantonese on every device.
+//   2. Web Speech API — offline fallback using whatever zh-HK voice the OS has.
 
 interface TTSOptions {
   rate?: number
   pitch?: number
   volume?: number
   lang?: string
+  voice?: string // Azure voice name, e.g. 'zh-HK-WanLungNeural'
 }
 
 class TextToSpeechService {
@@ -13,6 +19,8 @@ class TextToSpeechService {
   private voices: SpeechSynthesisVoice[] = []
   private isLoaded = false
   private isInitialized = false
+  private currentAudio: HTMLAudioElement | null = null
+  private serverTTSFailed = false // remember a failure and skip retries this session
 
   constructor() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -81,9 +89,11 @@ class TextToSpeechService {
     )
   }
 
-  // Check if TTS is supported
+  // Check if TTS is supported.
+  // Server TTS works in any browser, so this is true whenever we're
+  // client-side; Web Speech availability only matters for the fallback.
   isSupported(): boolean {
-    return this.synthesis !== null
+    return typeof window !== 'undefined'
   }
 
   // Check if voices are loaded
@@ -121,14 +131,74 @@ class TextToSpeechService {
     })
   }
 
-  // Speak Chinese text with Cantonese pronunciation
-  async speakCantonese(text: string, options: TTSOptions = {}): Promise<void> {
-    if (!this.synthesis) {
-      throw new Error('Speech synthesis not supported')
+  /**
+   * Speak text via the server (Azure zh-HK neural voices).
+   * Resolves when playback finishes; throws if synthesis or playback fails.
+   */
+  private async speakViaServer(text: string, options: TTSOptions = {}): Promise<void> {
+    const response = await fetch('/api/speech/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        speed: options.rate ?? 1.0,
+        voice: options.voice,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Server TTS error: ${response.status}`)
     }
 
+    const data = await response.json()
+    if (!data.success || !data.audioData) {
+      throw new Error(data.error || 'Server TTS failed')
+    }
+
+    return new Promise((resolve, reject) => {
+      const audio = new Audio(data.audioData)
+      audio.volume = options.volume ?? 1.0
+      this.currentAudio = audio
+
+      audio.onended = () => {
+        if (this.currentAudio === audio) this.currentAudio = null
+        resolve()
+      }
+      audio.onerror = () => {
+        if (this.currentAudio === audio) this.currentAudio = null
+        reject(new Error('Audio playback error'))
+      }
+      audio.play().catch(reject)
+    })
+  }
+
+  // Speak Chinese text with Cantonese pronunciation.
+  // Tries the Azure-backed server endpoint first, then falls back to the
+  // browser's Web Speech API (offline / server unavailable).
+  async speakCantonese(text: string, options: TTSOptions = {}): Promise<void> {
     if (!text || text.trim() === '') {
       throw new Error('No text provided for speech synthesis')
+    }
+
+    // Stop anything already playing
+    this.stop()
+
+    if (!this.serverTTSFailed) {
+      try {
+        return await this.speakViaServer(text, options)
+      } catch (error) {
+        console.warn('TTS: Server TTS unavailable, falling back to Web Speech:', error)
+        this.serverTTSFailed = true
+      }
+    }
+
+    return this.speakWithWebSpeech(text, options)
+  }
+
+  // Web Speech API path (previous default), kept as fallback
+  private async speakWithWebSpeech(text: string, options: TTSOptions = {}): Promise<void> {
+    if (!this.synthesis) {
+      throw new Error('Speech synthesis not supported')
     }
 
     console.log('TTS: Attempting to speak:', text)
@@ -209,16 +279,21 @@ class TextToSpeechService {
     })
   }
 
-  // Stop current speech
+  // Stop current speech (both server-audio playback and Web Speech)
   stop(): void {
+    if (this.currentAudio) {
+      this.currentAudio.pause()
+      this.currentAudio.src = ''
+      this.currentAudio = null
+    }
     if (this.synthesis) {
       this.synthesis.cancel()
-      console.log('TTS: Speech stopped')
     }
   }
 
   // Check if currently speaking
   isSpeaking(): boolean {
+    if (this.currentAudio && !this.currentAudio.paused) return true
     return this.synthesis ? this.synthesis.speaking : false
   }
 
