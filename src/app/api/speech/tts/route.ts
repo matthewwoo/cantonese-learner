@@ -7,9 +7,9 @@ import { createRouteClient } from '@/lib/supabase/server';
 
 // Azure's dedicated Cantonese neural voices
 const AZURE_CANTONESE_VOICES = [
-  'zh-HK-HiuMaanNeural', // female (default)
+  'zh-HK-WanLungNeural', // male (default)
+  'zh-HK-HiuMaanNeural', // female
   'zh-HK-HiuGaaiNeural', // female
-  'zh-HK-WanLungNeural', // male
 ] as const;
 
 const DEFAULT_VOICE = AZURE_CANTONESE_VOICES[0];
