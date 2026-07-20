@@ -20,7 +20,10 @@ class TextToSpeechService {
   private isLoaded = false
   private isInitialized = false
   private currentAudio: HTMLAudioElement | null = null
-  private serverTTSFailed = false // remember a failure and skip retries this session
+  // Generation token: every speak/stop bumps it, and any in-flight speech
+  // (server fetch still resolving, Web Speech waiting on voices) checks it
+  // before making sound. Prevents two engines overlapping.
+  private speakSeq = 0
 
   constructor() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -133,30 +136,43 @@ class TextToSpeechService {
 
   /**
    * Speak text via the server (Azure zh-HK neural voices).
-   * Resolves when playback finishes; throws if synthesis or playback fails.
+   * Resolves when playback finishes. Throws `ServerTTSError` when synthesis
+   * failed (fallback to Web Speech is sensible) and `PlaybackBlocked` when
+   * the browser refused autoplay (fallback would just overlap later audio).
    */
-  private async speakViaServer(text: string, options: TTSOptions = {}): Promise<void> {
-    const response = await fetch('/api/speech/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text,
-        speed: options.rate ?? 1.0,
-        voice: options.voice,
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Server TTS error: ${response.status}`)
+  private async speakViaServer(text: string, seq: number, options: TTSOptions = {}): Promise<void> {
+    let data: { success?: boolean; audioData?: string; error?: string }
+    try {
+      const response = await fetch('/api/speech/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          speed: options.rate ?? 1.0,
+          voice: options.voice,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error(`Server TTS error: ${response.status}`)
+      }
+      data = await response.json()
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Server TTS failed')
+      err.name = 'ServerTTSError'
+      throw err
     }
 
-    const data = await response.json()
     if (!data.success || !data.audioData) {
-      throw new Error(data.error || 'Server TTS failed')
+      const err = new Error(data.error || 'Server TTS failed')
+      err.name = 'ServerTTSError'
+      throw err
     }
+
+    // A newer speak/stop happened while we were fetching — stay silent.
+    if (seq !== this.speakSeq) return
 
     return new Promise((resolve, reject) => {
-      const audio = new Audio(data.audioData)
+      const audio = new Audio(data.audioData!)
       audio.volume = options.volume ?? 1.0
       this.currentAudio = audio
 
@@ -164,39 +180,55 @@ class TextToSpeechService {
         if (this.currentAudio === audio) this.currentAudio = null
         resolve()
       }
+      // stop() pauses and detaches the element; settle the promise so
+      // callers' isSpeaking state doesn't hang
+      audio.onpause = () => {
+        if (this.currentAudio !== audio) resolve()
+      }
       audio.onerror = () => {
         if (this.currentAudio === audio) this.currentAudio = null
         reject(new Error('Audio playback error'))
       }
-      audio.play().catch(reject)
+      audio.play().catch((error) => {
+        if (this.currentAudio === audio) this.currentAudio = null
+        const err = new Error(error?.message || 'Playback blocked')
+        err.name = 'PlaybackBlocked'
+        reject(err)
+      })
     })
   }
 
   // Speak Chinese text with Cantonese pronunciation.
-  // Tries the Azure-backed server endpoint first, then falls back to the
-  // browser's Web Speech API (offline / server unavailable).
+  // Tries the Azure-backed server endpoint first; falls back to the
+  // browser's Web Speech API only when the server itself is unavailable.
   async speakCantonese(text: string, options: TTSOptions = {}): Promise<void> {
     if (!text || text.trim() === '') {
       throw new Error('No text provided for speech synthesis')
     }
 
-    // Stop anything already playing
+    // Stop anything already playing and claim a new speech generation
     this.stop()
+    const seq = ++this.speakSeq
 
-    if (!this.serverTTSFailed) {
-      try {
-        return await this.speakViaServer(text, options)
-      } catch (error) {
-        console.warn('TTS: Server TTS unavailable, falling back to Web Speech:', error)
-        this.serverTTSFailed = true
+    try {
+      return await this.speakViaServer(text, seq, options)
+    } catch (error) {
+      // Autoplay was blocked: do NOT fall back — Web Speech would start
+      // later and overlap the next user-initiated playback.
+      if (error instanceof Error && error.name === 'PlaybackBlocked') {
+        console.warn('TTS: Autoplay blocked by browser; skipping playback')
+        return
       }
+      // Server unreachable/misconfigured: fall back for this call only.
+      console.warn('TTS: Server TTS unavailable, falling back to Web Speech:', error)
     }
 
-    return this.speakWithWebSpeech(text, options)
+    if (seq !== this.speakSeq) return
+    return this.speakWithWebSpeech(text, seq, options)
   }
 
   // Web Speech API path (previous default), kept as fallback
-  private async speakWithWebSpeech(text: string, options: TTSOptions = {}): Promise<void> {
+  private async speakWithWebSpeech(text: string, seq: number, options: TTSOptions = {}): Promise<void> {
     if (!this.synthesis) {
       throw new Error('Speech synthesis not supported')
     }
@@ -209,6 +241,9 @@ class TextToSpeechService {
     } catch (error) {
       console.warn('TTS: Voice loading timeout, proceeding with available voices')
     }
+
+    // A newer speak/stop happened while voices were loading — stay silent.
+    if (seq !== this.speakSeq) return
 
     return new Promise((resolve, reject) => {
       // Cancel any ongoing speech
@@ -279,8 +314,10 @@ class TextToSpeechService {
     })
   }
 
-  // Stop current speech (both server-audio playback and Web Speech)
+  // Stop current speech (both server-audio playback and Web Speech), and
+  // invalidate any in-flight speech that hasn't started making sound yet.
   stop(): void {
+    this.speakSeq++
     if (this.currentAudio) {
       this.currentAudio.pause()
       this.currentAudio.src = ''
