@@ -36,7 +36,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-/** Fetches real Cantonese TTS audio (Fish Audio) and plays it in the AudioPlayer. */
+/**
+ * AudioPlayer exhibit: the full player renders immediately; the play button
+ * synthesizes a real Cantonese sample via /api/speech/tts (Fish Audio) on
+ * first use, then plays it.
+ */
 function TTSPlayerDemo() {
   const [src, setSrc] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -56,26 +60,41 @@ function TTSPlayerDemo() {
     }
   }
 
-  if (!src) {
-    return (
-      <Button onClick={generate} disabled={loading} variant="outline">
-        <Play />
-        {loading ? "Generating…" : "Generate Cantonese sample (Fish Audio)"}
-      </Button>
-    )
-  }
-
   return (
     <AudioPlayerProvider>
       <Card>
         <CardContent className="flex items-center gap-3 p-4">
-          <AudioPlayerButton item={{ id: "tts-sample", src }} size="icon" variant="secondary" />
+          {src ? (
+            <AudioPlayerButton
+              item={{ id: "tts-sample", src }}
+              size="icon"
+              variant="secondary"
+            />
+          ) : (
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={generate}
+              disabled={loading}
+              aria-label="Generate and play Cantonese sample"
+            >
+              {loading ? (
+                <span className="size-4 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
+              ) : (
+                <Play />
+              )}
+            </Button>
+          )}
           <AudioPlayerTime className="text-xs text-muted-foreground" />
           <AudioPlayerProgress className="flex-1" />
           <AudioPlayerDuration className="text-xs text-muted-foreground" />
           <AudioPlayerSpeed />
         </CardContent>
       </Card>
+      <p className="text-xs text-muted-foreground mt-2">
+        Press play to synthesize 你好！歡迎嚟到粵語學習。 with the live Fish
+        Audio voice, then scrub, replay, and change speed.
+      </p>
     </AudioPlayerProvider>
   )
 }
