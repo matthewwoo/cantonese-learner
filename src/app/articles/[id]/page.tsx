@@ -2,14 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { toast } from 'sonner';
-import { ttsService, speakCantonese, stopSpeech } from '@/utils/textToSpeech';
-import { speakAndPlayCantonese as speakWithOpenAI, stopOpenAITTS, isOpenAITTSAvailable } from '@/utils/openaiTTS';
+import { speakCantonese, stopSpeech } from '@/utils/textToSpeech';
 import ChatMessage from '@/components/chat/ChatMessage';
 import { processArticleIntoSentences, type SentenceCard } from '@/utils/sentenceProcessor';
 import { createClient } from '@/lib/supabase/client';
 import { getArticleWithSession } from '@/lib/data/articles';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/shared/spinner';
@@ -19,6 +18,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  ArticleAudioPlayer,
+  type ArticleAudioPlayerHandle,
+} from '@/components/articles/article-audio-player';
 
 interface Article {
   id: string;
@@ -50,45 +53,30 @@ export default function ArticleReadingPage() {
   const [readingSession, setReadingSession] = useState<ReadingSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sentences, setSentences] = useState<SentenceCard[]>([]);
-  
-  // Reading controls
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+
+  // Read-aloud: index of the block currently being read (null = not playing)
+  const [activeBlock, setActiveBlock] = useState<number | null>(null);
+  const playerRef = useRef<ArticleAudioPlayerHandle | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  
+
   // Vocabulary definition modal
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [wordDefinition, setWordDefinition] = useState<any>(null);
-  
-  // TTS related
-  const speechSynthesis = useRef<SpeechSynthesis | null>(null);
-  const currentUtterance = useRef<SpeechSynthesisUtterance | null>(null);
 
-// Initialize speech synthesis
+  // Stop any lingering per-bubble speech when leaving the page
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      speechSynthesis.current = window.speechSynthesis;
-    }
-    
-    // Initialize Cantonese TTS services
-    if (isOpenAITTSAvailable()) {
-      console.log('Article TTS: OpenAI TTS service available for Cantonese');
-    } else if (ttsService.isSupported()) {
-      console.log('Article TTS: Web Speech TTS service available (fallback)');
-    } else {
-      console.warn('Article TTS: No TTS service available');
-    }
-    
-    // Cleanup function
-    return () => {
-      stopSpeech(); // Stop any ongoing Web Speech TTS
-      stopOpenAITTS(); // Stop any ongoing OpenAI TTS
-      if (speechSynthesis.current?.speaking) {
-        speechSynthesis.current.cancel();
-      }
-    };
+    return () => stopSpeech();
   }, []);
+
+  // Highlight + scroll the block being read into view
+  const handleActiveBlockChange = (index: number | null) => {
+    setActiveBlock(index);
+    if (index !== null) {
+      document
+        .getElementById(`sentence-${index}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
 
   // Load article data
   useEffect(() => {
@@ -120,9 +108,6 @@ export default function ArticleReadingPage() {
 
       setArticle(loadedArticle);
       setReadingSession(data.readingSession);
-      setCurrentLineIndex(data.readingSession.currentPosition);
-      // Default to Chinese view for bubbles (do not auto-enable English)
-      setPlaybackSpeed(data.readingSession.readingSpeed);
 
       // Process article into sentence-level cards for chat-style bubbles
       try {
@@ -144,195 +129,6 @@ export default function ArticleReadingPage() {
       router.push('/articles');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  /**
-   * Play/Pause TTS
-   */
-  const togglePlayback = () => {
-    if (!article) return;
-
-    if (isPlaying) {
-      // Pause playback
-      stopSpeech();
-      stopOpenAITTS();
-      if (speechSynthesis.current?.speaking) {
-        speechSynthesis.current.cancel();
-      }
-      setIsPlaying(false);
-    } else {
-      // Start playback
-      playFromLine(currentLineIndex);
-      setIsPlaying(true);
-    }
-  };
-
-  /**
-   * Play from specified line
-   */
-  const playFromLine = async (lineIndex: number) => {
-    if (!article) return;
-
-    // Cancel current playback
-    stopSpeech();
-    stopOpenAITTS();
-    if (speechSynthesis.current?.speaking) {
-      speechSynthesis.current.cancel();
-    }
-
-    // Get the text to speak (Chinese)
-    const textToSpeak = article.translatedContent[lineIndex];
-    if (!textToSpeak) return;
-
-    try {
-      // Set current line index
-      setCurrentLineIndex(lineIndex);
-
-      // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
-      if (ttsService.isSupported()) {
-        console.log(`Article TTS: Playing line ${lineIndex + 1} with Web Speech TTS`);
-        
-        // Play using Web Speech TTS
-        await speakCantonese(textToSpeak, {
-          rate: playbackSpeed,
-          lang: 'zh-HK' // Hong Kong Cantonese
-        });
-        
-        // After playback finishes, play the next line
-        if (lineIndex < article.translatedContent.length - 1) {
-          setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
-        } else {
-          // Playback complete
-          setIsPlaying(false);
-          updateReadingProgress(article.translatedContent.length - 1);
-        }
-      } else if (isOpenAITTSAvailable()) {
-        // Fallback to OpenAI TTS
-        console.log(`Article TTS: Playing line ${lineIndex + 1} with OpenAI TTS`);
-        
-        // Play using OpenAI TTS
-        await speakWithOpenAI(textToSpeak, {
-          speed: playbackSpeed,
-          voice: 'nova' // Voice suitable for Chinese
-        });
-        
-        // After playback finishes, play the next line
-        if (lineIndex < article.translatedContent.length - 1) {
-          setTimeout(() => playFromLine(lineIndex + 1), 500); // Brief pause
-        } else {
-          // Playback complete
-          setIsPlaying(false);
-          updateReadingProgress(article.translatedContent.length - 1);
-        }
-      } else {
-        // Final fallback to basic TTS
-        console.log(`Article TTS: Using fallback TTS for line ${lineIndex + 1}`);
-        
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
-        utterance.rate = playbackSpeed;
-        
-        utterance.onstart = () => {
-          setCurrentLineIndex(lineIndex);
-        };
-        
-        utterance.onend = () => {
-          // Play the next line
-          if (lineIndex < article.translatedContent.length - 1) {
-            setTimeout(() => playFromLine(lineIndex + 1), 500);
-          } else {
-            // Playback complete
-            setIsPlaying(false);
-            updateReadingProgress(article.translatedContent.length - 1);
-          }
-        };
-        
-        utterance.onerror = (event) => {
-          console.error('TTS 錯誤:', event);
-          toast.error('Speech playback error');
-          setIsPlaying(false);
-        };
-
-        currentUtterance.current = utterance;
-        speechSynthesis.current?.speak(utterance);
-      }
-    } catch (error) {
-      console.error('TTS 播放錯誤:', error);
-      toast.error('Speech playback error');
-      setIsPlaying(false);
-    }
-  };
-
-  /**
-   * Highlight the current word being played
-   * Note: simplified version; a real implementation needs more complex logic
-   */
-  const highlightCurrentWord = (utterance: SpeechSynthesisUtterance, text: string) => {
-    // Implement word-level highlighting here
-    // Requires using the utterance boundary events
-  };
-
-  /**
-   * Play a specific line on click
-   */
-  const playLine = async (lineIndex: number) => {
-    if (!article) return;
-
-    const textToSpeak = article.translatedContent[lineIndex];
-    if (!textToSpeak) return;
-
-    try {
-      // Cancel current playback
-      stopSpeech();
-      stopOpenAITTS();
-      if (speechSynthesis.current?.speaking) {
-        speechSynthesis.current.cancel();
-      }
-
-      // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
-      if (ttsService.isSupported()) {
-        console.log(`Article TTS: Playing single line ${lineIndex + 1} with Web Speech TTS`);
-        await speakCantonese(textToSpeak, {
-          rate: playbackSpeed,
-          lang: 'zh-HK' // Hong Kong Cantonese
-        });
-      } else if (isOpenAITTSAvailable()) {
-        // Fallback to OpenAI TTS
-        console.log(`Article TTS: Playing single line ${lineIndex + 1} with OpenAI TTS`);
-        await speakWithOpenAI(textToSpeak, {
-          speed: playbackSpeed,
-          voice: 'nova' // Voice suitable for Chinese
-        });
-      } else {
-        // Final fallback to basic TTS
-        console.log(`Article TTS: Using fallback TTS for single line ${lineIndex + 1}`);
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
-        utterance.rate = playbackSpeed;
-        speechSynthesis.current?.speak(utterance);
-      }
-    } catch (error) {
-      console.error('TTS 播放錯誤:', error);
-      toast.error('Speech playback error');
-    }
-  };
-
-  /**
-   * Change playback speed
-   */
-  const changeSpeed = (speed: number) => {
-    setPlaybackSpeed(speed);
-    
-    // If currently playing, restart the current line
-    if (isPlaying) {
-      // Stop current playback and restart
-      stopSpeech();
-      stopOpenAITTS();
-      if (speechSynthesis.current?.speaking) {
-        speechSynthesis.current.cancel();
-      }
-      setTimeout(() => playFromLine(currentLineIndex), 100);
     }
   };
 
@@ -418,25 +214,45 @@ export default function ArticleReadingPage() {
         </div>
       </div>
 
-      {/* Article content (display each sentence as chat bubbles) */}
-      <div className="max-w-[480px] mx-auto px-4 py-8">
+      {/* Article content (display each sentence as chat bubbles).
+          Extra bottom padding keeps the last bubbles above the player bar. */}
+      <div className="max-w-[480px] mx-auto px-4 py-8 pb-24">
         {/* Align narrow width and spacing with the chat page */}
         <div className="space-y-4">
           {sentences.map((s, idx) => (
-            <ChatMessage
+            <div
               key={idx}
-              message={{
-                id: String(idx),
-                role: 'assistant',
-                content: s.chinese,
-                translation: s.english,
-                timestamp: new Date(),
-              }}
-              showTranslation={showTranslation}
-            />
+              id={`sentence-${idx}`}
+              // Tapping a bubble plays it alone — pause the read-aloud first
+              onClickCapture={() => playerRef.current?.pause()}
+              className={cn(
+                'rounded-lg transition-all duration-300',
+                activeBlock === idx &&
+                  'ring-2 ring-primary/50 bg-accent/50 -mx-2 px-2 py-1'
+              )}
+            >
+              <ChatMessage
+                message={{
+                  id: String(idx),
+                  role: 'assistant',
+                  content: s.chinese,
+                  translation: s.english,
+                  timestamp: new Date(),
+                }}
+                showTranslation={showTranslation}
+              />
+            </div>
           ))}
         </div>
       </div>
+
+      {/* Read-aloud player bar (sits above the bottom nav) */}
+      <ArticleAudioPlayer
+        ref={playerRef}
+        sentences={sentences}
+        onActiveBlockChange={handleActiveBlockChange}
+        className="bottom-[84px] border-b"
+      />
 
       {/* Vocabulary definition modal */}
       <Dialog
@@ -471,29 +287,12 @@ export default function ArticleReadingPage() {
 
           <Button
             onClick={async () => {
-              // Play pronunciation of a single character/word
+              // Play pronunciation of a single character/word.
+              // speakCantonese handles Fish/Azure server TTS with Web Speech fallback.
               if (!selectedWord) return;
               try {
-                // Prefer Web Speech TTS (like chat/flashcards, better Cantonese support)
-                if (ttsService.isSupported()) {
-                  console.log(`Article TTS: Playing word "${selectedWord}" with Web Speech TTS`);
-                  await speakCantonese(selectedWord, {
-                    rate: 0.8, // Slower speed for learning
-                    lang: 'zh-HK' // Hong Kong Cantonese
-                  });
-                } else if (isOpenAITTSAvailable()) {
-                  console.log(`Article TTS: Playing word "${selectedWord}" with OpenAI TTS`);
-                  await speakWithOpenAI(selectedWord, {
-                    speed: 0.8, // Slower speed for learning
-                    voice: 'nova' // Voice suitable for Chinese
-                  });
-                } else if (speechSynthesis.current) {
-                  console.log(`Article TTS: Using fallback TTS for word "${selectedWord}"`);
-                  const utterance = new SpeechSynthesisUtterance(selectedWord);
-                  utterance.lang = 'zh-HK'; // Try Hong Kong Chinese
-                  utterance.rate = 0.8; // Slower speed for learning
-                  speechSynthesis.current.speak(utterance);
-                }
+                playerRef.current?.pause();
+                await speakCantonese(selectedWord, { rate: 0.8 });
               } catch (error) {
                 console.error('TTS 播放錯誤:', error);
                 toast.error('Speech playback error');
@@ -506,8 +305,8 @@ export default function ArticleReadingPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Floating action buttons */}
-      <div className="fixed bottom-8 right-8 flex flex-col gap-3">
+      {/* Floating action buttons (kept clear of the player bar + nav) */}
+      <div className="fixed bottom-40 right-8 flex flex-col gap-3">
         {/* Back to top */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
