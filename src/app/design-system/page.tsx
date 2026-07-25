@@ -50,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/shared/spinner"
+import { ElevenLabsSection } from "./elevenlabs-section"
 
 const COLOR_TOKENS = [
   "background",
@@ -284,6 +285,10 @@ export default function DesignSystemPage() {
             </DropdownMenu>
           </div>
         </Section>
+
+        <Separator />
+
+        <ElevenLabsSection />
 
         <Separator />
         <p className="text-sm text-muted-foreground">

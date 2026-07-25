@@ -51,6 +51,15 @@ Footer), `input`, `textarea`, `label`, `badge`, `skeleton`, `dialog`,
 Note: `button` is customized — default size is `h-11 px-5` and radius is
 `rounded-sm` (8px) to match the app's Figma look.
 
+**Audio/voice components** (from the [`@elevenlabs-ui`](https://ui.elevenlabs.io)
+registry, configured in `components.json`): `audio-player` (+ provider/hooks),
+`waveform` (Static/Scrolling/Microphone/Recording variants), `live-waveform`,
+`bar-visualizer`, `scrub-bar`, `voice-button`, `mic-selector`, `orb` (three.js),
+`matrix`, `message`, `conversation`, `response`, `shimmering-text`, `avatar`.
+Add more with `npx shadcn@latest add @elevenlabs-ui/<name>`. (Skipped:
+`voice-picker`, `conversation-bar`, `speech-input`, `transcript-viewer` — they
+require ElevenLabs's own API/SDK.)
+
 ### `src/components/shared/` — app composites
 Built on the primitives: `spinner` (lucide Loader2 + CVA sizes),
 `quick-actions` (dashboard action grid), `top-header` (fixed app bar),
