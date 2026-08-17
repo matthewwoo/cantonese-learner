@@ -264,11 +264,14 @@ class TextToSpeechService {
       if (cantoneseVoices.length > 0) {
         utterance.voice = cantoneseVoices[0]
         console.log('TTS: Using Cantonese voice:', cantoneseVoices[0].name)
-      } else if (chineseVoices.length > 0) {
-        utterance.voice = chineseVoices[0]
-        console.log('TTS: Using Chinese voice:', chineseVoices[0].name)
       } else {
-        console.warn('TTS: No Chinese voices found, using default')
+        // Deliberately leave `voice` unset rather than taking the first zh
+        // voice: that list matches zh-CN, so picking from it forces Mandarin.
+        // An assigned voice overrides utterance.lang, so this is the only way
+        // the zh-HK hint below gets a chance to be honoured.
+        console.warn(
+          `TTS: No Cantonese voice available (${chineseVoices.length} other Chinese voice(s) ignored to avoid Mandarin); falling back to lang hint only`
+        )
       }
       
       // Set language

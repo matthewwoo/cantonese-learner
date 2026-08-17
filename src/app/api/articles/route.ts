@@ -135,8 +135,13 @@ async function translateWithService(
   console.log('Google Translate API key exists:', !!googleApiKey);
   
   if (googleApiKey) {
-    console.log('Using Google Translate API');
-    // Use Google Translate API
+    // Google Translate has no Cantonese target — zh-TW gives Standard Written
+    // Chinese (Mandarin in Traditional characters). Articles produced this way
+    // will read aloud in Mandarin, since Fish Audio infers language from text.
+    // Prefer OPENAI_API_KEY for article translation.
+    console.warn(
+      'Falling back to Google Translate: output will be Standard Written Chinese, NOT Cantonese. Set OPENAI_API_KEY for Cantonese translation.'
+    );
     return translateWithGoogle(text, targetLanguage, sourceLanguage, googleApiKey);
   }
   
@@ -190,9 +195,32 @@ async function translateWithOpenAI(
   sourceLanguage: string | undefined,
   apiKey: string
 ): Promise<string> {
-  const targetLang = targetLanguage === 'zh-TW' ? 'Traditional Chinese' : 'English';
-  const sourceLang = sourceLanguage ? (sourceLanguage === 'zh-TW' ? 'Traditional Chinese' : 'English') : 'auto-detect';
-  
+  const toChinese = targetLanguage === 'zh-TW';
+  const targetLang = toChinese ? 'written Cantonese' : 'English';
+  const sourceLang = sourceLanguage ? (sourceLanguage === 'zh-TW' ? 'written Cantonese' : 'English') : 'auto-detect';
+
+  // Asking for "Traditional Chinese" yields Standard Written Chinese — Mandarin
+  // grammar and vocabulary that merely uses Traditional characters. That is the
+  // wrong study material for a Cantonese app, and it also makes TTS drift:
+  // Fish Audio has no language parameter and infers pronunciation from the text,
+  // so Mandarin-shaped text gets read aloud in Mandarin. Naming the colloquial
+  // markers explicitly is what makes the output unambiguously Cantonese.
+  const cantoneseSystemPrompt = `You are a professional translator specialising in Cantonese (粵語 / 廣東話) as spoken in Hong Kong.
+
+Translate the following text from ${sourceLang} to ${targetLang}.
+
+Critical requirements:
+- Write COLLOQUIAL CANTONESE (口語), not Standard Written Chinese (書面語). The result must read as spoken Hong Kong Cantonese.
+- Use Traditional characters.
+- Use Cantonese vocabulary and particles, NOT their Mandarin equivalents:
+  嘅 (not 的), 係 (not 是), 佢 (not 他/她), 咗 (not 了), 喺 (not 在),
+  唔 (not 不), 冇 (not 沒有), 睇 (not 看), 講 (not 說), 攞 (not 拿),
+  乜嘢/咩 (not 什麼), 點解 (not 為什麼), 而家 (not 現在), 好 (not 很).
+- Keep sentence-final particles where they sound natural (啦, 喇, 嘅, 呀, 㗎, 咩).
+- A reader from Hong Kong should recognise it immediately as Cantonese, not as Mandarin written in Traditional characters.
+
+Only provide the translation. No explanation, no romanisation, no notes.`;
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -204,9 +232,9 @@ async function translateWithOpenAI(
       messages: [
         {
           role: 'system',
-          content: `You are a professional translator. Translate the following text from ${sourceLang} to ${targetLang}. 
-                   Only provide the translation without any explanation. 
-                   For Chinese, always use Traditional Chinese as used in Hong Kong and Taiwan.`,
+          content: toChinese
+            ? cantoneseSystemPrompt
+            : `You are a professional translator. Translate the following text from ${sourceLang} to ${targetLang}. Only provide the translation without any explanation.`,
         },
         {
           role: 'user',
