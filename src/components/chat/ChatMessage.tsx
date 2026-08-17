@@ -173,6 +173,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
     void handleSpeak()
   }
 
+  // The bubble shows English only when a translation exists (or while one is
+  // being fetched); otherwise it falls back to the Chinese source. Tag the
+  // rendered text to match, so screen readers switch pronunciation with it.
+  const showingEnglish =
+    showingTranslation && (translationText !== undefined || isTranslating)
+  const displayedText = showingTranslation
+    ? (translationText ?? (isTranslating ? 'Translating…' : content))
+    : content
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div
@@ -202,8 +211,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
                 <span className="text-[14px]">{isSpeaking ? '⏸' : '▶'}</span>
               </Button>
             )}
-            <div className="text-[14px] leading-[21px] text-foreground">
-              {showingTranslation ? (translationText ?? (isTranslating ? 'Translating…' : content)) : content}
+            <div
+              lang={showingEnglish ? 'en' : 'zh-HK'}
+              className="text-[14px] leading-[21px] text-foreground"
+            >
+              {displayedText}
             </div>
           </div>
           

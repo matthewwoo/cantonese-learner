@@ -184,7 +184,10 @@ export default function ArticleReadingPage() {
       {/* Article header (Figma-aligned) */}
       <div className="max-w-md mx-auto px-4 sm:px-6 pt-4">
         <div className="flex items-center justify-between h-[29px] mb-2">
-          <h1 className="text-[24px] font-semibold tracking-[-0.48px] text-foreground truncate">
+          <h1
+            lang="zh-HK"
+            className="text-[24px] font-semibold tracking-[-0.48px] text-foreground truncate"
+          >
             {article.title}
           </h1>
           <Badge className="h-[24px] px-[8px] py-[4px] rounded-sm">
@@ -266,7 +269,7 @@ export default function ArticleReadingPage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-foreground">
+            <DialogTitle lang="zh-HK" className="text-2xl font-bold text-foreground">
               {selectedWord}
             </DialogTitle>
           </DialogHeader>

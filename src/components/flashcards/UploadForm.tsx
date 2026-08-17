@@ -606,7 +606,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                     <div className="grid grid-cols-1 gap-2 text-[14px] leading-[21px]">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="w-24 shrink-0 justify-start">Chinese:</Badge>
-                        <span className="text-foreground">{card.chineseWord}</span>
+                        <span lang="zh-HK" className="text-foreground">{card.chineseWord}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="w-24 shrink-0 justify-start">English:</Badge>
@@ -627,7 +627,7 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
                       {card.exampleSentenceChinese && (
                         <div className="flex items-start gap-2">
                           <Badge variant="secondary" className="w-24 shrink-0 justify-start mt-0.5">Example (CN):</Badge>
-                          <span className="text-foreground">{card.exampleSentenceChinese}</span>
+                          <span lang="zh-HK" className="text-foreground">{card.exampleSentenceChinese}</span>
                         </div>
                       )}
                     </div>

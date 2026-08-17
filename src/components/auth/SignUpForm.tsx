@@ -61,7 +61,7 @@ export default function SignUpForm() {
       <CardContent className="p-6">
         {/* Bilingual header */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-foreground">開始學習</h1>
+          <h1 className="text-2xl font-bold text-foreground" lang="zh-HK">開始學習</h1>
           <p className="text-muted-foreground mt-1">Start lesson</p>
         </div>
 

@@ -50,7 +50,7 @@ export default function SignInForm() {
       <CardContent className="p-6">
         {/* Header section with bilingual title */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-foreground">歡迎回來</h1>
+          <h1 className="text-2xl font-bold text-foreground" lang="zh-HK">歡迎回來</h1>
           <p className="text-foreground mt-1">Welcome back</p>
         </div>
 

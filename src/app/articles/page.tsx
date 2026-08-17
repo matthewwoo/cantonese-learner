@@ -236,7 +236,7 @@ export default function ArticlesPage() {
                 </div>
 
                 <div className="p-6">
-                  <h3 className="text-[16px] leading-[24px] font-medium mb-1 text-foreground">{article.title}</h3>
+                  <h3 lang="zh-HK" className="text-[16px] leading-[24px] font-medium mb-1 text-foreground">{article.title}</h3>
                   {article.sourceUrl && (
                     <p className="text-[14px] leading-[21px] mb-2 truncate text-muted-foreground">
                       📎 {(() => { try { return new URL(article.sourceUrl!).hostname } catch { return article.sourceUrl } })()}

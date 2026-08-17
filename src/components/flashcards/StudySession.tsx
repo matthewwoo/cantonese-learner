@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import QuestionCard from "./QuestionCard"
 import { createClient } from "@/lib/supabase/client"
 import { recordStudyResponse } from "@/lib/data/study"
+import { Zh } from "@/components/shared/zh"
 
 // Types for study session data
 interface Flashcard {
@@ -97,12 +98,14 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
   }
 
   // Get encouraging feedback based on response quality
-  const getResponseFeedback = (quality: ResponseQuality): string => {
+  // Returns a node, not a string: the Chinese interjections need lang marking
+  // so the toast's aria-live announcement doesn't read them as English.
+  const getResponseFeedback = (quality: ResponseQuality): React.ReactNode => {
     switch (quality) {
       case ResponseQuality.EASY:
-        return "Perfect! 完美! That was easy!"
+        return <>Perfect! <Zh>完美!</Zh> That was easy!</>
       case ResponseQuality.GOOD:
-        return "Good job! 好! You got it right!"
+        return <>Good job! <Zh>好!</Zh> You got it right!</>
       case ResponseQuality.HARD:
         return "Correct but difficult. Keep practicing!"
       case ResponseQuality.INCORRECT:

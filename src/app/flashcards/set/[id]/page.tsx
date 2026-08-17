@@ -110,7 +110,7 @@ export default function FlashcardSetPage() {
                         <div className="flex justify-between items-start mb-2">
                             <div className="w-full">
                                 <div className="flex justify-between items-start">
-                                    <h3 className="text-lg font-bold mb-1 text-foreground">{card.chineseWord}</h3>
+                                    <h3 lang="zh-HK" className="text-lg font-bold mb-1 text-foreground">{card.chineseWord}</h3>
                                     <span className="text-xs font-mono text-muted-foreground/70">#{idx + 1}</span>
                                 </div>
                                 <p className="mb-1 text-muted-foreground">{card.englishTranslation}</p>

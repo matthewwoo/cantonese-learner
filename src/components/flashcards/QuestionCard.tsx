@@ -94,7 +94,10 @@ export default function QuestionCard({
           }`}
         >
           {/* Chinese Word */}
-          <div className="text-[48px] font-bold text-foreground leading-[1.2] tracking-[-0.96px] mb-6">
+          <div
+            lang="zh-HK"
+            className="text-[48px] font-bold text-foreground leading-[1.2] tracking-[-0.96px] mb-6"
+          >
             {flashcard.chineseWord}
           </div>
 
@@ -148,7 +151,10 @@ export default function QuestionCard({
           {/* Main Content */}
           <div className="flex flex-col gap-5 items-center justify-end py-10 flex-1">
             {/* Chinese Word */}
-            <div className="text-[48px] font-bold text-foreground leading-[1.2] tracking-[-0.96px]">
+            <div
+              lang="zh-HK"
+              className="text-[48px] font-bold text-foreground leading-[1.2] tracking-[-0.96px]"
+            >
               {flashcard.chineseWord}
             </div>
 

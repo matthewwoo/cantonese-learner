@@ -10,6 +10,7 @@ import { useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/shared/spinner"
 import { QuickActions } from "@/components/shared/quick-actions"
+import { Zh } from "@/components/shared/zh"
 
 export default function DashboardPage() {
   const { user, status } = useUser()
@@ -32,7 +33,7 @@ export default function DashboardPage() {
             Loading your learning dashboard...
           </p>
           <p className="text-sm mt-2 text-muted-foreground">
-            正在載入您的學習儀表板...
+            <Zh>正在載入您的學習儀表板</Zh>...
           </p>
         </div>
       </div>

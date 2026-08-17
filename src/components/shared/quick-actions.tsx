@@ -33,7 +33,10 @@ export function QuickActions({
         <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
           {title}
           {titleChinese && (
-            <span className="block text-base font-normal text-muted-foreground mt-1">
+            <span
+              lang="zh-HK"
+              className="block text-base font-normal text-muted-foreground mt-1"
+            >
               {titleChinese}
             </span>
           )}
@@ -53,7 +56,7 @@ export function QuickActions({
               </span>
               {action.label}
               {action.labelChinese && (
-                <span className="text-sm opacity-90">{action.labelChinese}</span>
+                <span lang="zh-HK" className="text-sm opacity-90">{action.labelChinese}</span>
               )}
             </Button>
           ))}
