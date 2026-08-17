@@ -9,13 +9,14 @@
 /**
  * Playback speed for Cantonese synthesis, as a multiplier of natural pace.
  *
- * Deliberately below 1.0 — learners need time to catch tones and word
- * boundaries. Applied at *synthesis* time (Fish `prosody.speed`, Azure SSML
- * `<prosody rate>`), which re-voices the line properly, rather than as an
- * <audio> playbackRate, which just resamples finished audio and sounds
- * slowed-down.
+ * 1.0 = the voice's natural delivery. Change this one value to retune every
+ * surface at once — the article read-aloud bar, tapping a bubble, the word
+ * dialog, chat, and flashcards all resolve their speed from here.
  *
- * The API itself still defaults to 1.0 — that endpoint stays general-purpose,
- * and this is the app's choice, made in one place.
+ * Applied at *synthesis* time (Fish `prosody.speed`, Azure SSML
+ * `<prosody rate>`), which re-voices the line properly. That is not the same
+ * as the player's speed control, which sets <audio>.playbackRate and merely
+ * resamples finished audio — so prefer changing this constant over reaching
+ * for playbackRate if the pace ever needs to move.
  */
-export const CANTONESE_TTS_SPEED = 0.75
+export const CANTONESE_TTS_SPEED = 1.0

@@ -283,7 +283,7 @@ class TextToSpeechService {
       utterance.lang = options.lang || 'zh-HK' // Hong Kong Chinese (Cantonese)
       
       // Set speech parameters
-      utterance.rate = options.rate ?? CANTONESE_TTS_SPEED // Slower for learning
+      utterance.rate = options.rate ?? CANTONESE_TTS_SPEED
       utterance.pitch = options.pitch || 1.0
       utterance.volume = options.volume || 1.0
 
