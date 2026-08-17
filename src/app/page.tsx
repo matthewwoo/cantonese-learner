@@ -89,7 +89,7 @@ export default async function Home() {
               </div>
               <h4 className="text-xl font-semibold text-foreground mb-3"><Zh>智能閃卡</Zh> Smart Flashcards</h4>
               <p className="text-muted-foreground leading-relaxed">
-                Learn vocabulary with intelligent spaced repetition. Upload your own card sets or use our curated collections.
+                Learn vocabulary with intelligent spaced repetition. Generate your own card sets or use our curated collections.
                 <span className="font-medium text-foreground"> Traditional Chinese characters supported!</span>
               </p>
             </div>

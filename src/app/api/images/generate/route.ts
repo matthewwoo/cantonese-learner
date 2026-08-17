@@ -3,12 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteClient } from '@/lib/supabase/server';
-import OpenAI from 'openai'
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import { generateDeckImage } from '@/lib/images/deck-image'
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,51 +33,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Sanitize and create a safe prompt
-    const sanitizedPrompt = prompt.trim().slice(0, 100) // Limit length
-    const imagePrompt = `A simple, flat illustration of a single object with a white background representing: ${sanitizedPrompt}. Only illustrate one object. `
-
-    console.log('Generating image with prompt:', imagePrompt)
-
-    // Generate image using DALL-E 3 and return base64 for persistence
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: imagePrompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard",
-      style: "vivid",
-      response_format: "b64_json",
-    })
-
-    console.log('Image generation response received')
-
-    const b64 = (response as any).data?.[0]?.b64_json as string | undefined
-
-    if (!b64) {
-      console.error('No base64 image in response:', response)
-      return NextResponse.json(
-        { error: 'Failed to generate image - no image returned' },
-        { status: 500 }
-      )
-    }
-
-    const revisedPrompt = (response as any).data?.[0]?.revised_prompt ?? imagePrompt
+    const { imageUrl, prompt: revisedPrompt } = await generateDeckImage(prompt)
 
     return NextResponse.json({
       success: true,
-      imageUrl: `data:image/png;base64,${b64}`,
+      imageUrl,
       prompt: revisedPrompt
     })
 
   } catch (error) {
     console.error('Image generation error:', error)
-    
+
     // Handle specific OpenAI API errors
     if (error && typeof error === 'object' && 'status' in error) {
-      const status = (error as any).status
-      const message = (error as any).message || 'Unknown API error'
-      
+      const status = (error as { status?: number }).status
+      const message = (error as { message?: string }).message || 'Unknown API error'
+
       if (status === 401) {
         return NextResponse.json(
           { error: 'Invalid API key or authentication failed' },
@@ -105,7 +71,7 @@ export async function POST(request: NextRequest) {
         )
       }
     }
-    
+
     if (error instanceof Error) {
       return NextResponse.json(
         { error: `Image generation failed: ${error.message}` },

@@ -292,7 +292,7 @@ function FlashcardsBody({
                 <p className="mb-8 text-muted-foreground">Create your first set to start learning Cantonese</p>
 
                 <Button onClick={() => onCloseUpload()} className="px-8 font-medium">
-                  Upload First Set
+                  Generate First Deck
                 </Button>
               </div>
             </Card>
