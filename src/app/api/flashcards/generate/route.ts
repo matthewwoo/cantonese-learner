@@ -4,62 +4,51 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createRouteClient } from "@/lib/supabase/server"
 import { createSetWithCards } from "@/lib/data/flashcards"
+import {
+  FLASHCARD_CSV_HEADER,
+  parseFlashcardCsv,
+  deduplicateFlashcards,
+} from "@/lib/flashcards/csv"
+import { tryGenerateDeckImage } from "@/lib/images/deck-image"
 import { z } from "zod"
 import OpenAI from "openai"
 
-// Initialize OpenAI client once
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-const seedWordSchema = z.object({
-  traditional: z.string().min(1),
-  jyutping: z.string().min(1)
-})
+// Constructed on first use, not at module scope: the OpenAI constructor throws
+// when the key is missing, which crashed the build during page-data collection
+// before the handler's own key check could return a useful error.
+let openaiClient: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return openaiClient
+}
 
 const bodySchema = z.object({
   name: z.string().min(1, "Set name is required"),
   count: z.number().int().min(10).max(100).default(100),
-  seedWords: z.array(seedWordSchema).max(100).optional(),
-  imageUrl: z.string().url().optional().nullable()
+  // English words/phrases to seed the deck with. The model supplies the
+  // Traditional Chinese and Jyutping for each — the learner shouldn't have to
+  // know the Cantonese in order to ask for it.
+  words: z.array(z.string().min(1).max(100)).max(100).optional()
 })
 
-// Simple CSV parser matching the strict format we prompt for (no commas inside fields)
-function parseStrictCsv(csv: string) {
-  const lines = csv.split('\n').map(l => l.trim()).filter(Boolean)
-  if (lines.length < 2) {
-    throw new Error("CSV must include a header and at least 1 row")
-  }
-  const header = lines[0]
-  const expectedHeader = "Chinese Word,English Translation,Pronunciation,Example Sentence (English),Example Sentence (Chinese)"
-  if (header.replace(/\s+/g, " ") !== expectedHeader) {
-    throw new Error("Unexpected CSV header from AI")
-  }
-  const rows = lines.slice(1)
-    const flashcards = rows.map((row, idx) => {
-    const cols = row.split(',')
-    if (cols.length !== 5) {
-      throw new Error(`Invalid CSV row ${idx + 2}: expected 5 columns`)
-    }
-    const [chineseWord, englishTranslation, pronunciation, exampleSentenceEnglish, exampleSentenceChinese] = cols.map(c => c.trim())
-    return {
-      chineseWord,
-      englishTranslation,
-      pronunciation: pronunciation || null,
-      exampleSentenceEnglish: exampleSentenceEnglish || null,
-      exampleSentenceChinese: exampleSentenceChinese || null,
-    }
-  })
-  return flashcards
-}
+// Model preference, newest first. Reasoning models bill thinking against the
+// completion budget and reject `temperature`/`max_tokens`, so they need
+// different parameters — getting this wrong made every gpt-5 call 400 and fall
+// through to gpt-4o silently.
+const MODEL_CANDIDATES = [
+  { model: "gpt-5", reasoning: true },
+  { model: "gpt-4o", reasoning: false },
+  { model: "gpt-4o-mini", reasoning: false },
+] as const
 
-function deduplicateFlashcards(cards: ReturnType<typeof parseStrictCsv>) {
-  const seen = new Set<string>()
-  return cards.filter(card => {
-    // keys are case-sensitive for Chinese usually, but let's just trim
-    const key = card.chineseWord.trim()
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+// A finished row costs ~28 tokens for terse cards and more once the example
+// sentences read naturally. 70/row plus slack keeps a 100-card deck clear of
+// the ceiling — the old `min(4000, count * 35)` capped a 100-card deck at 3500,
+// right at the point where the response gets cut off mid-row.
+function outputBudget(count: number): number {
+  return Math.min(16000, count * 70 + 200)
 }
 
 export async function POST(request: NextRequest) {
@@ -78,79 +67,136 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
     }
-    const { name, count, seedWords, imageUrl } = parsed.data
+    const { name, count } = parsed.data
+    const words = (parsed.data.words ?? [])
+      .map(w => w.trim())
+      .filter(Boolean)
 
     // Build user instruction and constraints
-    const seedSection = seedWords && seedWords.length > 0
-      ? `Prioritize including these Cantonese words (use Traditional characters; ensure exact Jyutping):\n${seedWords.map(w => `- ${w.traditional} — ${w.jyutping}`).join('\n')}\nFill the remaining to reach ${count} unique cards.`
+    const seedSection = words.length > 0
+      ? `Include one card for each of these English words or phrases, translating each into the most natural everyday Cantonese (Traditional characters) with its exact Jyutping:\n${words.map(w => `- ${w}`).join('\n')}\nThen fill the remaining rows to reach ${count} unique cards, staying on the theme of the deck title.`
       : `Create ${count} unique cards appropriate for beginner-to-intermediate learners.`
 
     const systemPrompt = `You are a Cantonese flashcard creator.
 Generate exactly ${count} unique rows of CSV data for the requested deck.
 CRITICAL CSV RULES:
 - Use EXACTLY this header line:
-Chinese Word,English Translation,Pronunciation,Example Sentence (English),Example Sentence (Chinese)
+${FLASHCARD_CSV_HEADER}
 - Use Traditional Chinese for Chinese Word and for the Chinese example sentence.
 - Use Jyutping for Pronunciation.
-- Do NOT include commas in any field. Replace commas with semicolons.
-- Do NOT quote fields.
+- If a field contains a comma, wrap that field in double quotes. Never leave a bare comma inside a field.
 - Do NOT include any additional commentary; output CSV only.
 - Keep examples short and natural.`
 
     const userPrompt = `Deck title: "${name}"
 ${seedSection}`
 
-    // Try model preference with graceful fallback
-    const modelCandidates = [
-      "gpt-5", // requested
-      "gpt-4o",
-      "gpt-4o-mini"
+    const messages = [
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: userPrompt },
     ]
 
-    let csvOutput: string | null = null
-    let lastError: unknown = null
+    // Every deck gets cover art. Kick it off now so it overlaps card
+    // generation rather than adding to it, and let it fail soft — losing the
+    // image must not cost the user the deck they just waited on.
+    const imagePromise = tryGenerateDeckImage(name)
 
-    for (const model of modelCandidates) {
+    const budget = outputBudget(count)
+    let csvOutput: string | null = null
+    let usedModel: string | null = null
+    let truncated = false
+    const failures: string[] = []
+
+    for (const candidate of MODEL_CANDIDATES) {
       try {
-        const resp = await openai.chat.completions.create({
-          model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.4,
-          max_tokens: Math.min(4000, count * 35),
-        })
-        csvOutput = resp.choices?.[0]?.message?.content?.trim() || null
-        if (csvOutput) break
+        const resp = await getOpenAI().chat.completions.create(
+          candidate.reasoning
+            ? {
+                model: candidate.model,
+                messages,
+                // Reasoning tokens come out of this budget too, so leave room
+                // for them on top of the CSV itself.
+                max_completion_tokens: Math.min(32000, budget + 6000),
+              }
+            : {
+                model: candidate.model,
+                messages,
+                temperature: 0.4,
+                max_tokens: budget,
+              }
+        )
+
+        const choice = resp.choices?.[0]
+        const content = choice?.message?.content?.trim()
+        if (!content) {
+          failures.push(`${candidate.model}: empty response`)
+          continue
+        }
+
+        csvOutput = content
+        usedModel = candidate.model
+        truncated = choice?.finish_reason === "length"
+        break
       } catch (err) {
-        lastError = err
-        continue
+        const message = err instanceof Error ? err.message : String(err)
+        failures.push(`${candidate.model}: ${message}`)
       }
     }
 
     if (!csvOutput) {
-      console.error("OpenAI generation failed:", lastError)
-      return NextResponse.json({ error: "Failed to generate flashcards" }, { status: 502 })
+      console.error("OpenAI generation failed:", failures)
+      return NextResponse.json(
+        { error: `Failed to generate flashcards. ${failures.join("; ")}` },
+        { status: 502 }
+      )
     }
 
-    // Ensure code block wrappers removed if present
-    csvOutput = csvOutput.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim()
+    if (failures.length > 0) {
+      console.warn(`Fell back to ${usedModel} after: ${failures.join("; ")}`)
+    }
 
-    // Parse into structured flashcards
-    let flashcards = parseStrictCsv(csvOutput)
+    // A truncated response ends mid-row. That partial row would otherwise parse
+    // as a card with a half-written pronunciation, so drop it outright.
+    if (truncated) {
+      console.warn(
+        `${usedModel} hit the ${budget}-token output cap; dropping the partial final row`
+      )
+      csvOutput = csvOutput.split("\n").slice(0, -1).join("\n")
+    }
+
+    // Parse into structured flashcards. Malformed rows are skipped and
+    // reported rather than failing the whole deck.
+    let flashcards
+    let skipped
+    try {
+      ;({ flashcards, skipped } = parseFlashcardCsv(csvOutput))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not parse the generated CSV"
+      console.error(`Parse failure from ${usedModel}: ${message}`, {
+        head: csvOutput.slice(0, 500),
+      })
+      return NextResponse.json({ error: message }, { status: 502 })
+    }
+
+    if (skipped.length > 0) {
+      console.warn(
+        `Skipped ${skipped.length} malformed row(s) from ${usedModel}:`,
+        skipped.slice(0, 5)
+      )
+    }
 
     // Deduplicate
-    const initialCount = flashcards.length
+    const parsedCount = flashcards.length
     flashcards = deduplicateFlashcards(flashcards)
-    if (flashcards.length < initialCount) {
-      console.log(`Removed ${initialCount - flashcards.length} duplicate cards`)
+    const duplicatesRemoved = parsedCount - flashcards.length
+    if (duplicatesRemoved > 0) {
+      console.log(`Removed ${duplicatesRemoved} duplicate cards`)
     }
 
     // Create the set via the shared data layer (writes as the user; RLS applies)
     const created = await createSetWithCards(supabase, user.id, {
       name,
-      imageUrl: imageUrl || null,
+      imageUrl: await imagePromise,
       flashcards,
     })
 
@@ -162,6 +208,11 @@ ${seedSection}`
         flashcardCount: created.flashcardCount,
         createdAt: created.createdAt
       },
+      // Surfaced so the UI can be honest when the deck lands short of `count`
+      requestedCount: count,
+      skippedRows: skipped.length,
+      duplicatesRemoved,
+      truncated,
       previewCards: flashcards.slice(0, 3)
     })
 
@@ -170,5 +221,3 @@ ${seedSection}`
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
-
-
