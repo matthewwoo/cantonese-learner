@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 // Metadata that appears in the browser tab and search engines
 export const metadata: Metadata = {
-  title: "Cantonese Learner",                                       // Browser tab title
+  title: "Bun — Your Cantonese Buddy",                              // Browser tab title
   description: "Learn Cantonese through flashcards and AI conversations", // SEO description
   manifest: "/manifest.json",
   icons: {
