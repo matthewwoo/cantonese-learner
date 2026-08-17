@@ -60,6 +60,32 @@ Add more with `npx shadcn@latest add @elevenlabs-ui/<name>`. (Skipped:
 `voice-picker`, `conversation-bar`, `speech-input`, `transcript-viewer` — they
 require ElevenLabs's own API/SDK.)
 
+**`voice-pill`** — ours, not from the registry. A single-control voice
+affordance: a 48px-tall, 13rem-wide pill (`● 待機 Standby`) that expands to its
+container's full width and renders a live `LiveWaveform` of the mic while
+listening, with a red pulsing dot and an elapsed timer. (Collapsed width is
+fixed rather than content-hugging so the expansion can animate — `fit-content`
+doesn't interpolate. Override with `className` for longer labels, or pass
+`fullWidth` to skip the collapsed size entirely.)
+States: `idle` · `listening` · `processing` · `error`
+(mic-permission failure is detected internally). It owns no transcription
+logic — `onStreamReady` hands you the `MediaStream`; drive `processing` from
+your STT call. Uncontrolled by default (`idle` ↔ `listening`); pass `state` to
+control it. Labels are bilingual and overridable per state via `labels`.
+This is the chat tab's composer (`components/chat/ChatInput.tsx` is voice-only —
+no text field and no composer bar; the pill floats over the transcript and the
+Whisper transcript is sent as the message on stop):
+```tsx
+<VoicePill
+  state={state}
+  labels={{ idle: { zh: "按一下講", en: "Tap to speak" } }}
+  maxDurationSeconds={15}
+  onStart={startListening}
+  onStop={transcribe}
+  onError={(e) => toast.error(e.message)}
+/>
+```
+
 ### `src/components/shared/` — app composites
 Built on the primitives: `spinner` (lucide Loader2 + CVA sizes),
 `quick-actions` (dashboard action grid), `top-header` (fixed app bar),

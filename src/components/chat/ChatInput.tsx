@@ -1,182 +1,108 @@
 // src/components/chat/ChatInput.tsx
-// Chat input component with send button
-// This teaches: Form handling, React events, controlled components
+// Voice-only chat composer: a VoicePill that expands into a live waveform while
+// recording, then transcribes through OpenAI Whisper and sends the transcript
+// as the message. There is no text field — speaking is the only way to compose.
 
-import React, { useState, KeyboardEvent, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { startOpenAIRecording, stopOpenAIRecording, isOpenAISTTSupported } from '@/utils/openaiSpeechToText'
+"use client"
+
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-// Props interface - defines what properties this component accepts
+import { VoicePill, type VoicePillState } from '@/components/ui/voice-pill'
+import {
+  startOpenAIRecording,
+  stopOpenAIRecording,
+  isOpenAISTTSupported,
+} from '@/utils/openaiSpeechToText'
+
 interface ChatInputProps {
-  onSendMessage: (message: string) => void  // Function to call when user sends message
-  disabled: boolean                         // Whether input should be disabled
-  placeholder: string                       // Placeholder text for input
+  onSendMessage: (message: string) => void  // Called with the transcript
+  disabled: boolean                         // True while the AI is replying
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled, placeholder }) => {
-  // State to store the current input value
-  // useState is a React Hook that lets us add state to functional components
-  const [inputValue, setInputValue] = useState('')
-  
-  // Speech-to-text state
-  const [isListening, setIsListening] = useState(false)
-  const [interimTranscript, setInterimTranscript] = useState('')
-  const [timeLeft, setTimeLeft] = useState(15)
-  const openaiSTTSupported = isOpenAISTTSupported()
+/** Pill auto-stops here; the recorder's own timeout is a longer backstop. */
+const MAX_UTTERANCE_SECONDS = 15
 
-  // Function to handle sending a message
-  const handleSend = () => {
-    // Only send if there's actual content (not just whitespace)
-    if (inputValue.trim()) {
-      // Call the parent component's function to send the message
-      onSendMessage(inputValue.trim())
-      // Clear the input field
-      setInputValue('')
-    }
-  }
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled }) => {
+  const [state, setState] = useState<VoicePillState>('idle')
 
-  // Function to handle Enter key press
-  const handleKeyPress = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Check if Enter was pressed (but not Shift+Enter, which should create new line)
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault() // Prevent default Enter behavior (new line)
-      handleSend()
-    }
-  }
+  // MediaRecorder support can only be read in the browser — assume yes for the
+  // server render so the pill's label doesn't mismatch during hydration.
+  const [sttSupported, setSttSupported] = useState(true)
+  useEffect(() => setSttSupported(isOpenAISTTSupported()), [])
 
-  // Handle speech-to-text
-  const handleSpeechStart = () => {
-    if (isListening) {
-      stopOpenAIRecording()
-      setIsListening(false)
-      setInterimTranscript('')
-      setTimeLeft(15)
-      return
-    }
+  // Read inside callbacks without re-subscribing the recorder to state changes.
+  const stateRef = useRef(state)
+  stateRef.current = state
 
-    setIsListening(true)
-    setInterimTranscript('')
-    setTimeLeft(15)
+  const startListening = useCallback(() => {
+    setState('listening')
 
-    // Use OpenAI Whisper with translation
     startOpenAIRecording(
       (result) => {
-        if (result.isFinal) {
-          // Final result - add to input
-          setInputValue(prev => prev + (prev ? ' ' : '') + result.transcript)
-          setInterimTranscript('')
-          
-          // Show translation if available
+        if (!result.isFinal) return
+
+        const transcript = result.transcript.trim()
+        if (transcript) {
+          onSendMessage(transcript)
           if (result.translation) {
             toast.success(`Translation: ${result.translation}`)
           }
         } else {
-          // Interim result - show preview
-          setInterimTranscript(result.transcript)
+          toast.error('聽唔到 — nothing was transcribed')
         }
       },
       (error) => {
         toast.error(error)
-        setIsListening(false)
-        setInterimTranscript('')
-        setTimeLeft(15)
+        setState('idle')
       },
       () => {
-        // Speech ended
-        setIsListening(false)
-        setInterimTranscript('')
-        setTimeLeft(15)
+        // Recording finished (manually, by timeout, or after an error).
+        setState('idle')
       },
       {
-        lang: 'zh', // Chinese - Enhanced with Cantonese-specific prompts and parameters
-        translateTo: 'en', // Translate to English
-        timeout: 15000 // 15 seconds timeout
+        lang: 'zh',            // Cantonese prompts/params live in the util
+        translateTo: 'en',
+        timeout: (MAX_UTTERANCE_SECONDS + 5) * 1000,
       }
     )
-  }
+  }, [onSendMessage])
 
-  // Countdown timer effect
-  useEffect(() => {
-    let countdownInterval: NodeJS.Timeout | null = null
-    
-    if (isListening && timeLeft > 0) {
-      countdownInterval = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            // Time's up, stop listening
-            stopOpenAIRecording()
-            setIsListening(false)
-            setInterimTranscript('')
-            return 15
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }
-    
-    return () => {
-      if (countdownInterval) {
-        clearInterval(countdownInterval)
-      }
-    }
-  }, [isListening, timeLeft])
+  // Stop capture and hold `processing` until the transcript comes back.
+  const stopListening = useCallback(() => {
+    stopOpenAIRecording()
+    setState('processing')
+  }, [])
 
-  // Cleanup on unmount
+  // Release the mic if the composer unmounts mid-utterance.
   useEffect(() => {
     return () => {
-      if (isListening) {
+      if (stateRef.current === 'listening') {
         stopOpenAIRecording()
       }
     }
-  }, [isListening])
+  }, [])
 
   return (
-    <div className="bg-card rounded-t-xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] border-t border-secondary px-5 pt-3 pb-3 h-[80px] flex justify-end items-end">
-      <div className="flex items-center justify-center gap-3 h-full w-full">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder=""
-            disabled={disabled}
-            rows={1}
-            className="w-full h-full resize-none border-0 outline-none focus:ring-0 text-[14px] text-muted-foreground bg-transparent"
-          />
-          {interimTranscript && (
-            <div className="mt-2 p-2 bg-accent border border-border rounded-md">
-              <div className="flex justify-between items-center mb-1">
-                <div className="text-sm text-accent-foreground font-medium">Listening... (OpenAI Whisper)</div>
-                <div className="text-sm text-accent-foreground font-mono">{timeLeft}s</div>
-              </div>
-              <div className="text-sm text-foreground italic">{interimTranscript}</div>
-            </div>
-          )}
-
-        <div className="relative h-8 w-[76px] shrink-0">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleSpeechStart}
-            disabled={disabled || !openaiSTTSupported}
-            title={isListening ? `Stop listening (${timeLeft}s left)` : `Start voice input`}
-            className={`absolute left-0 top-0 rounded-full ${openaiSTTSupported ? 'bg-accent text-foreground hover:bg-accent/80' : 'bg-muted opacity-60'}`}
-          >
-            <span className="text-[16px]">{isListening ? '⏺️' : '🎤'}</span>
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            onClick={handleSend}
-            disabled={disabled || !inputValue.trim()}
-            className="absolute left-[43px] top-0 rounded-full bg-muted-foreground text-background hover:bg-muted-foreground/90"
-            title="Send"
-          >
-            <span>➤</span>
-          </Button>
-        </div>
-      </div>
+    // No composer bar — the pill floats over the transcript and expands on press.
+    <div className="flex justify-center px-4 py-2">
+      <VoicePill
+        state={state}
+        disabled={disabled || !sttSupported}
+        maxDurationSeconds={MAX_UTTERANCE_SECONDS}
+        labels={{
+          idle: sttSupported
+            ? { zh: '按一下講', en: 'Tap to speak' }
+            : { zh: '唔支援錄音', en: 'Recording unsupported' },
+          processing: { zh: '轉文字中', en: 'Transcribing' },
+        }}
+        onStart={startListening}
+        onStop={stopListening}
+        onError={(error) => {
+          toast.error(error.message)
+          setState('idle')
+        }}
+      />
     </div>
   )
 }

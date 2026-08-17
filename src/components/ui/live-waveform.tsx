@@ -4,7 +4,9 @@ import { useEffect, useRef, type HTMLAttributes } from "react"
 
 import { cn } from "@/lib/utils"
 
-export type LiveWaveformProps = HTMLAttributes<HTMLDivElement> & {
+// `onError` is ours (mic/device failure), not the DOM's error event — omit the
+// DOM handler so the two don't intersect into an uncallable type.
+export type LiveWaveformProps = Omit<HTMLAttributes<HTMLDivElement>, "onError"> & {
   active?: boolean
   processing?: boolean
   deviceId?: string
