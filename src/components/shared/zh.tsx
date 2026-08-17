@@ -9,8 +9,7 @@ import { cn } from "@/lib/utils"
  * *is* the material being studied.
  *
  * `zh-HK` over the more precise `yue-Hant-HK`: screen readers and browser TTS
- * support it far more widely, and it's the tag the app's TTS voices already
- * use (Azure `zh-HK-WanLungNeural`).
+ * support it far more widely.
  *
  * Renders a plain <span>, so it's safe inside headings, buttons, and labels.
  * For an element you already control, prefer putting lang="zh-HK" on it

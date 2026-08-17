@@ -1,8 +1,8 @@
 // src/components/articles/article-audio-player.tsx
 // Fixed read-aloud bar for the article reader, built on the AudioPlayer
 // component. Play walks through the sentence blocks sequentially: each
-// block's Cantonese text is synthesized via /api/speech/tts (Fish Audio,
-// Azure fallback), played, and reported to the page so it can highlight
+// block's Cantonese text is synthesized via /api/speech/tts (Fish Audio),
+// played, and reported to the page so it can highlight
 // the block being read.
 
 "use client"

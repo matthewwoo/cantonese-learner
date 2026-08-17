@@ -1,116 +1,56 @@
 // src/app/api/speech/tts/route.ts
 // Cantonese text-to-speech endpoint.
 //
-// Provider order:
-//   1. Fish Audio (S2 family) — most natural Cantonese available; voice is
-//      a marketplace model set via FISH_AUDIO_VOICE_ID.
-//   2. Azure AI Speech zh-HK neural voices — reliable fallback (also used
-//      if Fish credit/rate limits are hit).
+// Fish Audio (S2 family) is the only provider. Its voice is a marketplace
+// model set via FISH_AUDIO_VOICE_ID.
+//
+// Caveat worth knowing: Fish's /v1/tts takes no language parameter — it infers
+// pronunciation from the text, and the reference voice supplies timbre, not
+// dialect. Standard Written Chinese (書面語) is character-identical to Mandarin,
+// so it gets read in Mandarin. Keeping article text in colloquial Cantonese
+// (口語 — 嘅/係/佢/咗/喺) is what keeps synthesis Cantonese; see the article
+// translation prompt in /api/articles.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteClient } from '@/lib/supabase/server';
 
-// Azure's dedicated Cantonese neural voices (fallback provider)
-const AZURE_CANTONESE_VOICES = [
-  'zh-HK-WanLungNeural', // male (default)
-  'zh-HK-HiuMaanNeural', // female
-  'zh-HK-HiuGaaiNeural', // female
-] as const;
-
 interface TTSRequest {
   text: string;
-  voice?: string; // Azure voice name or Fish reference id; optional
+  voice?: string; // Fish reference id; optional, defaults to FISH_AUDIO_VOICE_ID
   speed?: number; // 0.25 to 4.0 (1.0 = normal)
   format?: 'mp3';
 }
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/** Fish Audio synthesis. Returns MP3 bytes or null when unavailable. */
+/** Fish Audio synthesis. Returns MP3 bytes or throws. */
 async function synthesizeWithFish(
-  text: string,
-  speed: number
-): Promise<ArrayBuffer | null> {
-  const apiKey = process.env.FISH_AUDIO_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const response = await fetch('https://api.fish.audio/v1/tts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        model: process.env.FISH_AUDIO_MODEL || 's2.1-pro-free',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text,
-        reference_id: process.env.FISH_AUDIO_VOICE_ID || undefined,
-        format: 'mp3',
-        // Fish supports 0.5–2.0; clamp our wider range
-        prosody: { speed: Math.min(2, Math.max(0.5, speed)), volume: 0 },
-      }),
-    });
-
-    if (!response.ok) {
-      const detail = await response.text().catch(() => response.statusText);
-      console.warn(`Fish Audio TTS unavailable (${response.status}): ${detail.slice(0, 200)} — falling back to Azure`);
-      return null;
-    }
-    return await response.arrayBuffer();
-  } catch (error) {
-    console.warn('Fish Audio TTS error — falling back to Azure:', error);
-    return null;
-  }
-}
-
-/** Azure synthesis. Returns MP3 bytes or throws. */
-async function synthesizeWithAzure(
   text: string,
   speed: number,
   requestedVoice?: string
 ): Promise<ArrayBuffer> {
-  const azureKey = process.env.AZURE_SPEECH_KEY;
-  const azureRegion = process.env.AZURE_SPEECH_REGION;
-  if (!azureKey || !azureRegion) {
-    throw new Error('No TTS provider configured (FISH_AUDIO_API_KEY or AZURE_SPEECH_KEY)');
+  const apiKey = process.env.FISH_AUDIO_API_KEY;
+  if (!apiKey) {
+    throw new Error('No TTS provider configured (FISH_AUDIO_API_KEY)');
   }
 
-  const voice = AZURE_CANTONESE_VOICES.includes(requestedVoice as never)
-    ? (requestedVoice as string)
-    : AZURE_CANTONESE_VOICES[0];
-
-  const ratePercent = Math.round((speed - 1) * 100);
-  const ssml =
-    `<speak version="1.0" xml:lang="zh-HK">` +
-    `<voice name="${voice}">` +
-    `<prosody rate="${ratePercent >= 0 ? '+' : ''}${ratePercent}%">` +
-    escapeXml(text) +
-    `</prosody></voice></speak>`;
-
-  const response = await fetch(
-    `https://${azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1`,
-    {
-      method: 'POST',
-      headers: {
-        'Ocp-Apim-Subscription-Key': azureKey,
-        'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
-        'User-Agent': 'cantonese-learner',
-      },
-      body: ssml,
-    }
-  );
+  const response = await fetch('https://api.fish.audio/v1/tts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      model: process.env.FISH_AUDIO_MODEL || 's2.1-pro-free',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      reference_id: requestedVoice || process.env.FISH_AUDIO_VOICE_ID || undefined,
+      format: 'mp3',
+      // Fish supports 0.5–2.0; clamp our wider range
+      prosody: { speed: Math.min(2, Math.max(0.5, speed)), volume: 0 },
+    }),
+  });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Azure TTS error ${response.status}: ${errorText.slice(0, 200)}`);
+    const detail = await response.text().catch(() => response.statusText);
+    throw new Error(`Fish Audio TTS error ${response.status}: ${detail.slice(0, 200)}`);
   }
   return response.arrayBuffer();
 }
@@ -146,14 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     const trimmed = text.trim();
-
-    // Fish Audio first, Azure as fallback
-    let provider = 'fish-audio';
-    let audioBuffer = await synthesizeWithFish(trimmed, speed);
-    if (!audioBuffer) {
-      provider = 'azure';
-      audioBuffer = await synthesizeWithAzure(trimmed, speed, body.voice);
-    }
+    const audioBuffer = await synthesizeWithFish(trimmed, speed, body.voice);
 
     // Same response contract the client consumes
     const base64Audio = Buffer.from(audioBuffer).toString('base64');
@@ -167,10 +100,8 @@ export async function POST(request: NextRequest) {
       audioData: dataUrl,
       duration: estimatedDuration,
       text: trimmed,
-      voice: provider === 'fish-audio'
-        ? `fish:${process.env.FISH_AUDIO_VOICE_ID || 'default'}`
-        : AZURE_CANTONESE_VOICES[0],
-      provider,
+      voice: `fish:${process.env.FISH_AUDIO_VOICE_ID || 'default'}`,
+      provider: 'fish-audio',
       speed,
       format: 'mp3',
     });
