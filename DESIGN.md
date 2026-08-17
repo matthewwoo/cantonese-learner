@@ -97,6 +97,46 @@ import { toast } from "sonner"
 toast.success("Saved!")            // also .error, .loading + toast.dismiss(id)
 ```
 
+**Deck card** (flashcard decks, feature tiles) — pastel surface, 20px radius,
+centered illustration over title/meta/action. Rotate the three deck tokens
+across a list; never reach for a hex value.
+```tsx
+<div className="bg-deck-sky rounded-xl shadow-sm w-80 min-h-90 flex flex-col items-center pt-5">
+  <div className="size-40" aria-hidden />          {/* illustration */}
+  <div className="w-full px-5 py-5 flex flex-col items-center gap-5">
+    <div className="text-center">
+      <h3 className="font-medium text-foreground">Dim Sum</h3>
+      <p className="text-sm text-muted-foreground">10 cards</p>
+    </div>
+    <Button>Start lesson</Button>
+  </div>
+</div>
+```
+
+## Principles
+
+These shape *what* we build; the token and component rules below govern *how*.
+
+**Bilingual first.** Nearly every user-facing string pairs Traditional Chinese
+with English (`學粵語` / *Learn Cantonese*). Chinese leads and carries the
+heavier weight; English follows as the supporting line, usually one step down
+the type scale or in `text-muted-foreground`. Never ship one language alone in
+a primary label. Give Chinese text room to breathe — it sets taller than Latin
+at the same font size.
+
+**Learning-focused.** Progressive disclosure over dense screens; make progress
+legible (counts, streaks, states) rather than implied.
+
+**Mobile-first.** Design at the small breakpoint and scale up. Interactive
+targets are at least 44px — this is why `button`'s default size is `h-11`
+(44px) rather than shadcn's stock `h-9`. Keep that floor when adding sizes.
+
+**Accessible.** Aim for WCAG AA contrast, full keyboard navigation, semantic
+HTML with real ARIA labels, and visible focus (the `ring` token handles this
+automatically on shadcn primitives — don't strip it). Note this is the target,
+not an audited state: no formal accessibility pass has been run, and
+`layout.tsx` declares only `lang="en"` despite the bilingual content.
+
 ## Hard rules
 
 1. **No hex literals in components or pages.** Use token utilities.
