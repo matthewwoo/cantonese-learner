@@ -134,7 +134,7 @@ function ChatPageContent() {
             const chineseText = extractChineseText(data.message)
             if (chineseText && chineseText.trim()) {
               console.log('Auto-playing TTS for AI response:', chineseText)
-              await speakCantonese(chineseText, { rate: 0.8 })
+              await speakCantonese(chineseText)
             }
           } catch (error) {
             console.warn('Auto-TTS failed:', error)

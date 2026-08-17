@@ -5,6 +5,11 @@
 //   1. Server TTS (/api/speech/tts -> Azure zh-HK neural voices) — natural,
 //      consistent Cantonese on every device.
 //   2. Web Speech API — offline fallback using whatever zh-HK voice the OS has.
+//
+// Speed comes from CANTONESE_TTS_SPEED unless a caller overrides it, so every
+// surface reads at the same pace.
+
+import { CANTONESE_TTS_SPEED } from "@/lib/tts"
 
 interface TTSOptions {
   rate?: number
@@ -148,7 +153,7 @@ class TextToSpeechService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text,
-          speed: options.rate ?? 1.0,
+          speed: options.rate ?? CANTONESE_TTS_SPEED,
           voice: options.voice,
         }),
       })
@@ -278,7 +283,7 @@ class TextToSpeechService {
       utterance.lang = options.lang || 'zh-HK' // Hong Kong Chinese (Cantonese)
       
       // Set speech parameters
-      utterance.rate = options.rate || 0.8 // Slower for learning
+      utterance.rate = options.rate ?? CANTONESE_TTS_SPEED // Slower for learning
       utterance.pitch = options.pitch || 1.0
       utterance.volume = options.volume || 1.0
 
@@ -354,7 +359,7 @@ class TextToSpeechService {
     }
 
     try {
-      await this.speakCantonese('你好', { rate: 0.8 })
+      await this.speakCantonese('你好')
       console.log('TTS: Test successful')
     } catch (error) {
       console.error('TTS: Test failed:', error)

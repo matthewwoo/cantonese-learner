@@ -295,7 +295,7 @@ export default function ArticleReadingPage() {
               if (!selectedWord) return;
               try {
                 playerRef.current?.pause();
-                await speakCantonese(selectedWord, { rate: 0.8 });
+                await speakCantonese(selectedWord);
               } catch (error) {
                 console.error('TTS 播放錯誤:', error);
                 toast.error('Speech playback error');

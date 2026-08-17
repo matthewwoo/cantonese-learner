@@ -64,7 +64,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
       setIsSpeaking(true)
       try {
         const text = extractChineseText(content)
-        await speakCantonese(text, { rate: 0.75 })
+        await speakCantonese(text)
       } catch (error) {
         console.error('TTS error:', error)
         toast.error('Unable to play audio. Please check your browser settings.')

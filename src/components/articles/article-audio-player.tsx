@@ -19,6 +19,7 @@ import { Pause, Play } from "lucide-react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
+import { CANTONESE_TTS_SPEED } from "@/lib/tts"
 import { Button } from "@/components/ui/button"
 import {
   AudioPlayerProvider,
@@ -48,7 +49,10 @@ function PlayerInner(
 ) {
   const api = useAudioPlayer()
   const [isFetching, setIsFetching] = useState(false)
-  // Data URLs per block index, cached for replays and prefetched one ahead
+  // Data URLs per block index, cached for replays and prefetched one ahead.
+  // Safe to key on index alone only because synthesis speed is a constant — if
+  // the speed control is ever wired to re-synthesize, key on {index, speed}
+  // or stale clips will play back at the previous rate.
   const audioCache = useRef(new Map<number, string>())
   const pendingFetches = useRef(new Map<number, Promise<string | null>>())
   // Tracks whether sequential playback is engaged (vs. fully stopped)
@@ -73,7 +77,9 @@ function PlayerInner(
           const res = await fetch("/api/speech/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text }),
+            // Same synthesis speed as tapping a single bubble, so the
+            // read-aloud pace doesn't jump between the two.
+            body: JSON.stringify({ text, speed: CANTONESE_TTS_SPEED }),
           })
           if (!res.ok) return null
           const data = await res.json()
