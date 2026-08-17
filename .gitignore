@@ -24,6 +24,12 @@
 .DS_Store
 *.pem
 
+# Finder/iCloud duplicate copies — "sw 2.js", "index.d 3.ts", "index.pack 10.pack".
+# Two of these had been committed and were precached by the service worker,
+# and stray copies under .next/types made tsc report duplicate identifiers.
+* [0-9].*
+* [0-9][0-9].*
+
 # debug
 npm-debug.log*
 yarn-debug.log*
