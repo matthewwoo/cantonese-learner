@@ -147,6 +147,21 @@
   }
 }
 
+@layer utilities {
+  /*
+   * Horizontal snap carousels (home stat cards) hide their scrollbar — the
+   * dot indicators carry the position instead. Scrolling stays fully native,
+   * so touch, trackpad, and keyboard all still work.
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Focus styles for accessibility */
 *:focus-visible {
   outline: 2px solid var(--ring);

@@ -7,7 +7,7 @@ import { speakCantonese, stopSpeech } from '@/utils/textToSpeech';
 import ChatMessage from '@/components/chat/ChatMessage';
 import { processArticleIntoSentences, type SentenceCard } from '@/utils/sentenceProcessor';
 import { createClient } from '@/lib/supabase/client';
-import { getArticleWithSession } from '@/lib/data/articles';
+import { getArticleWithSession, updateReadingProgress } from '@/lib/data/articles';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +58,13 @@ export default function ArticleReadingPage() {
   const [readingSession, setReadingSession] = useState<ReadingSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sentences, setSentences] = useState<SentenceCard[]>([]);
+
+  // Reading progress: the furthest sentence that has been on screen (1-based
+  // count, not an index) and the last value written to the reading session.
+  // Refs rather than state — these change on every scroll frame and must never
+  // re-render the article.
+  const furthestReadRef = useRef(0);
+  const savedPositionRef = useRef(0);
 
   // Read-aloud: index of the block currently being read (null = not playing)
   const [activeBlock, setActiveBlock] = useState<number | null>(null);
@@ -151,12 +158,76 @@ export default function ArticleReadingPage() {
     }
   };
 
+  // Seed the high-water mark from the session so re-opening an article can
+  // only ever move progress forward.
+  useEffect(() => {
+    const stored = readingSession?.currentPosition ?? 0;
+    savedPositionRef.current = stored;
+    furthestReadRef.current = Math.max(furthestReadRef.current, stored);
+  }, [readingSession?.id, readingSession?.currentPosition]);
+
   /**
-   * Update reading progress
+   * Track how far the learner has actually got. An observer over the sentence
+   * bubbles catches silent reading, which is the common case; it also covers
+   * the read-aloud player for free, since that scrolls each active block into
+   * view as it goes.
    */
-  const updateReadingProgress = async (position: number) => {
-    // TODO: Call API to update reading progress
-  };
+  useEffect(() => {
+    if (sentences.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const index = Number((entry.target as HTMLElement).dataset.sentenceIndex);
+          if (Number.isNaN(index)) continue;
+          furthestReadRef.current = Math.max(furthestReadRef.current, index + 1);
+        }
+      },
+      // Half the bubble visible counts as reached — a sentence clipped at the
+      // bottom edge on the way past shouldn't count.
+      { threshold: 0.5 }
+    );
+
+    sentences.forEach((_, index) => {
+      const el = document.getElementById(`sentence-${index}`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [sentences]);
+
+  /**
+   * Persist progress periodically, when the app goes to the background, and on
+   * the way out — not on every scroll, which would be a write per frame.
+   */
+  useEffect(() => {
+    const sessionId = readingSession?.id;
+    if (!sessionId) return;
+
+    const save = () => {
+      const position = furthestReadRef.current;
+      if (position <= savedPositionRef.current) return;
+      savedPositionRef.current = position;
+      updateReadingProgress(createClient(), sessionId, position).catch((error) => {
+        // Progress is best-effort — a failed save shouldn't interrupt reading,
+        // and the next flush retries from the same high-water mark.
+        console.error('Failed to save reading progress', error);
+        savedPositionRef.current = Math.min(savedPositionRef.current, position - 1);
+      });
+    };
+
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') save();
+    };
+
+    const timer = setInterval(save, 5000);
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onHidden);
+      save();
+    };
+  }, [readingSession?.id]);
 
   // Loading state
   if (isLoading) {
@@ -256,6 +327,7 @@ export default function ArticleReadingPage() {
             <div
               key={idx}
               id={`sentence-${idx}`}
+              data-sentence-index={idx}
               // Tapping a bubble plays it alone — pause the read-aloud first
               onClickCapture={() => playerRef.current?.pause()}
               className={cn(

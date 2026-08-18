@@ -1,143 +1,141 @@
 // src/app/dashboard/page.tsx
-// Main dashboard - central hub for accessing all app features
+// Home — where signing in lands you. Answers two questions before anything
+// else: did I practise this week, and how far have I come?
 
 "use client"
 
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+
 import { useUser } from "@/lib/supabase/use-user"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { getPracticeHistory, getProgressStats } from "@/lib/data/stats"
+import {
+  buildWeek,
+  currentStreak,
+  toDayKey,
+  type PracticeMap,
+} from "@/lib/activity/practice-days"
+import { ActivityWeek, type ActivityDay } from "@/components/home/activity-week"
+import { StatCarousel, type Stat } from "@/components/home/stat-carousel"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/shared/spinner"
-import { QuickActions } from "@/components/shared/quick-actions"
-import { Zh } from "@/components/shared/zh"
 
-export default function DashboardPage() {
+interface HomeData {
+  today: string
+  week: ActivityDay[]
+  streak: number
+  stats: Stat[]
+}
+
+function toStats(counts: {
+  wordsMastered: number
+  conversations: number
+  linesRead: number
+}): Stat[] {
+  return [
+    {
+      id: "mastered",
+      value: counts.wordsMastered,
+      label: "已掌握詞語",
+      labelEnglish: "Words mastered",
+      caption: "Held for 3 weeks or longer",
+      tone: "mint",
+    },
+    {
+      id: "chats",
+      value: counts.conversations,
+      label: "對話次數",
+      labelEnglish: "Conversations",
+      caption: "With your AI tutor",
+      tone: "sky",
+    },
+    {
+      id: "lines",
+      value: counts.linesRead,
+      label: "已讀句子",
+      labelEnglish: "Lines read",
+      caption: "Across your articles",
+      tone: "blush",
+    },
+  ]
+}
+
+function HomeSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-44 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
+    </div>
+  )
+}
+
+export default function HomePage() {
   const { user, status } = useUser()
   const router = useRouter()
+  const [data, setData] = useState<HomeData | null>(null)
+  const [failed, setFailed] = useState(false)
 
-  // Redirect to sign-in if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin")
     }
   }, [status, router])
 
-  // Show loading while checking authentication
+  useEffect(() => {
+    if (status !== "authenticated") return
+    let cancelled = false
+    const supabase = createClient()
+
+    Promise.all([getPracticeHistory(supabase), getProgressStats(supabase)])
+      .then(([practice, counts]: [PracticeMap, Awaited<ReturnType<typeof getProgressStats>>]) => {
+        if (cancelled) return
+        // Bucketed against the browser's clock, so "today" is the learner's
+        // today wherever they are.
+        const today = toDayKey(new Date())
+        setData({
+          today,
+          week: buildWeek(practice, today),
+          streak: currentStreak(practice, today),
+          stats: toStats(counts),
+        })
+      })
+      .catch((error) => {
+        console.error("Failed to load home stats", error)
+        if (!cancelled) setFailed(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [status])
+
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Spinner size="xl" className="mb-4" />
-          <p className="text-lg font-medium text-muted-foreground">
-            Loading your learning dashboard...
-          </p>
-          <p className="text-sm mt-2 text-muted-foreground">
-            <Zh>正在載入您的學習儀表板</Zh>...
-          </p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Spinner size="xl" />
       </div>
     )
   }
 
-  // If not authenticated, don't render anything (redirect is happening)
-  if (!user) {
-    return null
-  }
-
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/auth/signin")
-    router.refresh()
-  }
-
-  // Feature cards data
-  const featureCards = [
-    {
-      title: "Flashcards",
-      titleChinese: "閃卡",
-      description: "Study vocabulary with smart spaced repetition. Upload your own sets or browse our collection.",
-      icon: "📚",
-      buttonText: "Manage Flashcards",
-      buttonTextChinese: "管理閃卡",
-      onClick: () => router.push('/flashcards'),
-      feature: "flashcards" as const,
-    },
-    {
-      title: "AI Chat",
-      titleChinese: "AI對話",
-      description: "Practice conversations with AI tutor. Speech recognition and pronunciation help included.",
-      icon: "🤖",
-      buttonText: "Start Chat",
-      buttonTextChinese: "開始對話",
-      onClick: () => router.push('/chat'),
-      feature: "chat" as const,
-    },
-    {
-      title: "Articles",
-      titleChinese: "文章",
-      description: "Read English articles with Traditional Chinese translations. Interactive TTS included.",
-      icon: "📖",
-      buttonText: "Browse Articles",
-      buttonTextChinese: "瀏覽文章",
-      onClick: () => router.push('/articles'),
-      feature: "articles" as const,
-    },
-    {
-      title: "Account",
-      titleChinese: "帳戶",
-      description: "Manage your profile, learning preferences, and view your progress analytics.",
-      icon: "⚙️",
-      buttonText: "Coming Soon",
-      buttonTextChinese: "即將推出",
-      onClick: () => {},
-      disabled: true,
-      feature: "account" as const,
-    },
-  ]
-
-  // Progress stats data
-  const progressStats = [
-    { label: "Flashcard Sets", value: 0, color: "flashcards" as const, icon: "📚" },
-    { label: "Words Learned", value: 0, color: "flashcards" as const, icon: "📝" },
-    { label: "Study Sessions", value: 0, color: "chat" as const, icon: "📊" },
-    { label: "AI Conversations", value: 0, color: "chat" as const, icon: "💬" },
-    { label: "Articles Read", value: 0, color: "articles" as const, icon: "📖" },
-  ]
-
-  // Quick actions data
-  const quickActions = [
-    {
-      label: "Sign Out",
-      labelChinese: "登出",
-      icon: "🚪",
-      onClick: handleSignOut,
-      variant: "secondary" as const,
-    }
-  ]
+  if (!user) return null
 
   return (
-    <div className="min-h-screen p-8 bg-background">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Welcome Header */}
-        <Card className="text-center">
-          <CardContent className="p-8">
-            <h1 className="text-4xl font-bold mb-3 text-foreground">
-              Cantonese Learner
-            </h1>
-            {user.user_metadata?.name && (
-              <p className="break-words whitespace-normal text-muted-foreground">
-                Name: <strong className="break-words text-foreground">{user.user_metadata.name}</strong>
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <QuickActions
-          title="Account"
-          actions={quickActions}
-        />
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto w-full max-w-md space-y-6 px-4 py-6">
+        {failed ? (
+          <p className="text-sm text-muted-foreground">
+            Couldn&apos;t load your progress just now. Pull down to refresh, or try again
+            in a moment.
+          </p>
+        ) : data ? (
+          <div className="space-y-4">
+            <ActivityWeek days={data.week} today={data.today} streak={data.streak} />
+            <StatCarousel stats={data.stats} />
+          </div>
+        ) : (
+          <HomeSkeleton />
+        )}
       </div>
     </div>
   )

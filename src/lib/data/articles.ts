@@ -84,6 +84,30 @@ export async function getArticleWithSession(
   }
 }
 
+/**
+ * Save how far into an article the learner has read.
+ *
+ * `current_position` is a 1-based *count of sentences reached* — the furthest
+ * bubble that has been on screen, not the one currently in view. It's the
+ * number the home screen's "lines read" stat sums across articles, so it only
+ * ever moves forward; callers pass a value already maxed against what they
+ * loaded.
+ *
+ * `last_read_at` rides along on every save, including ones that don't advance
+ * the position: it's what marks the day as a reading day on the activity week.
+ */
+export async function updateReadingProgress(
+  sb: Client,
+  readingSessionId: string,
+  position: number
+): Promise<void> {
+  const { error } = await sb
+    .from('reading_sessions')
+    .update({ current_position: position, last_read_at: new Date().toISOString() })
+    .eq('id', readingSessionId)
+  if (error) throw error
+}
+
 /** Delete an article (cascade removes its reading sessions). */
 export async function deleteArticle(sb: Client, id: string): Promise<void> {
   const { error } = await sb.from('articles').delete().eq('id', id)
