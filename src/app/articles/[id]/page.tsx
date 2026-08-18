@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/shared/spinner';
+import { ShimmeringText } from '@/components/ui/shimmering-text';
+import { displayStatus, type GenerationStatus } from '@/lib/generation';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,9 @@ interface Article {
   id: string;
   title: string;
   sourceUrl?: string | null;
+  // An article is readable only once translation has finished; it can be
+  // reached by deep link or a stale tab before then.
+  status: GenerationStatus;
   originalContent: string[];
   translatedContent: string[];
   wordDefinitions: Record<string, any>;
@@ -101,6 +106,7 @@ export default function ArticleReadingPage() {
         id: data.article.id,
         title: data.article.title,
         sourceUrl: data.article.sourceUrl,
+        status: displayStatus(data.article),
         originalContent,
         translatedContent,
         wordDefinitions: (data.article.wordDefinitions as Record<string, any>) ?? {},
@@ -157,6 +163,30 @@ export default function ArticleReadingPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Spinner size="xl" />
+      </div>
+    );
+  }
+
+  // Still being translated in the background — the reader would render an
+  // empty page over `translated_content: []`.
+  if (article && article.status !== 'ready') {
+    const failed = article.status === 'failed';
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center">
+          <div className="text-6xl mb-4">📖</div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">{article.title}</h2>
+          {failed ? (
+            <p className="text-muted-foreground">
+              We couldn&apos;t translate this article. Delete it from your list and try again.
+            </p>
+          ) : (
+            <ShimmeringText text="Translating…" className="text-[16px] block" />
+          )}
+          <Button onClick={() => router.push('/articles')} className="mt-6 px-6">
+            Back to Articles
+          </Button>
+        </div>
       </div>
     );
   }

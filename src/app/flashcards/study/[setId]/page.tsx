@@ -37,7 +37,6 @@ export default function StudyPage() {
 
       const started = await startStudySessionQuery(supabase, user.id, setId, 15)
       setStudySession(started)
-      toast.success(`Started studying ${started.totalCards} cards!`)
 
     } catch (error) {
       console.error('Error starting study session:', error)

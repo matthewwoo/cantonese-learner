@@ -46,6 +46,9 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
   const [answeredCards, setAnsweredCards] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [startTime, setStartTime] = useState<Date | null>(null)
+  // Per-answer encouragement. It used to be a toast, and it exists mainly
+  // for the live-region announcement, so it needs somewhere to live now.
+  const [feedback, setFeedback] = useState<React.ReactNode>(null)
 
   // Get current card
   const currentCard = studySessionData.studyCards[currentCardIndex]
@@ -80,13 +83,12 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
 
       // Move to next card or complete session
       if (isLastCard || data.sessionProgress.isCompleted) {
-        // Session completed
-        toast.success(`Study session completed! You studied ${answeredCards + 1} cards.`)
+        // Session completed — the completion screen says so
         onSessionComplete()
       } else {
         // Move to next card
         setCurrentCardIndex(prev => prev + 1)
-        toast.success(getResponseFeedback(quality))
+        setFeedback(getResponseFeedback(quality))
       }
 
     } catch (error) {
@@ -99,7 +101,7 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
 
   // Get encouraging feedback based on response quality
   // Returns a node, not a string: the Chinese interjections need lang marking
-  // so the toast's aria-live announcement doesn't read them as English.
+  // so the live-region announcement doesn't read them as English.
   const getResponseFeedback = (quality: ResponseQuality): React.ReactNode => {
     switch (quality) {
       case ResponseQuality.EASY:
@@ -139,6 +141,12 @@ export default function StudySession({ studySessionData, onSessionComplete }: St
           onResponse={handleResponse}
           isSubmitting={isSubmitting}
         />
+      </div>
+
+      {/* Announced to screen readers as each card is answered. Visually the
+          next card appearing is already the feedback. */}
+      <div aria-live="polite" className="sr-only">
+        {feedback}
       </div>
     </div>
   )

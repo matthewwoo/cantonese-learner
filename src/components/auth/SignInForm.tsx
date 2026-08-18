@@ -34,7 +34,7 @@ export default function SignInForm() {
       if (error) {
         toast.error("Invalid credentials")
       } else {
-        toast.success("Signed in successfully!")
+        // Landing on the dashboard is the confirmation
         router.push("/dashboard")
         router.refresh()
       }

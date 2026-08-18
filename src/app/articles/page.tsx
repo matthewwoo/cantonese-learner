@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/lib/supabase/use-user'
 import { toast } from 'sonner'
@@ -17,13 +17,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ShimmeringText } from '@/components/ui/shimmering-text'
 import { createClient } from '@/lib/supabase/client'
 import { listArticles, deleteArticle } from '@/lib/data/articles'
+import { displayStatus, type GenerationStatus } from '@/lib/generation'
+import { usePollWhilePending } from '@/lib/hooks/use-poll-while-pending'
 
 interface Article {
   id: string
   title: string
   sourceUrl?: string | null
+  // An article row exists from the moment it is submitted; translation fills
+  // in the content afterwards.
+  status: GenerationStatus
+  errorMessage: string | null
   createdAt: string
   updatedAt: string
 }
@@ -32,16 +39,22 @@ export default function ArticlesPage() {
   const router = useRouter()
   const { user: session, status } = useUser()
   const [articles, setArticles] = useState<Article[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [showAddPanel, setShowAddPanel] = useState(false)
-  const [isAdding, setIsAdding] = useState(false)
+  // Only the first load takes the screen over — polling refetches stay silent
+  // so the list doesn't flash away every few seconds.
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
-  // Form state
-  const [articleUrl, setArticleUrl] = useState('')
-  const [articleTitle, setArticleTitle] = useState('')
-  const [articleContent, setArticleContent] = useState('')
-  const [isFetchingUrl, setIsFetchingUrl] = useState(false)
+  const fetchArticles = useCallback(async () => {
+    try {
+      const articleList = await listArticles(createClient())
+      setArticles(articleList)
+    } catch (error) {
+      console.error('獲取文章失敗:', error)
+      toast.error('Unable to load articles')
+    } finally {
+      setIsInitialLoad(false)
+    }
+  }, [])
 
   // Auth and data load
   useEffect(() => {
@@ -52,117 +65,15 @@ export default function ArticlesPage() {
     if (status === 'authenticated') {
       fetchArticles()
     }
-  }, [status, router])
+  }, [status, router, fetchArticles])
 
-  const fetchArticles = async () => {
-    try {
-      const articleList = await listArticles(createClient())
-      setArticles(articleList)
-    } catch (error) {
-      console.error('獲取文章失敗:', error)
-      toast.error('Unable to load articles')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchFromUrl = async () => {
-    if (!articleUrl) {
-      toast.error('Please enter an article URL')
-      return
-    }
-    setIsFetchingUrl(true)
-    try {
-      const response = await fetch('/api/articles/fetch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: articleUrl }),
-      })
-      if (!response.ok) throw new Error('無法獲取文章內容')
-      const data = await response.json()
-      setArticleTitle(data.title)
-      setArticleContent(data.content)
-      toast.success('Successfully fetched article content!')
-    } catch (error) {
-      console.error('獲取文章失敗:', error)
-      toast.error('Unable to fetch article from this URL')
-    } finally {
-      setIsFetchingUrl(false)
-    }
-  }
-
-  const handleAddArticle = async () => {
-    if (!articleTitle) {
-      toast.error('Please fill in article title')
-      return
-    }
-    if (!articleContent && !articleUrl) {
-      toast.error('Please provide either article content or a URL')
-      return
-    }
-    setIsAdding(true)
-    let loadingToast: string | number | undefined
-    try {
-      if (articleUrl && !articleContent.trim()) {
-        loadingToast = toast.loading('Fetching article content from URL...')
-        try {
-          const fetchResponse = await fetch('/api/articles/fetch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: articleUrl }),
-          })
-          if (fetchResponse.ok) {
-            const fetchData = await fetchResponse.json()
-            setArticleTitle(fetchData.title)
-            setArticleContent(fetchData.content)
-            toast.dismiss(loadingToast)
-            toast.success('Successfully fetched article content!')
-          } else {
-            toast.dismiss(loadingToast)
-            toast.error('Unable to fetch content from URL. Please enter content manually.')
-            setIsAdding(false)
-            return
-          }
-        } catch {
-          toast.dismiss(loadingToast)
-          toast.error('Unable to fetch content from URL. Please enter content manually.')
-          setIsAdding(false)
-          return
-        }
-      }
-      loadingToast = toast.loading('Creating article and translating to Traditional Chinese...')
-      const response = await fetch('/api/articles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: articleTitle,
-          content: articleContent,
-          url: articleUrl || undefined,
-        }),
-      })
-      if (!response.ok) throw new Error('創建文章失敗')
-      const data = await response.json()
-      toast.dismiss(loadingToast)
-      toast.success('Article created and translated successfully! 🎉')
-      await fetchArticles()
-      setShowAddPanel(false)
-      setArticleUrl('')
-      setArticleTitle('')
-      setArticleContent('')
-      router.push(`/articles/${data.articleId}`)
-    } catch (error) {
-      console.error('創建文章失敗:', error)
-      if (loadingToast) toast.dismiss(loadingToast)
-      toast.error('Unable to create article. Please check your translation API keys.')
-    } finally {
-      setIsAdding(false)
-    }
-  }
+  // Keep articles that are still translating up to date without the user acting
+  usePollWhilePending(articles, fetchArticles)
 
   const handleDeleteArticle = async (articleId: string) => {
     try {
       await deleteArticle(createClient(), articleId)
-      toast.success('Article deleted')
+      // The row disappearing from the list is the confirmation
       await fetchArticles()
     } catch (error) {
       console.error('刪除文章失敗:', error)
@@ -171,7 +82,7 @@ export default function ArticlesPage() {
   }
 
   // Loading state (match flashcards vibe)
-  if (status === 'loading' || isLoading) {
+  if (status === 'loading' || isInitialLoad) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -190,9 +101,6 @@ export default function ArticlesPage() {
     <div className="min-h-screen bg-background">
       {/* Main content */}
       <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
-        {/* Add panel */}
-        {false && <div />}
-
         {/* Empty state or list */}
         {articles.length === 0 ? (
           <Card className="border-0 ring-0 shadow-lg rounded-xl overflow-hidden py-0">
@@ -214,7 +122,12 @@ export default function ArticlesPage() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {articles.map((article) => (
+            {articles.map((article) => {
+              // An article is listed as soon as it is submitted; translation
+              // runs in the background and fills the content in.
+              const state = displayStatus(article)
+              const isReady = state === 'ready'
+              return (
               <Card key={article.id} className="border-0 ring-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.12)] hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 rounded-xl overflow-hidden relative py-0">
                 {/* Menu/Delete button */}
                 <div className="absolute top-4 right-4 z-20">
@@ -242,18 +155,31 @@ export default function ArticlesPage() {
                       📎 {(() => { try { return new URL(article.sourceUrl!).hostname } catch { return article.sourceUrl } })()}
                     </p>
                   )}
-                  <p className="text-[14px] leading-[21px] mb-6 text-muted-foreground">
-                    Created on {new Date(article.createdAt).toLocaleDateString('en-US')}
-                  </p>
+                  {state === 'pending' ? (
+                    <ShimmeringText
+                      text="Translating…"
+                      className="text-[14px] leading-[21px] mb-6 block"
+                    />
+                  ) : state === 'failed' ? (
+                    <p className="text-[14px] leading-[21px] mb-6 text-muted-foreground">
+                      Couldn&apos;t translate this article. Delete it and try again.
+                    </p>
+                  ) : (
+                    <p className="text-[14px] leading-[21px] mb-6 text-muted-foreground">
+                      Created on {new Date(article.createdAt).toLocaleDateString('en-US')}
+                    </p>
+                  )}
                   <Button
                     onClick={() => router.push(`/articles/${article.id}`)}
+                    disabled={!isReady}
                     className="w-fit"
                   >
                     Start reading
                   </Button>
                 </div>
               </Card>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

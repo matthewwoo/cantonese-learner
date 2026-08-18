@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/shared/spinner"
 import { toast } from "sonner"
-import type { NewFlashcard } from "@/lib/data/types"
 
 // Props for the UploadForm component
 interface UploadFormProps {
@@ -22,8 +20,7 @@ interface UploadFormProps {
 
 export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps) {
   const [setName, setSetName] = useState("") // Name of the flashcard set
-  const [isLoading, setIsLoading] = useState(false) // Loading state during generation
-  const [previewData, setPreviewData] = useState<NewFlashcard[]>([]) // Preview of generated cards
+  const [isLoading, setIsLoading] = useState(false) // Only until the deck row exists
   // English words to seed the deck with — the AI supplies the Cantonese
   const [words, setWords] = useState<string[]>([])
 
@@ -58,18 +55,10 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
         throw new Error(data.error || 'Failed to generate deck')
       }
 
-      // Report what actually saved — a short deck means the model was cut off
-      // or emitted duplicates, and silently claiming 100 hides that.
-      const saved = data?.flashcardSet?.flashcardCount ?? 0
-      const requested = data?.requestedCount ?? saved
-      toast.success(
-        saved < requested
-          ? `Generated ${saved} of ${requested} flashcards`
-          : `Successfully generated ${saved} flashcards!`
-      )
-
+      // The deck row now exists as a placeholder; the cards themselves are
+      // still being generated server-side. Hand the user back to the list,
+      // where that placeholder is waiting, instead of holding them here.
       setSetName("")
-      setPreviewData(data?.previewCards || [])
       setWords([])
       onUploadSuccess?.()
     } catch (error) {
@@ -172,55 +161,15 @@ export default function UploadForm({ onUploadSuccess, onClose }: UploadFormProps
             </div>
           </div>
 
-          {/* Preview */}
-          {previewData.length > 0 && (
-            <div className="rounded-md p-4 bg-background border border-border">
-              <h3 className="font-medium text-foreground mb-3">Preview (first 3 cards)</h3>
-              <div className="space-y-3">
-                {previewData.map((card, index) => (
-                  <div key={index} className="bg-card p-3 rounded-sm border border-border">
-                    <div className="grid grid-cols-1 gap-2 text-[14px] leading-[21px]">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="w-24 shrink-0 justify-start">Chinese:</Badge>
-                        <span lang="zh-HK" className="text-foreground">{card.chineseWord}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="w-24 shrink-0 justify-start">English:</Badge>
-                        <span className="text-foreground">{card.englishTranslation}</span>
-                      </div>
-                      {card.pronunciation && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="w-24 shrink-0 justify-start">Pronunciation:</Badge>
-                          <span className="text-foreground">{card.pronunciation}</span>
-                        </div>
-                      )}
-                      {card.exampleSentenceEnglish && (
-                        <div className="flex items-start gap-2">
-                          <Badge variant="secondary" className="w-24 shrink-0 justify-start mt-0.5">Example (EN):</Badge>
-                          <span className="text-foreground">{card.exampleSentenceEnglish}</span>
-                        </div>
-                      )}
-                      {card.exampleSentenceChinese && (
-                        <div className="flex items-start gap-2">
-                          <Badge variant="secondary" className="w-24 shrink-0 justify-start mt-0.5">Example (CN):</Badge>
-                          <span lang="zh-HK" className="text-foreground">{card.exampleSentenceChinese}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Submit */}
           <div className="space-y-2">
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Spinner size="sm" tone="inverse" />}
-              {isLoading ? 'Generating...' : 'Generate Deck'}
+              {isLoading ? 'Creating…' : 'Generate Deck'}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              100 cards and a deck image are generated automatically. This may take a minute.
+              100 cards and a deck image are generated in the background. Your deck
+              appears right away and fills in as it finishes — you can keep using the app.
             </p>
           </div>
         </form>

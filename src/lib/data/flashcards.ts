@@ -11,6 +11,7 @@ import {
   type FlashcardSetDetail,
   type NewFlashcard,
 } from './types'
+import { toGenerationStatus } from '@/lib/generation'
 
 type Client = SupabaseClient<Database>
 
@@ -20,7 +21,9 @@ export async function listFlashcardSets(
 ): Promise<FlashcardSetSummary[]> {
   const { data, error } = await sb
     .from('flashcard_sets')
-    .select('id, name, image_url, created_at, updated_at, flashcards(count)')
+    .select(
+      'id, name, image_url, status, error_message, created_at, updated_at, flashcards(count)'
+    )
     .order('created_at', { ascending: false })
   if (error) throw error
 
@@ -29,6 +32,8 @@ export async function listFlashcardSets(
     name: s.name,
     imageUrl: s.image_url,
     flashcardCount: s.flashcards[0]?.count ?? 0,
+    status: toGenerationStatus(s.status),
+    errorMessage: s.error_message,
     createdAt: s.created_at,
     updatedAt: s.updated_at,
   }))
@@ -76,6 +81,8 @@ export async function getFlashcardSet(
     id: set.id,
     name: set.name,
     imageUrl: set.image_url,
+    status: toGenerationStatus(set.status),
+    errorMessage: set.error_message,
     createdAt: set.created_at,
     updatedAt: set.updated_at,
     flashcards: set.flashcards.map((fc) => {
@@ -96,29 +103,60 @@ export async function deleteFlashcardSet(sb: Client, id: string): Promise<void> 
 }
 
 /**
- * Create a set with its cards (CSV upload or AI generation).
- * Returns the summary shape the UI shows after creation.
+ * Reserve a set before generating anything for it.
+ *
+ * Generation responds to the client immediately and does the AI work in the
+ * background, so the row has to exist first — it is what the decks list renders
+ * its shimmering placeholder from, and what makes that placeholder survive a
+ * refresh. It has no cards and no cover image yet.
  */
-export async function createSetWithCards(
+export async function createPendingSet(
   sb: Client,
   userId: string,
-  input: { name: string; imageUrl?: string | null; flashcards: NewFlashcard[] }
+  input: { name: string }
 ): Promise<FlashcardSetSummary> {
   const { data: set, error } = await sb
     .from('flashcard_sets')
     .insert({
       user_id: userId,
       name: input.name,
-      image_url: input.imageUrl ?? null,
+      image_url: null,
+      status: 'pending',
     })
     .select()
     .single()
   if (error) throw error
 
+  return {
+    id: set.id,
+    name: set.name,
+    imageUrl: set.image_url,
+    flashcardCount: 0,
+    status: toGenerationStatus(set.status),
+    errorMessage: set.error_message,
+    createdAt: set.created_at,
+    updatedAt: set.updated_at,
+  }
+}
+
+/**
+ * Fill in a pending set once generation finishes: insert its cards, attach the
+ * cover image, and flip it to 'ready'.
+ *
+ * If the card insert fails the set is marked 'failed' rather than deleted — the
+ * user is looking at a placeholder for it, and a card that quietly vanishes is
+ * worse than one that says what went wrong.
+ */
+export async function finalizeSet(
+  sb: Client,
+  userId: string,
+  setId: string,
+  input: { imageUrl?: string | null; flashcards: NewFlashcard[] }
+): Promise<void> {
   const { error: cardsError } = await sb.from('flashcards').insert(
     input.flashcards.map((card) => ({
       user_id: userId,
-      flashcard_set_id: set.id,
+      flashcard_set_id: setId,
       chinese_word: card.chineseWord,
       english_translation: card.englishTranslation,
       pronunciation: card.pronunciation ?? null,
@@ -126,18 +164,28 @@ export async function createSetWithCards(
       example_sentence_chinese: card.exampleSentenceChinese ?? null,
     }))
   )
-  if (cardsError) {
-    // Best-effort rollback so a failed card insert doesn't leave an empty set
-    await sb.from('flashcard_sets').delete().eq('id', set.id)
-    throw cardsError
-  }
+  if (cardsError) throw cardsError
 
-  return {
-    id: set.id,
-    name: set.name,
-    imageUrl: set.image_url,
-    flashcardCount: input.flashcards.length,
-    createdAt: set.created_at,
-    updatedAt: set.updated_at,
-  }
+  const { error } = await sb
+    .from('flashcard_sets')
+    .update({
+      image_url: input.imageUrl ?? null,
+      status: 'ready',
+      error_message: null,
+    })
+    .eq('id', setId)
+  if (error) throw error
+}
+
+/** Mark a set as failed so its placeholder card can explain itself. */
+export async function failSet(
+  sb: Client,
+  setId: string,
+  message: string
+): Promise<void> {
+  const { error } = await sb
+    .from('flashcard_sets')
+    .update({ status: 'failed', error_message: message.slice(0, 500) })
+    .eq('id', setId)
+  if (error) console.error('Could not mark set as failed:', error)
 }
