@@ -18,6 +18,9 @@ export default function SignUpForm() {
   const [password, setPassword] = useState("")
   const [name, setName] = useState("") // Optional display name
   const [isLoading, setIsLoading] = useState(false)
+  // Signup with email confirmation on does not redirect, so the form has to
+  // say so itself.
+  const [confirmationSent, setConfirmationSent] = useState(false)
 
   const router = useRouter()
 
@@ -40,13 +43,15 @@ export default function SignUpForm() {
       }
 
       // If email confirmation is enabled in Supabase, no session is returned
-      // until the user clicks the link in their inbox.
+      // until the user clicks the link in their inbox. This branch does not
+      // redirect, so the message has to live on the form itself — otherwise
+      // signup looks like it silently did nothing.
       if (!data.session) {
-        toast.success("Check your email to confirm your account!")
+        setConfirmationSent(true)
         return
       }
 
-      toast.success("Account created successfully!")
+      // Landing on the dashboard is the confirmation
       router.push("/dashboard")
       router.refresh()
     } catch {
@@ -64,6 +69,15 @@ export default function SignUpForm() {
           <h1 className="text-2xl font-bold text-foreground" lang="zh-HK">開始學習</h1>
           <p className="text-muted-foreground mt-1">Start lesson</p>
         </div>
+
+        {confirmationSent && (
+          <div
+            role="status"
+            className="mb-6 rounded-md border border-border bg-accent p-4 text-center text-[14px] leading-[21px] text-foreground"
+          >
+            Check your email to confirm your account, then sign in.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

@@ -23,6 +23,8 @@ export type Database = {
           user_id: string
           name: string
           image_url: string | null
+          status: string
+          error_message: string | null
           created_at: string
           updated_at: string
         }
@@ -31,6 +33,8 @@ export type Database = {
           user_id: string
           name: string
           image_url?: string | null
+          status?: string
+          error_message?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -39,6 +43,8 @@ export type Database = {
           user_id?: string
           name?: string
           image_url?: string | null
+          status?: string
+          error_message?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -253,6 +259,8 @@ export type Database = {
           difficulty: string | null
           estimated_minutes: number | null
           sentence_count: number | null
+          status: string
+          error_message: string | null
           created_at: string
           updated_at: string
         }
@@ -268,6 +276,8 @@ export type Database = {
           difficulty?: string | null
           estimated_minutes?: number | null
           sentence_count?: number | null
+          status?: string
+          error_message?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -283,6 +293,8 @@ export type Database = {
           difficulty?: string | null
           estimated_minutes?: number | null
           sentence_count?: number | null
+          status?: string
+          error_message?: string | null
           created_at?: string
           updated_at?: string
         }

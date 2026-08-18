@@ -5,13 +5,28 @@
 
 import { useMemo } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { ArrowLeft, Plus } from "lucide-react"
+
+const NAV_ROOTS = ["/dashboard", "/flashcards", "/chat", "/articles"] as const
 
 export default function TopHeader() {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // The four bottom-nav destinations are the roots; anything below one of them
+  // is a sub-page and gets a back button in the left slot. Resolving to the
+  // root rather than router.back() keeps a deep link from navigating out of
+  // the app entirely.
+  const backHref = useMemo(() => {
+    if (!pathname) return null
+    const root = NAV_ROOTS.find(
+      (r) => pathname === r || pathname.startsWith(`${r}/`)
+    )
+    return root && pathname !== root ? root : null
+  }, [pathname])
 
   const showFlashcardsAdd = useMemo(() => pathname?.startsWith("/flashcards") ?? false, [pathname])
   const showArticlesAdd = useMemo(() => pathname === "/articles", [pathname])
@@ -36,8 +51,23 @@ export default function TopHeader() {
         className="max-w-md mx-auto h-[72px] px-4 sm:px-6 flex items-center justify-between"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        {/* Left spacer keeps the logo centered when an action is present */}
-        <div className="size-10" />
+        {/* Back on sub-pages; an empty box otherwise, so the logo stays centered */}
+        <div className="size-10 flex items-center justify-center">
+          {backHref && (
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="rounded-full text-muted-foreground"
+              aria-label="Go back"
+              title="Go back"
+            >
+              <Link href={backHref}>
+                <ArrowLeft />
+              </Link>
+            </Button>
+          )}
+        </div>
 
         {/* Center logo */}
         <div className="flex-1 flex items-center justify-center">

@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { getFlashcardSet } from "@/lib/data/flashcards"
+import { ShimmeringText } from "@/components/ui/shimmering-text"
+import { displayStatus } from "@/lib/generation"
 import type { FlashcardSetDetail } from "@/lib/data/types"
 
 type FlashcardSet = FlashcardSetDetail
@@ -84,25 +86,22 @@ export default function FlashcardSetPage() {
   return (
     <div className="min-h-screen pb-24 bg-background">
       <div className="max-w-md mx-auto px-4 py-6">
+        {/* Back lives in the global TopHeader */}
         <div className="flex items-center mb-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.back()}
-              className="mr-2 -ml-2"
-              aria-label="Go back"
-            >
-              <svg className="size-6" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </Button>
             <h1 className="text-xl font-bold text-foreground">{set.name}</h1>
         </div>
 
         <div className="space-y-4">
-            {set.flashcards.length === 0 ? (
+            {displayStatus(set) === "pending" ? (
+                // Reachable by deep link while the deck is still generating
+                <div className="text-center py-10">
+                    <ShimmeringText text="Generating cards…" className="text-[16px]" />
+                </div>
+            ) : set.flashcards.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground">
-                    No cards in this set.
+                    {displayStatus(set) === "failed"
+                        ? "This deck couldn't be generated. Delete it and try again."
+                        : "No cards in this set."}
                 </div>
             ) : (
                 set.flashcards.map((card, idx) => (

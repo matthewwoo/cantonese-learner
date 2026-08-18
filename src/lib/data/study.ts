@@ -64,11 +64,17 @@ export async function startStudySession(
   // Verify the set exists (RLS: only reachable if owned) and load its cards
   const { data: set, error: setError } = await sb
     .from('flashcard_sets')
-    .select('id, name, flashcards(*)')
+    .select('id, name, status, flashcards(*)')
     .eq('id', flashcardSetId)
     .maybeSingle()
   if (setError) throw setError
   if (!set) throw new Error('Flashcard set not found or not accessible')
+  // Reachable by deep link while the deck is still generating — the list's
+  // "Start lesson" button is disabled until it is ready.
+  if (set.status === 'pending')
+    throw new Error('This deck is still generating. Try again in a moment.')
+  if (set.status === 'failed')
+    throw new Error("This deck couldn't be generated. Delete it and try again.")
   if (set.flashcards.length === 0) throw new Error('This flashcard set has no cards')
 
   const allFlashcards = set.flashcards

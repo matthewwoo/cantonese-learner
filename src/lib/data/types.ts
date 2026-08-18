@@ -6,6 +6,7 @@
 // the frontend already received from the old JSON API).
 
 import type { Database } from '@/lib/supabase/database.types'
+import { toGenerationStatus, type GenerationStatus } from '@/lib/generation'
 
 type Tables = Database['public']['Tables']
 export type FlashcardSetRow = Tables['flashcard_sets']['Row']
@@ -26,6 +27,10 @@ export interface FlashcardSetSummary {
   name: string
   imageUrl: string | null
   flashcardCount: number
+  // A set exists from the moment generation starts, so the list can show it
+  // shimmering. Only 'ready' sets have their cards and cover image.
+  status: GenerationStatus
+  errorMessage: string | null
   createdAt: string
   updatedAt: string
 }
@@ -50,6 +55,8 @@ export interface FlashcardSetDetail {
   id: string
   name: string
   imageUrl: string | null
+  status: GenerationStatus
+  errorMessage: string | null
   createdAt: string
   updatedAt: string
   flashcards: FlashcardWithProgress[]
@@ -119,6 +126,9 @@ export interface ArticleSummary {
   difficulty: string | null
   estimatedMinutes: number | null
   sentenceCount: number | null
+  // Set when the row is created; translation fills the content in afterwards.
+  status: GenerationStatus
+  errorMessage: string | null
   createdAt: string
   updatedAt: string
 }
@@ -138,6 +148,8 @@ export function mapArticleSummary(row: ArticleRow): ArticleSummary {
     difficulty: row.difficulty,
     estimatedMinutes: row.estimated_minutes,
     sentenceCount: row.sentence_count,
+    status: toGenerationStatus(row.status),
+    errorMessage: row.error_message,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

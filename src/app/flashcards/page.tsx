@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { useUser } from "@/lib/supabase/use-user"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -25,9 +25,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import UploadForm from "@/components/flashcards/UploadForm"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ShimmeringText } from "@/components/ui/shimmering-text"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { listFlashcardSets, deleteFlashcardSet } from "@/lib/data/flashcards"
+import { displayStatus, type GenerationStatus } from "@/lib/generation"
+import { usePollWhilePending } from "@/lib/hooks/use-poll-while-pending"
 
 // Define the structure of a flashcard set
 interface FlashcardSet {
@@ -36,6 +40,8 @@ interface FlashcardSet {
   toneClass?: string // client-side deck pastel class, attached at render time
   imageUrl: string | null
   flashcardCount: number
+  status: GenerationStatus
+  errorMessage: string | null
   createdAt: string
   updatedAt: string
 }
@@ -122,6 +128,10 @@ function Illustration({ illustration = "empty" }: { illustration?: string }) {
 // Deck card component
 function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: () => void; onDelete: (setId: string) => void; onView: (setId: string) => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // A deck appears the moment generation starts, so most of this card is a
+  // placeholder until the background job fills it in.
+  const state = displayStatus(set)
+  const isReady = state === "ready"
 
   return (
     <Card className={`gap-0 py-0 ring-0 shadow-[0_1px_3px_0_rgba(0,0,0,0.12)] hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 rounded-xl overflow-hidden relative ${set.toneClass ?? "bg-deck-sky"}`}>
@@ -150,7 +160,7 @@ function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onSelect={() => onView(set.id)}>
+            <DropdownMenuItem disabled={!isReady} onSelect={() => onView(set.id)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -189,7 +199,10 @@ function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: 
         {/* Illustration */}
         <div className="mb-6">
           <div className="w-32 h-32 rounded-full bg-white/70 flex items-center justify-center shadow-inner overflow-hidden">
-            {set.imageUrl ? (
+            {state === "pending" ? (
+              // The cover art is generated alongside the cards
+              <Skeleton className="w-full h-full rounded-full" />
+            ) : set.imageUrl ? (
               <img
                 src={set.imageUrl}
                 alt={`${set.name} deck image`}
@@ -216,10 +229,24 @@ function Deck({ set, onClick, onDelete, onView }: { set: FlashcardSet; onClick: 
         {/* Content */}
         <div className="text-center w-full">
           <h3 className="text-[16px] leading-[24px] font-medium text-foreground">{set.name}</h3>
-          <p className="text-[14px] leading-[21px] mb-6 text-muted-foreground">{set.flashcardCount} cards</p>
+
+          {state === "pending" ? (
+            <ShimmeringText
+              text="Generating cards…"
+              className="text-[14px] leading-[21px] mb-6 block"
+            />
+          ) : state === "failed" ? (
+            <p className="text-[14px] leading-[21px] mb-6 text-muted-foreground">
+              {set.errorMessage
+                ? "Couldn't generate this deck. Delete it and try again."
+                : "Generation didn't finish. Delete it and try again."}
+            </p>
+          ) : (
+            <p className="text-[14px] leading-[21px] mb-6 text-muted-foreground">{set.flashcardCount} cards</p>
+          )}
 
           {/* Button */}
-          <Button onClick={onClick} className="w-fit mx-auto">
+          <Button onClick={onClick} disabled={!isReady} className="w-fit mx-auto">
             Start lesson
           </Button>
         </div>
@@ -327,7 +354,9 @@ export default function FlashcardsPage() {
 
   // Component state
   const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  // Only the first load takes the screen over. Polling refetches must be
+  // silent, or every tick would blank the list the user is looking at.
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
@@ -336,26 +365,28 @@ export default function FlashcardsPage() {
     }
   }, [status, router])
 
-  // Fetch user's flashcard sets when component mounts
-  useEffect(() => {
-    if (session) {
-      fetchFlashcardSets()
-    }
-  }, [session])
-
   // Function to fetch flashcard sets from Supabase
-  const fetchFlashcardSets = async () => {
+  const fetchFlashcardSets = useCallback(async () => {
     try {
-      setIsLoading(true)
       const sets = await listFlashcardSets(createClient())
       setFlashcardSets(sets)
     } catch (error) {
       console.error('Error fetching flashcard sets:', error)
       toast.error('Failed to load flashcard sets')
     } finally {
-      setIsLoading(false)
+      setIsInitialLoad(false)
     }
-  }
+  }, [])
+
+  // Fetch user's flashcard sets when component mounts
+  useEffect(() => {
+    if (session) {
+      fetchFlashcardSets()
+    }
+  }, [session, fetchFlashcardSets])
+
+  // Keep decks that are still generating up to date without the user acting
+  usePollWhilePending(flashcardSets, fetchFlashcardSets)
 
   // Handle successful upload - refresh the list and hide form
   const handleUploadSuccess = () => {
@@ -378,9 +409,9 @@ export default function FlashcardsPage() {
     try {
       await deleteFlashcardSet(createClient(), setId)
 
-      // Refresh the list after successful deletion
+      // Refresh the list after successful deletion — the row disappearing is
+      // the confirmation, so there is nothing to announce
       fetchFlashcardSets()
-      toast.success('Flashcard set deleted successfully')
     } catch (error) {
       console.error('Error deleting flashcard set:', error)
       toast.error('Failed to delete flashcard set')
@@ -388,7 +419,7 @@ export default function FlashcardsPage() {
   }
 
   // Show loading while checking authentication
-  if (status === "loading" || isLoading) {
+  if (status === "loading" || isInitialLoad) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

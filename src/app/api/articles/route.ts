@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createRouteClient } from '@/lib/supabase/server';
+import { mapWithConcurrency } from '@/lib/async/pool';
 import { z } from 'zod';
 
 // Article creation validation schema
@@ -13,9 +14,16 @@ const createArticleSchema = z.object({
 // src/lib/data/articles.ts. This route only handles CREATION, which needs
 // server-side translation APIs (OpenAI / Google Translate).
 
+// Translation is dozens to hundreds of OpenAI round trips, so it does not
+// happen inside the request. The row is inserted 'pending' and returned at
+// once — the articles list renders a placeholder card from it and the user
+// carries on — and `after()` fills in the translation and flips it to 'ready'.
+
 /**
  * POST /api/articles - Create new article
- * Receives English content and translates it to Traditional Chinese
+ *
+ * Responds as soon as the article row exists. The English -> Cantonese
+ * translation runs in the background and updates the row when it lands.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -38,16 +46,9 @@ export async function POST(request: NextRequest) {
       .split('\n')
       .filter(line => line.trim().length > 0);
 
-    // Translate each line
-    console.log('Article creation: Starting translation of', lines.length, 'lines');
-    const translatedLines = await translateLines(lines);
-    console.log('Article creation: Translation completed. Original lines:', lines);
-    console.log('Article creation: Translated lines:', translatedLines);
-
-    // Extract all Chinese vocabulary and get definitions
-    const wordDefinitions = await extractWordDefinitions(translatedLines);
-
-    // Create article record (as the user; RLS applies)
+    // Reserve the row up front, untranslated. This is what the articles list
+    // renders its placeholder from, and it is why the placeholder survives a
+    // refresh or a closed tab.
     const { data: article, error: insertError } = await supabase
       .from('articles')
       .insert({
@@ -55,16 +56,50 @@ export async function POST(request: NextRequest) {
         title: validatedData.title,
         source_url: validatedData.url ?? null,
         original_content: lines,
-        translated_content: translatedLines,
-        word_definitions: wordDefinitions,
+        translated_content: [],
+        word_definitions: {},
+        status: 'pending',
       })
       .select('id')
       .single();
     if (insertError) throw insertError;
 
+    const articleId = article.id;
+
+    // Runs once the response below has been sent. The Supabase client already
+    // holds this user's JWT in memory, so RLS still scopes the update to them.
+    after(async () => {
+      try {
+        console.log('Article', articleId, ': translating', lines.length, 'lines');
+        const translatedLines = await translateLines(lines);
+        const wordDefinitions = await extractWordDefinitions(translatedLines);
+
+        const { error: updateError } = await supabase
+          .from('articles')
+          .update({
+            translated_content: translatedLines,
+            word_definitions: wordDefinitions,
+            status: 'ready',
+            error_message: null,
+          })
+          .eq('id', articleId);
+        if (updateError) throw updateError;
+
+        console.log('Article', articleId, ': translation complete');
+      } catch (error) {
+        console.error('Article', articleId, ': translation failed', error);
+        const message =
+          error instanceof Error ? error.message : 'Translation failed';
+        await supabase
+          .from('articles')
+          .update({ status: 'failed', error_message: message.slice(0, 500) })
+          .eq('id', articleId);
+      }
+    });
+
     return NextResponse.json({
       success: true,
-      articleId: article.id
+      articleId
     });
   } catch (error) {
     console.error('Failed to create article:', error);
@@ -83,31 +118,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// One OpenAI round trip per line and per vocabulary word adds up fast: a long
+// article is hundreds of calls, and awaiting them one at a time runs past the
+// 300s function ceiling in vercel.json, which would strand the row as
+// 'pending' forever. Six at a time is the same set of calls, just overlapped.
+const TRANSLATION_CONCURRENCY = 6;
+
 /**
- * Translate array of text lines to Traditional Chinese
+ * Translate array of text lines to Traditional Chinese.
+ * A line that fails to translate degrades to a marked passthrough rather than
+ * failing the whole article.
  */
 async function translateLines(lines: string[]): Promise<string[]> {
-  const translations: string[] = [];
-  
-  for (const line of lines) {
-    if (line.trim().length === 0) {
-      translations.push('');
-      continue;
-    }
-    
+  return mapWithConcurrency(lines, TRANSLATION_CONCURRENCY, async (line) => {
+    if (line.trim().length === 0) return '';
+
     try {
-      console.log(`Translating line: "${line}"`);
-      // Use translation service directly instead of calling API
-      const translatedText = await translateWithService(line.trim(), 'zh-TW', 'en');
-      console.log(`Translation result: "${translatedText}"`);
-      translations.push(translatedText);
+      return await translateWithService(line.trim(), 'zh-TW', 'en');
     } catch (error) {
       console.error(`Translation error for line: ${line}`, error);
-      translations.push(`[Translation Error] ${line}`);
+      return `[Translation Error] ${line}`;
     }
-  }
-  
-  return translations;
+  });
 }
 
 /**
@@ -300,28 +332,36 @@ async function extractWordDefinitions(translatedLines: string[]): Promise<Record
     }
   });
 
-  // Get definition for each vocabulary
-  const definitions: Record<string, any> = {};
-  
-  for (const word of chineseWords) {
-    try {
-      // Try to get translation for the word using direct service
-      const englishTranslation = await translateWithService(word, 'en', 'zh-TW');
-      definitions[word] = {
-        pinyin: generatePinyin(word), // Placeholder - would need a proper pinyin service
-        english: englishTranslation,
-        traditional: word,
-      };
-    } catch (error) {
-      console.error(`Failed to get definition for word: ${word}`, error);
-      // Fallback definition
-      definitions[word] = {
-        pinyin: generatePinyin(word),
-        english: 'Chinese character',
-        traditional: word,
-      };
+  // Get definition for each vocabulary word (see TRANSLATION_CONCURRENCY —
+  // this is the loop that dominates a long article's runtime)
+  const words = [...chineseWords];
+  const entries = await mapWithConcurrency(
+    words,
+    TRANSLATION_CONCURRENCY,
+    async (word) => {
+      try {
+        const englishTranslation = await translateWithService(word, 'en', 'zh-TW');
+        return {
+          pinyin: generatePinyin(word), // Placeholder - would need a proper pinyin service
+          english: englishTranslation,
+          traditional: word,
+        };
+      } catch (error) {
+        console.error(`Failed to get definition for word: ${word}`, error);
+        // Fallback definition
+        return {
+          pinyin: generatePinyin(word),
+          english: 'Chinese character',
+          traditional: word,
+        };
+      }
     }
-  }
+  );
+
+  const definitions: Record<string, any> = {};
+  words.forEach((word, i) => {
+    definitions[word] = entries[i];
+  });
 
   return definitions;
 }

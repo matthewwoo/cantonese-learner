@@ -12,6 +12,7 @@ import {
   type ArticleSummary,
   type ReadingSession,
 } from './types'
+import { toGenerationStatus } from '@/lib/generation'
 
 type Client = SupabaseClient<Database>
 
@@ -20,7 +21,7 @@ export async function listArticles(sb: Client): Promise<ArticleSummary[]> {
   const { data, error } = await sb
     .from('articles')
     .select(
-      'id, title, source_url, difficulty, estimated_minutes, sentence_count, created_at, updated_at'
+      'id, title, source_url, difficulty, estimated_minutes, sentence_count, status, error_message, created_at, updated_at'
     )
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -32,6 +33,8 @@ export async function listArticles(sb: Client): Promise<ArticleSummary[]> {
     difficulty: row.difficulty,
     estimatedMinutes: row.estimated_minutes,
     sentenceCount: row.sentence_count,
+    status: toGenerationStatus(row.status),
+    errorMessage: row.error_message,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }))

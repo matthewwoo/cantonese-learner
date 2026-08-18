@@ -21,6 +21,10 @@ export default function NewArticlePage() {
   const [isFetchingUrl, setIsFetchingUrl] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const wordCount = articleContent.trim()
+    ? articleContent.trim().split(/\s+/).length
+    : 0
+
   // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -59,7 +63,6 @@ export default function NewArticlePage() {
       const data = await response.json()
       setArticleTitle(data.title)
       setArticleContent(data.content)
-      toast.success('Fetched article content')
     } catch (e) {
       console.error(e)
       toast.error('Unable to fetch article from this URL')
@@ -78,55 +81,52 @@ export default function NewArticlePage() {
       return
     }
     setIsSubmitting(true)
-    let loadingToast: string | number | undefined
     try {
+      // Track the payload in locals. setState is async, so the auto-fetch below
+      // cannot read the fetched content back out of `articleContent` in this
+      // same closure — doing so posted an empty body and always 400'd.
+      let title = articleTitle
+      let content = articleContent
+
       // Auto-fetch if URL provided but content empty
-      if (articleUrl && !articleContent.trim()) {
-        loadingToast = toast.loading('Fetching article content from URL...')
+      if (articleUrl && !content.trim()) {
         try {
           const fetchResponse = await fetch('/api/articles/fetch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: articleUrl }),
           })
-          if (fetchResponse.ok) {
-            const fetchData = await fetchResponse.json()
-            setArticleTitle(fetchData.title)
-            setArticleContent(fetchData.content)
-            toast.dismiss(loadingToast)
-            toast.success('Successfully fetched article content!')
-          } else {
-            toast.dismiss(loadingToast)
-            toast.error('Unable to fetch content from URL. Please enter content manually.')
-            setIsSubmitting(false)
-            return
-          }
+          if (!fetchResponse.ok) throw new Error('Fetch failed')
+          const fetchData = await fetchResponse.json()
+          title = fetchData.title || title
+          content = fetchData.content
+          setArticleTitle(title)
+          setArticleContent(content)
         } catch {
-          toast.dismiss(loadingToast)
           toast.error('Unable to fetch content from URL. Please enter content manually.')
           setIsSubmitting(false)
           return
         }
       }
 
-      loadingToast = toast.loading('Creating article and translating to Traditional Chinese...')
       const response = await fetch('/api/articles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: articleTitle,
-          content: articleContent,
+          title,
+          content,
           url: articleUrl || undefined,
         }),
       })
       if (!response.ok) throw new Error('Failed to create article')
-      const data = await response.json()
-      toast.dismiss(loadingToast)
-      toast.success('Article created!')
-      router.push(`/articles/${data.articleId}`)
+      await response.json()
+
+      // The article exists but is still being translated. Send the user to the
+      // list, where its placeholder card is waiting — the reader would only
+      // show them an empty page until the background job lands.
+      router.push('/articles')
     } catch (e) {
       console.error(e)
-      if (loadingToast) toast.dismiss(loadingToast)
       toast.error('Unable to create article')
     } finally {
       setIsSubmitting(false)
@@ -135,30 +135,14 @@ export default function NewArticlePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/60 backdrop-blur-md border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-4 sm:px-6">
-          <div className="flex items-center justify-between">
-            <Link href="/articles" className="w-10 h-10 rounded-full flex items-center justify-center border border-border text-foreground" aria-label="Back to articles">
-              <span className="text-lg">←</span>
-            </Link>
-            <div className="text-center flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-accent">
-                <span>🆕</span>
-                <span className="text-[14px] leading-[21px] text-foreground">Add Article</span>
-              </div>
-            </div>
-            <div className="w-10 h-10" />
-          </div>
-        </div>
-      </div>
+      {/* Back lives in the global TopHeader */}
 
       {/* Form Card */}
       <div className="max-w-md mx-auto px-4 py-6 pb-24 sm:px-6">
         <Card className="border-0 ring-0 shadow-lg rounded-xl overflow-hidden py-0">
           <div className="p-6">
             <h1 className="text-xl font-semibold mb-2 text-foreground">Add new article</h1>
-            <p className="mb-6 text-muted-foreground">Paste a URL or enter content below. We’ll translate to Traditional Chinese.</p>
+            <p className="mb-6 text-muted-foreground">Paste a URL or enter content below. We’ll translate it to Cantonese in the background — your article appears in the list right away.</p>
 
             <div className="space-y-5">
               {/* URL */}
@@ -201,15 +185,24 @@ export default function NewArticlePage() {
               {/* Content */}
               <div>
                 <Label htmlFor="article-content" className="mb-2 text-foreground">Content *</Label>
+                {/* The Textarea sets `field-sizing-content`, so it grows to fit
+                    its value and ignores `rows`. A fetched article would stretch
+                    it to thousands of pixels and push the form off screen, so
+                    cap it and let the rest scroll inside the field. */}
                 <Textarea
                   id="article-content"
                   value={articleContent}
                   onChange={(e) => setArticleContent(e.target.value)}
                   placeholder="Paste or type English article content..."
-                  rows={10}
                   disabled={isSubmitting}
-                  className="w-full"
+                  className="w-full min-h-48 max-h-96 overflow-y-auto"
                 />
+                {wordCount > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {wordCount.toLocaleString()} words — scroll inside the box to read the rest.
+                    Trim anything you don&apos;t want translated.
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
