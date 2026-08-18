@@ -412,7 +412,7 @@ export default function ArticleReadingPage() {
           <Button
             onClick={async () => {
               // Play pronunciation of a single character/word.
-              // speakCantonese handles Fish Audio server TTS with Web Speech fallback.
+              // speakCantonese handles MiniMax server TTS with Web Speech fallback.
               if (!selectedWord) return;
               try {
                 playerRef.current?.pause();

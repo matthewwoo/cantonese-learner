@@ -38,7 +38,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 /**
  * AudioPlayer exhibit: the full player renders immediately; the play button
- * synthesizes a real Cantonese sample via /api/speech/tts (Fish Audio) on
+ * synthesizes a real Cantonese sample via /api/speech/tts (MiniMax) on
  * first use, then plays it.
  */
 function TTSPlayerDemo() {
@@ -92,7 +92,7 @@ function TTSPlayerDemo() {
         </CardContent>
       </Card>
       <p className="text-xs text-muted-foreground mt-2">
-        Press play to synthesize 你好！歡迎嚟到粵語學習。 with the live Fish
+        Press play to synthesize 你好！歡迎嚟到粵語學習。 with the live MiniMax
         Audio voice, then scrub, replay, and change speed.
       </p>
     </AudioPlayerProvider>
@@ -132,7 +132,7 @@ export function ElevenLabsSection() {
         </p>
       </div>
 
-      <Section title="Audio player — live Fish Audio TTS">
+      <Section title="Audio player — live MiniMax TTS">
         <TTSPlayerDemo />
       </Section>
 

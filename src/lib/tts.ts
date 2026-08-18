@@ -13,7 +13,7 @@
  * surface at once — the article read-aloud bar, tapping a bubble, the word
  * dialog, chat, and flashcards all resolve their speed from here.
  *
- * Applied at *synthesis* time (Fish `prosody.speed`), which re-voices the line
+ * Applied at *synthesis* time (MiniMax `voice_setting.speed`), which re-voices the line
  * properly. That is not the same as the player's speed control, which sets
  * <audio>.playbackRate and merely resamples finished audio — so prefer changing
  * this constant over reaching for playbackRate if the pace ever needs to move.
