@@ -50,11 +50,11 @@ const EMPTY_WEEK: ActivityDay[] = SAMPLE_WEEK.map((d) => ({ ...d, activities: []
 
 const SAMPLE_STATS: Stat[] = [
   {
-    id: "mastered",
-    value: 128,
-    label: "已掌握詞語",
-    labelEnglish: "Words mastered",
-    caption: "Held for 3 weeks or longer",
+    id: "reviewed",
+    value: 37,
+    label: "本週複習詞語",
+    labelEnglish: "Words reviewed",
+    caption: "This week, Monday to Sunday",
     tone: "mint",
   },
   {

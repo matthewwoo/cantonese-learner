@@ -122,8 +122,8 @@ scrollbar is hidden via the `.no-scrollbar` utility in `globals.css`.
 ```tsx
 <StatCarousel
   stats={[
-    { id: "mastered", value: 128, label: "已掌握詞語", labelEnglish: "Words mastered",
-      caption: "+12 this week", tone: "mint" },
+    { id: "reviewed", value: 37, label: "本週複習詞語", labelEnglish: "Words reviewed",
+      caption: "This week, Monday to Sunday", tone: "mint" },
     // …chats, lines read
   ]}
 />

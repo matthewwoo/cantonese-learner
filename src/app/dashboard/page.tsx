@@ -13,6 +13,7 @@ import { getPracticeHistory, getProgressStats } from "@/lib/data/stats"
 import {
   buildWeek,
   currentStreak,
+  startOfWeek,
   toDayKey,
   type PracticeMap,
 } from "@/lib/activity/practice-days"
@@ -29,17 +30,17 @@ interface HomeData {
 }
 
 function toStats(counts: {
-  wordsMastered: number
+  wordsReviewedThisWeek: number
   conversations: number
   linesRead: number
 }): Stat[] {
   return [
     {
-      id: "mastered",
-      value: counts.wordsMastered,
-      label: "已掌握詞語",
-      labelEnglish: "Words mastered",
-      caption: "Held for 3 weeks or longer",
+      id: "reviewed",
+      value: counts.wordsReviewedThisWeek,
+      label: "本週複習詞語",
+      labelEnglish: "Words reviewed",
+      caption: "This week, Monday to Sunday",
       tone: "mint",
     },
     {
@@ -87,12 +88,16 @@ export default function HomePage() {
     let cancelled = false
     const supabase = createClient()
 
-    Promise.all([getPracticeHistory(supabase), getProgressStats(supabase)])
+    // Bucketed against the browser's clock, so "today" — and the Monday the
+    // week counts from — are the learner's, wherever they are.
+    const today = toDayKey(new Date())
+
+    Promise.all([
+      getPracticeHistory(supabase),
+      getProgressStats(supabase, startOfWeek(today)),
+    ])
       .then(([practice, counts]: [PracticeMap, Awaited<ReturnType<typeof getProgressStats>>]) => {
         if (cancelled) return
-        // Bucketed against the browser's clock, so "today" is the learner's
-        // today wherever they are.
-        const today = toDayKey(new Date())
         setData({
           today,
           week: buildWeek(practice, today),

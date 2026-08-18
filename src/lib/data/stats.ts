@@ -10,26 +10,11 @@ import { toDayKey, type PracticeMap } from '@/lib/activity/practice-days'
 
 type Client = SupabaseClient<Database>
 
-/**
- * A word counts as mastered once its review interval reaches 21 days —
- * Anki's "mature card" threshold, and the one point in SM-2 where difficulty
- * is already priced in. Under src/lib/srs/sm2.ts an easy word (ease 2.5)
- * crosses it on the 4th correct review (1 → 6 → 15 → 38 days); a word the
- * learner keeps fumbling (ease floored at 1.3) needs about 7. So "mastered"
- * costs more for hard words than easy ones, which is the whole point —
- * a flat `repetitions >= 3` would treat both the same.
- *
- * It reads current state, not a high-water mark: failing a card resets its
- * interval to 1 day, and the word drops back out of the count until it's
- * rebuilt. Mastery is a claim about what the learner knows now.
- */
-export const MASTERED_INTERVAL_DAYS = 21
-
 /** How far back the activity history query reaches (streaks longer than this clamp). */
 const HISTORY_DAYS = 365
 
 export interface ProgressStats {
-  wordsMastered: number
+  wordsReviewedThisWeek: number
   conversations: number
   linesRead: number
 }
@@ -37,34 +22,35 @@ export interface ProgressStats {
 /**
  * The three swipeable stat-card numbers.
  *
- * `study_cards` holds one row per card *per session*, so a card's live SRS
- * state is its newest row — the same "latest per flashcard" reduction
- * startStudySession does when it seeds a session.
+ * `weekStart` is local midnight on Monday (see startOfWeek) so the review
+ * count resets on the same boundary the activity strip draws.
  */
-export async function getProgressStats(sb: Client): Promise<ProgressStats> {
-  const [cards, conversations, reading] = await Promise.all([
+export async function getProgressStats(
+  sb: Client,
+  weekStart: Date
+): Promise<ProgressStats> {
+  const [reviewed, conversations, reading] = await Promise.all([
+    // Answered cards only: a study_cards row is inserted when a session
+    // *starts*, and was_correct stays null until the learner responds. The
+    // updated_at trigger stamps that response, so it — not created_at — is
+    // when the review actually happened.
     sb
       .from('study_cards')
-      .select('flashcard_id, interval_days, created_at')
-      .order('created_at', { ascending: false }),
+      .select('flashcard_id')
+      .not('was_correct', 'is', null)
+      .gte('updated_at', weekStart.toISOString()),
     sb.from('chat_sessions').select('id', { count: 'exact', head: true }),
     sb.from('reading_sessions').select('current_position'),
   ])
 
-  if (cards.error) throw cards.error
+  if (reviewed.error) throw reviewed.error
   if (conversations.error) throw conversations.error
   if (reading.error) throw reading.error
 
-  const latestSeen = new Set<string>()
-  let wordsMastered = 0
-  for (const card of cards.data) {
-    if (latestSeen.has(card.flashcard_id)) continue // older row for a card already counted
-    latestSeen.add(card.flashcard_id)
-    if (card.interval_days >= MASTERED_INTERVAL_DAYS) wordsMastered += 1
-  }
-
   return {
-    wordsMastered,
+    // Distinct words, not review events: seeing the same card three times in a
+    // week is one word reviewed.
+    wordsReviewedThisWeek: new Set(reviewed.data.map((c) => c.flashcard_id)).size,
     conversations: conversations.count ?? 0,
     // Sentences reached, summed across articles. current_position is how far
     // into an article the learner has read.

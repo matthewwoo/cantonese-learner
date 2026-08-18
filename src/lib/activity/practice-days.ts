@@ -38,17 +38,27 @@ export function shiftDay(key: DayKey, offset: number): DayKey {
 }
 
 /**
+ * Local midnight on the Monday of the week containing `key` — the cutoff for
+ * anything scoped to "this week", and the same boundary the activity strip
+ * draws.
+ */
+export function startOfWeek(key: DayKey): Date {
+  const [y, m, d] = key.split('-').map(Number)
+  const date = new Date(y, m - 1, d, 12) // noon anchor; see shiftDay
+  // getDay(): 0=Sun…6=Sat. Monday-first means Sunday is 6 days into the week.
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+/**
  * The seven days of the Monday-first week containing `today`, oldest first —
  * exactly what <ActivityWeek /> expects.
  */
 export function buildWeek(practice: PracticeMap, today: DayKey): ActivityDay[] {
-  const [y, m, d] = today.split('-').map(Number)
-  // getDay(): 0=Sun…6=Sat. Monday-first means Sunday is 6 days into the week.
-  const weekday = new Date(y, m - 1, d, 12).getDay()
-  const sinceMonday = (weekday + 6) % 7
-
+  const monday = toDayKey(startOfWeek(today))
   return Array.from({ length: 7 }, (_, i) => {
-    const date = shiftDay(today, sinceMonday - i)
+    const date = shiftDay(monday, -i)
     return { date, activities: [...(practice.get(date) ?? [])] }
   })
 }
