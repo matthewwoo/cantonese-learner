@@ -68,8 +68,7 @@ struct ArticlesListView: View {
             case .reader(let id): ArticleReaderView(articleID: id)
             }
         }
-        .task { await model.load(toasts: toasts) }
-        .onAppear { Task { if model.loaded { await model.load(silent: true, toasts: toasts) } } }
+        .task { await model.load(silent: model.loaded, toasts: toasts) }
         .onDisappear { model.stopPolling() }
         .alert("Delete article", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {
             Button("Cancel", role: .cancel) { pendingDelete = nil }

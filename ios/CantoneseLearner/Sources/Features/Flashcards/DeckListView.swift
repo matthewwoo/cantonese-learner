@@ -1,4 +1,5 @@
 import SwiftUI
+import ImageIO
 
 enum FlashcardRoute: Hashable {
     case study(setID: UUID)
@@ -79,8 +80,7 @@ struct DeckListView: View {
             case .study(let id): StudyView(setID: id)
             }
         }
-        .task { await model.load(toasts: toasts) }
-        .onAppear { Task { if model.loaded { await model.load(silent: true, toasts: toasts) } } }
+        .task { await model.load(silent: model.loaded, toasts: toasts) }
         .onDisappear { model.stopPolling() }
         .alert("Delete flashcard set?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {
             Button("Cancel", role: .cancel) { pendingDelete = nil }
@@ -131,7 +131,7 @@ struct DeckCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            DeckImage(imageURL: set.imageURL, pending: set.displayStatus == .pending)
+            DeckImage(setID: set.id, imageURL: set.imageURL, pending: set.displayStatus == .pending)
                 .padding(.bottom, 24)
             Text(set.name).font(.app(16, weight: .medium)).multilineTextAlignment(.center)
             statusLine.padding(.bottom, 24)
@@ -177,16 +177,25 @@ struct DeckCard: View {
 }
 
 /// 128pt circle with the AI cover (data URL) or 📚 fallback.
+///
+/// Covers are stored as 1024×1024 base64 data URLs, so decoding happens off the main thread
+/// and produces a small thumbnail (not the full bitmap). Cached per set so scrolling is free.
 struct DeckImage: View {
+    let setID: UUID
     let imageURL: String?
     let pending: Bool
+
+    @State private var image: UIImage?
+
+    /// Cheap identity for the cover — avoids hashing/comparing the multi‑KB data URL on every update.
+    private var cacheKey: ImageCache.Key { .init(setID: setID, sourceLength: imageURL?.utf8.count ?? 0) }
 
     var body: some View {
         ZStack {
             Circle().fill(Color.white.opacity(0.7))
             if pending {
                 Circle().fill(Color.appMuted).padding(4).opacity(0.8)
-            } else if let img = decoded {
+            } else if let img = image ?? ImageCache.shared.cached(cacheKey) {
                 Image(uiImage: img).resizable().scaledToFill()
             } else {
                 Text("📚").font(.system(size: 60))
@@ -195,24 +204,65 @@ struct DeckImage: View {
         .frame(width: 128, height: 128)
         .clipShape(Circle())
         .shadow(color: .black.opacity(0.06), radius: 3)
-    }
-
-    private var decoded: UIImage? {
-        guard let imageURL else { return nil }
-        return ImageCache.shared.image(for: imageURL)
+        .task(id: cacheKey) {
+            guard !pending, let imageURL else { image = nil; return }
+            if let hit = ImageCache.shared.cached(cacheKey) { image = hit; return }
+            image = await ImageCache.shared.thumbnail(for: cacheKey, source: imageURL)
+        }
     }
 }
 
-/// Decodes `data:image/...;base64,...` (and remote URLs lazily) once.
-final class ImageCache {
+/// Decodes `data:image/...;base64,...` covers into small thumbnails once, off the main thread.
+final class ImageCache: @unchecked Sendable {
     static let shared = ImageCache()
-    private var cache = NSCache<NSString, UIImage>()
 
-    func image(for source: String) -> UIImage? {
-        if let hit = cache.object(forKey: source as NSString) { return hit }
-        guard source.hasPrefix("data:"), let comma = source.firstIndex(of: ",") else { return nil }
-        guard let data = Data(base64Encoded: String(source[source.index(after: comma)...])), let img = UIImage(data: data) else { return nil }
-        cache.setObject(img, forKey: source as NSString)
+    struct Key: Hashable, Sendable {
+        let setID: UUID
+        let sourceLength: Int
+        var string: NSString { "\(setID.uuidString):\(sourceLength)" as NSString }
+    }
+
+    /// 128pt @3x — plenty for the deck circle; the source is 1024px.
+    private static let maxPixelSize = 384
+
+    private let cache = NSCache<NSString, UIImage>()
+    private var inFlight: [Key: Task<UIImage?, Never>] = [:]
+    private let lock = NSLock()
+
+    func cached(_ key: Key) -> UIImage? { cache.object(forKey: key.string) }
+
+    func thumbnail(for key: Key, source: String) async -> UIImage? {
+        if let hit = cached(key) { return hit }
+        lock.lock()
+        if let running = inFlight[key] {
+            lock.unlock()
+            return await running.value
+        }
+        let task = Task.detached(priority: .userInitiated) { [maxPixelSize = Self.maxPixelSize] () -> UIImage? in
+            Self.decodeThumbnail(from: source, maxPixelSize: maxPixelSize)
+        }
+        inFlight[key] = task
+        lock.unlock()
+        let img = await task.value
+        lock.lock(); inFlight[key] = nil; lock.unlock()
+        if let img { cache.setObject(img, forKey: key.string) }
         return img
+    }
+
+    private static func decodeThumbnail(from source: String, maxPixelSize: Int) -> UIImage? {
+        guard source.hasPrefix("data:"), let comma = source.firstIndex(of: ",") else { return nil }
+        guard let data = Data(base64Encoded: String(source[source.index(after: comma)...])) else { return nil }
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else {
+            // Fallback: full decode (still off-main).
+            return UIImage(data: data)?.preparingForDisplay()
+        }
+        return UIImage(cgImage: cg)
     }
 }

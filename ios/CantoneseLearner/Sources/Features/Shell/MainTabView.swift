@@ -12,6 +12,10 @@ enum AppTab: Hashable, CaseIterable {
 }
 
 /// App shell: custom bottom tab bar (mirrors bottom-nav.tsx) with a NavigationStack per tab.
+///
+/// Uses a `TabView` (system bar hidden) rather than a `switch` so each tab's stack, scroll
+/// position, view state and loaded data survive switching tabs — returning to a tab is instant
+/// and its model refreshes silently instead of refetching from a blank skeleton.
 struct MainTabView: View {
     @State private var tab: AppTab = .home
     @State private var toasts = ToastCenter()
@@ -22,17 +26,19 @@ struct MainTabView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Group {
-                switch tab {
-                case .home:
-                    NavigationStack(path: $homePath) { HomeView() }
-                case .cards:
-                    NavigationStack(path: $cardsPath) { DeckListView() }
-                case .chat:
-                    NavigationStack(path: $chatPath) { ChatView() }
-                case .read:
-                    NavigationStack(path: $readPath) { ArticlesListView() }
-                }
+            TabView(selection: $tab) {
+                NavigationStack(path: $homePath) { HomeView().toolbar(.hidden, for: .tabBar) }
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(AppTab.home)
+                NavigationStack(path: $cardsPath) { DeckListView().toolbar(.hidden, for: .tabBar) }
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(AppTab.cards)
+                NavigationStack(path: $chatPath) { ChatView().toolbar(.hidden, for: .tabBar) }
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(AppTab.chat)
+                NavigationStack(path: $readPath) { ArticlesListView().toolbar(.hidden, for: .tabBar) }
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(AppTab.read)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             BottomTabBar(selected: $tab)
