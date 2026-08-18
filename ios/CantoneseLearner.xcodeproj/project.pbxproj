@@ -54,7 +54,7 @@
 		8934D2F800D0B41AA9B4D0DA /* CantoneseLearnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CantoneseLearnerApp.swift; sourceTree = "<group>"; };
 		942B6D69A34CF2C3DFC843F1 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		9C8165E94AB10BA228BD05DB /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		AC29C95B722178A7E8B0550B /* CantoneseLearner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CantoneseLearner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC29C95B722178A7E8B0550B /* CantoneseLearner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CantoneseLearner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C07D74849D002F2DE0EA757C /* DeckListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckListView.swift; sourceTree = "<group>"; };
 		CD347C382071774E8FD476EA /* SM2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2.swift; sourceTree = "<group>"; };
 		DF11312AD004C5A53418B14F /* VoiceRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorder.swift; sourceTree = "<group>"; };
@@ -260,6 +260,7 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					57005DA5019A9E1780F568AC = {
+						DevelopmentTeam = NZZN6UPW7H;
 						ProvisioningStyle = Automatic;
 					};
 				};
