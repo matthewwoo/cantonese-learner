@@ -140,7 +140,11 @@ export async function POST(request: NextRequest) {
         headers[key] = value
       })
       console.error('Response headers:', headers)
-      
+      // Single-line summary (multi-line objects get truncated in Vercel logs)
+      console.error(
+        `Whisper upstream ${response.status} audioType=${audioType} file=audio.${extensionForAudioType(audioType)}: ${JSON.stringify(errorData).slice(0, 500)}`
+      )
+
       return NextResponse.json(
         { error: 'Failed to transcribe audio', details: errorData },
         { status: response.status }
@@ -182,15 +186,11 @@ function createFormData(base64Audio: string, language: string, audioType: string
       throw new Error('Audio blob is empty')
     }
     
-    // Always use mp3 extension for Whisper API as it's most widely supported
-    const fileName = 'audio.mp3'
-    
-    // Use the original blob but with mp3 extension
-    // Whisper should be able to handle various formats
-    if (!audioType.includes('mp3')) {
-      console.log('Using original audio format but with mp3 extension for Whisper compatibility')
-    }
-    
+    // Whisper validates the container by file extension, so it must match the
+    // bytes: the web sends WebM/Opus, native iOS sends AAC in an M4A container.
+    // (An .mp3 name on M4A bytes is rejected with "Invalid file format".)
+    const fileName = `audio.${extensionForAudioType(audioType)}`
+
     formData.append('file', audioBlob, fileName)
     formData.append('model', 'whisper-1')
     formData.append('language', language)
@@ -215,6 +215,30 @@ function createFormData(base64Audio: string, language: string, audioType: string
     console.error('Error creating FormData:', error)
     throw new Error('Failed to create audio form data')
   }
+}
+
+// Map a MIME type to the file extension Whisper expects for that container.
+function extensionForAudioType(audioType: string): string {
+  const mime = audioType.split(';')[0].trim().toLowerCase()
+  const map: Record<string, string> = {
+    'audio/webm': 'webm',
+    'video/webm': 'webm',
+    'audio/mp4': 'm4a',
+    'audio/m4a': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/aac': 'm4a',
+    'video/mp4': 'mp4',
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/wave': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/oga': 'oga',
+    'audio/flac': 'flac',
+    'audio/x-flac': 'flac',
+  }
+  return map[mime] ?? 'webm'
 }
 
 // Helper function to convert base64 to blob
