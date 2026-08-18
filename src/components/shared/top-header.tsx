@@ -7,7 +7,8 @@ import { useMemo } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Plus } from "lucide-react"
+import { ArrowLeft, LogOut, Plus } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 const NAV_ROOTS = ["/dashboard", "/flashcards", "/chat", "/articles"] as const
 
@@ -31,19 +32,31 @@ export default function TopHeader() {
   const showFlashcardsAdd = useMemo(() => pathname?.startsWith("/flashcards") ?? false, [pathname])
   const showArticlesAdd = useMemo(() => pathname === "/articles", [pathname])
   const showChatNew = useMemo(() => pathname === "/chat", [pathname])
+  const showSignOut = useMemo(() => pathname === "/dashboard", [pathname])
 
   const toggleFlashcardsUpload = () => {
     const isOpen = searchParams.get("upload") === "1"
     router.push(isOpen ? "/flashcards" : "/flashcards?upload=1")
   }
 
+  const signOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/auth/signin")
+    router.refresh()
+  }
+
+  // One slot, one action per route: "+" creates on the list routes, and home —
+  // which has nothing to create — carries sign-out instead.
   const action = showFlashcardsAdd
-    ? { onClick: toggleFlashcardsUpload, label: "Add flashcard deck" }
+    ? { onClick: toggleFlashcardsUpload, label: "Add flashcard deck", icon: <Plus /> }
     : showArticlesAdd
-      ? { onClick: () => router.push("/articles/new"), label: "Add article" }
+      ? { onClick: () => router.push("/articles/new"), label: "Add article", icon: <Plus /> }
       : showChatNew
-        ? { onClick: () => router.push("/chat?new=1"), label: "Start new chat" }
-        : null
+        ? { onClick: () => router.push("/chat?new=1"), label: "Start new chat", icon: <Plus /> }
+        : showSignOut
+          ? { onClick: signOut, label: "Sign out", icon: <LogOut /> }
+          : null
 
   return (
     <div className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-b border-border">
@@ -86,7 +99,7 @@ export default function TopHeader() {
               aria-label={action.label}
               title={action.label}
             >
-              <Plus />
+              {action.icon}
             </Button>
           )}
         </div>

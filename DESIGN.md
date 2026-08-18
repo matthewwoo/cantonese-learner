@@ -86,12 +86,55 @@ Whisper transcript is sent as the message on stop):
 />
 ```
 
+### `src/components/home/` — signed-in home screen
+
+**`activity-week`** — the "did you practise?" strip. Seven day circles,
+Monday→Sunday, plus a streak badge. A day counts as practised when the learner
+did **at least one** exercise that day — a deck review, a chat, or a reading
+session; which one doesn't change the rendering, so the strip stays an
+unambiguous yes/no per day. Four day states: `done` (filled `deck-mint` with a
+check) · `today` (empty ring, the "fill me in" affordance) · `missed`
+(`bg-muted`) · `upcoming` (dashed border). Today is marked independently of
+its state — a practised today keeps the ring and the bolder weekday label on
+top of the fill, so the day you're standing on doesn't vanish the moment you
+practise. Dates are plain `YYYY-MM-DD` local strings compared
+lexicographically — no `Date` parsing, no timezone to get wrong. `streak` is
+passed in because it counts across full history, not just the seven days
+shown.
+
+```tsx
+<ActivityWeek
+  days={days}          // exactly 7, Mon→Sun: { date, activities: ("review"|"chat"|"read")[] }
+  today="2026-08-14"   // local YYYY-MM-DD
+  streak={3}           // omit the badge by passing 0
+/>
+```
+
+**`stat-carousel`** — swipeable progress stats: one pastel card per stat
+(`deck-sky` / `deck-mint` / `deck-blush`), snapped to the container, with dot
+indicators below. Scrolling is native CSS scroll-snap rather than a drag
+library, so momentum, trackpad, and keyboard all come free; the dots only read
+from and scroll the container. `←`/`→` move a slide once the strip has focus.
+The scroller carries `relative` so a slide's `offsetLeft` shares an origin with
+`scrollLeft` — without it the dot targets drift by the page padding. Its
+scrollbar is hidden via the `.no-scrollbar` utility in `globals.css`.
+
+```tsx
+<StatCarousel
+  stats={[
+    { id: "reviewed", value: 37, label: "本週複習詞語", labelEnglish: "Words reviewed",
+      caption: "This week, Monday to Sunday", tone: "mint" },
+    // …chats, lines read
+  ]}
+/>
+```
+
 ### `src/components/shared/` — app composites
 Built on the primitives: `spinner` (lucide Loader2 + CVA sizes),
 `quick-actions` (dashboard action grid), `top-header` (fixed app bar),
 `bottom-nav` (fixed tab bar).
 
-Feature components live in `src/components/{auth,chat,flashcards}/`.
+Feature components live in `src/components/{auth,chat,flashcards,articles,home}/`.
 
 ## Recipes
 

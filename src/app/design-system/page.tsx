@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/shared/spinner"
 import { ElevenLabsSection } from "./elevenlabs-section"
+import { HomeSection } from "./home-section"
 import { VoicePillSection } from "./voice-pill-section"
 
 const COLOR_TOKENS = [
@@ -286,6 +287,10 @@ export default function DesignSystemPage() {
             </DropdownMenu>
           </div>
         </Section>
+
+        <Separator />
+
+        <HomeSection />
 
         <Separator />
 
