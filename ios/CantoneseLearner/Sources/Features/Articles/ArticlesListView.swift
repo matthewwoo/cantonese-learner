@@ -236,7 +236,7 @@ struct NewArticleView: View {
         .pageBackground()
         .appHeader()
         .navigationBarBackButtonHidden()
-        .toolbar { ToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
+        .toolbar { HeaderToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
     }
 
     private func fetch() async {

@@ -71,7 +71,6 @@ struct ActivityWeekCard: View {
     let streak: Int
     let today: DayKey
 
-    private let zhDays = ["一", "二", "三", "四", "五", "六", "日"]
     private let enDays = ["M", "T", "W", "T", "F", "S", "S"]
 
     private var practisedCount: Int { week.filter { !$0.activities.isEmpty }.count }
@@ -79,15 +78,12 @@ struct ActivityWeekCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                HStack(spacing: 6) {
-                    Text("本週").font(.app(16, weight: .medium)).zh()
-                    Text("This week").font(.app(16)).foregroundStyle(Color.appMutedForeground)
-                }
+                Text("This week").font(.app(16, weight: .medium))
                 Spacer()
                 if streak > 0 {
                     HStack(spacing: 4) {
                         Image(systemName: "flame.fill").font(.system(size: 12))
-                        Text("\(streak)天")
+                        Text("\(streak)d")
                     }
                     .font(.app(12, weight: .medium))
                     .padding(.horizontal, 10).padding(.vertical, 4)
@@ -101,12 +97,8 @@ struct ActivityWeekCard: View {
                 ForEach(Array(week.enumerated()), id: \.element.id) { i, day in
                     let isToday = day.date == today
                     VStack(spacing: 6) {
-                        VStack(spacing: 0) {
-                            Text(zhDays[i]).font(.app(14, weight: isToday ? .medium : .regular))
-                                .foregroundStyle(isToday ? Color.appForeground : Color.appMutedForeground)
-                            Text(enDays[i]).font(.app(10))
-                                .foregroundStyle(isToday ? Color.appMutedForeground : Color.appMutedForeground.opacity(0.7))
-                        }
+                        Text(enDays[i]).font(.app(14, weight: isToday ? .medium : .regular))
+                            .foregroundStyle(isToday ? Color.appForeground : Color.appMutedForeground)
                         dayCircle(day, isToday: isToday)
                     }
                     if i < week.count - 1 { Spacer(minLength: 0) }
@@ -114,7 +106,7 @@ struct ActivityWeekCard: View {
             }
             .padding(.horizontal, 16)
 
-            Text("本週練習咗 \(practisedCount) 日 · \(practisedCount) day\(practisedCount == 1 ? "" : "s") practised")
+            Text("\(practisedCount) day\(practisedCount == 1 ? "" : "s") practised")
                 .font(.app(14)).foregroundStyle(Color.appMutedForeground)
                 .padding(.horizontal, 16)
         }
@@ -138,9 +130,6 @@ struct ActivityWeekCard: View {
             }
         }
         .frame(width: 40, height: 40)
-        .overlay {
-            if isToday { Circle().stroke(Color.appRing, lineWidth: 2).padding(-4) }
-        }
         .accessibilityLabel(label(day, isToday: isToday, done: done, missed: missed))
     }
 
@@ -164,12 +153,12 @@ struct StatCarousel: View {
     let stats: ProgressStats
     @State private var page = 0
 
-    private struct Slide: Identifiable { let id: Int; let color: Color; let value: Int; let zh: String; let en: String; let caption: String }
+    private struct Slide: Identifiable { let id: Int; let color: Color; let value: Int; let en: String; let caption: String }
 
     private var slides: [Slide] {[
-        Slide(id: 0, color: .deckMint, value: stats.wordsReviewedThisWeek, zh: "本週複習詞語", en: "Words reviewed", caption: "This week, Monday to Sunday"),
-        Slide(id: 1, color: .deckSky, value: stats.conversations, zh: "對話次數", en: "Conversations", caption: "With your AI tutor"),
-        Slide(id: 2, color: .deckBlush, value: stats.linesRead, zh: "已讀句子", en: "Lines read", caption: "Across your articles"),
+        Slide(id: 0, color: .deckMint, value: stats.wordsReviewedThisWeek, en: "Words reviewed", caption: "This week, Monday to Sunday"),
+        Slide(id: 1, color: .deckSky, value: stats.conversations, en: "Conversations", caption: "With your AI tutor"),
+        Slide(id: 2, color: .deckBlush, value: stats.linesRead, en: "Lines read", caption: "Across your articles"),
     ]}
 
     var body: some View {
@@ -180,8 +169,7 @@ struct StatCarousel: View {
                         Text(s.value.formatted())
                             .font(.system(size: 48, weight: .semibold)).monospacedDigit()
                         Spacer()
-                        Text(s.zh).font(.app(16, weight: .medium)).zh()
-                        Text(s.en).font(.app(14)).foregroundStyle(Color.appMutedForeground)
+                        Text(s.en).font(.app(16, weight: .medium))
                         Text(s.caption).font(.app(12)).foregroundStyle(Color.appMutedForeground).padding(.top, 4)
                     }
                     .padding(20)

@@ -86,7 +86,7 @@ struct CreateDeckView: View {
         .pageBackground()
         .appHeader()
         .navigationBarBackButtonHidden()
-        .toolbar { ToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
+        .toolbar { HeaderToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
     }
 
     private func submit() async {
@@ -145,7 +145,7 @@ struct DeckDetailView: View {
         .pageBackground()
         .appHeader()
         .navigationBarBackButtonHidden()
-        .toolbar { ToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
+        .toolbar { HeaderToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
         .task {
             detail = try? await FlashcardsRepo.getSet(id: setID)
             loading = false
