@@ -136,6 +136,62 @@ Built on the primitives: `spinner` (lucide Loader2 + CVA sizes),
 
 Feature components live in `src/components/{auth,chat,flashcards,articles,home}/`.
 
+### iOS navigation — Liquid Glass
+
+> Status: **implemented** (Aug 2026). Reference: Klarna iOS 2025
+> ([Mobbin](https://mobbin.com/apps/klarna-ios-4b439dad-1b14-41ba-9aff-888decc7020c)).
+> Klarna's bar is the stock iOS 26 `TabView` — the glass is system-rendered,
+> not custom-drawn. We adopt the same approach.
+
+**Principle: never draw glass ourselves.** Liquid Glass is a system material
+that refracts the content behind it and adapts to light/dark, reduce-
+transparency, and increase-contrast. Custom blurs/gradients look wrong beside
+real glass and break accessibility settings. iOS chrome comes from the system;
+our tokens colour only what sits *inside* it.
+
+**Bottom tab bar** (`Features/Shell/MainTabView.swift`)
+
+| Aspect | Before (custom `BottomTabBar`) | Now |
+|---|---|---|
+| Container | Full-width `HStack` on `.bar` material, 1pt `border` hairline on top | Native `TabView` + `.tabItem` (works on iOS 17+). On iOS 26 → floating glass capsule inset from screen edges, no hairline; content scrolls **underneath** |
+| Selection | `card` @ 70% rounded rect behind the active tab | System inset glass pill (like Klarna's "Home"). Tint = `foreground` (near-black); unselected = system secondary label |
+| Icons | Custom `Tab*` template PNGs, 24pt | Same assets via `Label(_, image:)` (template rendering, system sizes them). Labels stay: Home · Cards · Chat · Read |
+| Scroll | Static | `.tabBarMinimizeBehavior(.onScrollDown)` (iOS 26, via `tabBarMinimizesOnScroll()`) — bar shrinks to icon-only while scrolling and re-expands on scroll up |
+| iOS 17/18 | — | Same `TabView` renders the standard translucent system bar. Acceptable, no branching code |
+
+**Chat voice pill** (`Features/Chat/ChatView.swift`) — lives in the Chat
+view's bottom `safeAreaInset`, floating above the glass bar; messages scroll
+under both. (Considered and rejected: `.tabViewBottomAccessory`, the Music
+mini-player slot — the pill only exists on one tab so the slot would flicker
+on tab switch.)
+
+**Top navigation bar** (`AppHeader`)
+
+- Centred `HeaderLogo`; plain icon buttons (`RoundIconButtonStyle` inside
+  `HeaderToolbarItem`, which hides the per-item glass via
+  `sharedBackgroundVisibility(.hidden)`).
+- No explicit toolbar background: the system draws it — transparent at rest,
+  scroll-edge glass as content passes beneath (iOS 26); standard blurred bar
+  on iOS 17/18.
+- Alternative (Klarna's actual header): icon buttons **in** small glass
+  circles — drop the `sharedBackgroundVisibility(.hidden)` line.
+
+**Tokens** — no new tokens. `foreground` for the selected tab and icon
+buttons; system materials for the chrome; `background` stays the page colour
+under the glass so the warm cream shows through the refraction.
+
+**Do / don't**
+- Do use SF Symbols or template images inside the bar; don't put coloured
+  bitmaps in tabs.
+- Do let content extend under the bar (`ScrollView` in each tab, no manual
+  bottom padding); don't add a hairline or shadow above the bar.
+- Don't set `.toolbarBackground(.visible)` on the tab bar or tint the bar
+  itself; tint only affects the selected item.
+- Don't recreate glass with `.ultraThinMaterial` + gradient anywhere.
+
+**Not done yet:** search tab role, sidebar-adaptable tab view (iPad),
+per-tab badges.
+
 ## Recipes
 
 **Add a shadcn component**
@@ -216,3 +272,6 @@ not an audited state: no formal accessibility pass has been run, and
 4. **No runtime style injection** — put shared CSS in `globals.css`.
 5. New UI starts from a `ui/` primitive; only build custom when no primitive
    fits (then use CVA for variants, like `shared/spinner.tsx`).
+6. **iOS: never draw system chrome or glass yourself.** Tab bars, navigation
+   bars and toolbars come from `TabView` / `NavigationStack`; no custom blur,
+   material or gradient stand-ins, no hairlines or shadows on top of them.

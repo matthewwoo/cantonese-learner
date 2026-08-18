@@ -41,17 +41,17 @@ struct ChatView: View {
     @State private var model = ChatModel()
 
     var body: some View {
-        VStack(spacing: 0) {
-            messageList
-            VoicePill(disabled: model.thinking) { transcript in
-                Task { await model.send(transcript, toasts: toasts) }
+        messageList
+            .safeAreaInset(edge: .bottom) {
+                VoicePill(disabled: model.thinking) { transcript in
+                    Task { await model.send(transcript, toasts: toasts) }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .frame(maxWidth: 480)
-            .frame(maxWidth: .infinity)
-        }
-        .pageBackground()
+            .pageBackground()
         .appHeader {
             Button { model.reset() } label: { Image(systemName: "plus") }
                 .buttonStyle(RoundIconButtonStyle())
@@ -205,11 +205,8 @@ struct VoicePill: View {
         } label: {
             HStack(spacing: expanded ? 16 : 12) {
                 PulsingDot(color: dotColor, pulsing: pulsing)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(labels.zh).font(.app(14, weight: .medium)).zh()
-                    Text(labels.en).font(.app(12)).foregroundStyle(Color.appMutedForeground)
-                }
-                .lineLimit(1)
+                Text(label).font(.app(14, weight: .medium))
+                    .lineLimit(1)
                 if expanded {
                     LiveWaveformView(levels: recorder.levels, processing: processing)
                         .frame(height: 32)
@@ -219,15 +216,12 @@ struct VoicePill: View {
                             .font(.system(size: 12, design: .monospaced)).monospacedDigit()
                             .foregroundStyle(Color.appMutedForeground)
                     }
-                } else {
-                    Spacer(minLength: 0)
                 }
             }
             .padding(.horizontal, 16)
-            .frame(width: expanded ? nil : 208, height: expanded ? 64 : 48)
-            .frame(maxWidth: expanded ? .infinity : 208)
+            .frame(height: expanded ? 64 : 48)
+            .frame(maxWidth: expanded ? .infinity : nil)
             .background(Color.appCard, in: Capsule())
-            .overlay(Capsule().stroke(borderColor, lineWidth: 1))
             .shadow(color: .black.opacity(expanded ? 0.1 : 0.05), radius: expanded ? 6 : 2, y: 1)
             .foregroundStyle(Color.appForeground)
             .contentShape(Capsule())
@@ -236,7 +230,7 @@ struct VoicePill: View {
         .disabled(disabled || processing)
         .opacity(disabled ? 0.6 : 1)
         .animation(.easeOut(duration: 0.3), value: expanded)
-        .accessibilityLabel(recorder.state == .listening ? "Stop listening 停止收音" : "Start voice input 開始講嘢")
+        .accessibilityLabel(recorder.state == .listening ? "Stop listening" : "Start voice input")
         .onAppear {
             recorder.maxDuration = 15
             recorder.onAutoStop = { Task { await finish() } }
@@ -245,13 +239,13 @@ struct VoicePill: View {
 
     private var pulsing: Bool { recorder.state == .listening || processing }
 
-    private var labels: (zh: String, en: String) {
-        if processing { return ("轉文字中", "Transcribing") }
+    private var label: String {
+        if processing { return "Transcribing" }
         switch recorder.state {
-        case .idle: return ("按一下講", "Tap to speak")
-        case .listening: return ("聽緊", "Listening")
-        case .processing: return ("轉文字中", "Transcribing")
-        case .error: return ("冇權限", "Mic blocked")
+        case .idle: return "Tap to speak"
+        case .listening: return "Listening"
+        case .processing: return "Transcribing"
+        case .error: return "Mic blocked"
         }
     }
 
@@ -262,11 +256,6 @@ struct VoicePill: View {
         case .listening, .error: return .appDestructive
         case .processing: return .appMutedForeground
         }
-    }
-
-    private var borderColor: Color {
-        if case .error = recorder.state { return .appDestructive.opacity(0.4) }
-        return recorder.state == .listening ? Color.appRing.opacity(0.25) : Color.appBorder
     }
 
     private func timeString(_ t: TimeInterval) -> String {
@@ -285,18 +274,15 @@ struct VoicePill: View {
         processing = true
         defer { processing = false; recorder.reset() }
         guard let data = recorder.stop(), data.count > 0 else {
-            toasts.error("聽唔到 — nothing was transcribed")
+            toasts.error("Nothing was transcribed")
             return
         }
         do {
             let transcript = try await APIClient.transcribe(audio: data, mimeType: "audio/mp4", language: "zh")
             let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                toasts.error("聽唔到 — nothing was transcribed")
+                toasts.error("Nothing was transcribed")
                 return
-            }
-            if let en = try? await APIClient.speechTranslate(trimmed, to: "en"), !en.isEmpty {
-                toasts.success("Translation: \(en)")
             }
             onTranscript(trimmed)
         } catch {

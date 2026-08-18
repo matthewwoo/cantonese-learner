@@ -38,13 +38,12 @@ struct LandingView: View {
                 .font(.system(size: 48, weight: .bold))
                 .tracking(-1)
                 .padding(.top, 32)
-            Text("你嘅粵語夥伴").font(.app(20)).zh().padding(.top, 12)
-            Text("Your Cantonese Buddy").font(.app(16)).foregroundStyle(Color.appMutedForeground).padding(.top, 4)
+            Text("Your Cantonese Buddy").font(.app(20)).foregroundStyle(Color.appMutedForeground).padding(.top, 12)
             Spacer()
             VStack(spacing: 12) {
-                NavigationLink(value: AuthRoute.signUp) { Text("開始 Get Started") }
+                NavigationLink(value: AuthRoute.signUp) { Text("Get Started") }
                     .buttonStyle(.app(.primary, fullWidth: true))
-                NavigationLink(value: AuthRoute.signIn) { Text("登入 Log In") }
+                NavigationLink(value: AuthRoute.signIn) { Text("Log In") }
                     .buttonStyle(.app(.outline, fullWidth: true))
             }
             .padding(.bottom, 24)
@@ -67,10 +66,7 @@ struct SignInView: View {
 
     var body: some View {
         AuthCard {
-            VStack(spacing: 4) {
-                Text("歡迎回來").font(.app(24, weight: .bold)).zh()
-                Text("Welcome back").font(.app(16))
-            }
+            Text("Welcome back").font(.app(24, weight: .bold))
             .frame(maxWidth: .infinity)
             .padding(.bottom, 24)
 
@@ -129,10 +125,7 @@ struct SignUpView: View {
 
     var body: some View {
         AuthCard {
-            VStack(spacing: 4) {
-                Text("開始學習").font(.app(24, weight: .bold)).zh()
-                Text("Start lesson").font(.app(16)).foregroundStyle(Color.appMutedForeground)
-            }
+            Text("Start lesson").font(.app(24, weight: .bold))
             .frame(maxWidth: .infinity)
             .padding(.bottom, 24)
 

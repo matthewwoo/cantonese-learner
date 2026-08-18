@@ -11,7 +11,8 @@ enum AppTab: Hashable, CaseIterable {
     }
 }
 
-/// App shell: custom bottom tab bar (mirrors bottom-nav.tsx) with a NavigationStack per tab.
+/// App shell: native `TabView` (system Liquid Glass bar on iOS 26, standard bar on iOS 17/18)
+/// with a NavigationStack per tab. We never draw the bar ourselves — see DESIGN.md.
 struct MainTabView: View {
     @State private var tab: AppTab = .home
     @State private var toasts = ToastCenter()
@@ -21,22 +22,21 @@ struct MainTabView: View {
     @State private var readPath = NavigationPath()
 
     var body: some View {
-        VStack(spacing: 0) {
-            Group {
-                switch tab {
-                case .home:
-                    NavigationStack(path: $homePath) { HomeView() }
-                case .cards:
-                    NavigationStack(path: $cardsPath) { DeckListView() }
-                case .chat:
-                    NavigationStack(path: $chatPath) { ChatView() }
-                case .read:
-                    NavigationStack(path: $readPath) { ArticlesListView() }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            BottomTabBar(selected: $tab)
+        TabView(selection: $tab) {
+            NavigationStack(path: $homePath) { HomeView() }
+                .tabItem { Label(AppTab.home.label, image: AppTab.home.icon) }
+                .tag(AppTab.home)
+            NavigationStack(path: $cardsPath) { DeckListView() }
+                .tabItem { Label(AppTab.cards.label, image: AppTab.cards.icon) }
+                .tag(AppTab.cards)
+            NavigationStack(path: $chatPath) { ChatView() }
+                .tabItem { Label(AppTab.chat.label, image: AppTab.chat.icon) }
+                .tag(AppTab.chat)
+            NavigationStack(path: $readPath) { ArticlesListView() }
+                .tabItem { Label(AppTab.read.label, image: AppTab.read.icon) }
+                .tag(AppTab.read)
         }
+        .tabBarMinimizesOnScroll()
         .background(Color.appBackground.ignoresSafeArea())
         .toastOverlay()
         .environment(toasts)
@@ -44,43 +44,15 @@ struct MainTabView: View {
     }
 }
 
-struct BottomTabBar: View {
-    @Binding var selected: AppTab
-
-    var body: some View {
-        HStack {
-            ForEach(AppTab.allCases, id: \.self) { t in
-                Button {
-                    selected = t
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(t.icon)
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 24, height: 24)
-                            .foregroundStyle(selected == t ? Color.appForeground : Color.tabIcon)
-                            .opacity(selected == t ? 1 : 0.8)
-                        Text(t.label)
-                            .font(.app(14))
-                            .foregroundStyle(selected == t ? Color.appForeground : Color.appMutedForeground)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .background(selected == t ? Color.appCard.opacity(0.7) : .clear,
-                                in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel(t.label)
-                .accessibilityAddTraits(selected == t ? [.isSelected] : [])
-            }
+private extension View {
+    /// iOS 26: the glass tab bar shrinks to icon-only while scrolling down and re-expands on scroll up.
+    @ViewBuilder
+    func tabBarMinimizesOnScroll() -> some View {
+        if #available(iOS 26, *) {
+            self.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            self
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 4)
-        .background(.bar, ignoresSafeAreaEdges: .bottom)
-        .overlay(alignment: .top) { Rectangle().fill(Color.appBorder).frame(height: 1) }
     }
 }
 
@@ -96,10 +68,8 @@ struct AppHeader<Trailing: View>: ViewModifier {
                     Image("HeaderLogo").resizable().scaledToFit().frame(height: 28)
                         .accessibilityLabel("Cantonese Learner")
                 }
-                ToolbarItem(placement: .topBarTrailing) { trailing }
+                HeaderToolbarItem(placement: .topBarTrailing) { trailing }
             }
-            .toolbarBackground(Color.appBackground.opacity(0.95), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
             .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -117,7 +87,23 @@ extension View {
     }
 }
 
-/// Custom back button matching the web header (round outline arrow, pops to root).
+/// Toolbar item for header icon buttons: no toolbar background/glass behind the item
+/// (iOS 26+ draws one by default), so the plain icon sits directly on the header.
+struct HeaderToolbarItem<Content: View>: ToolbarContent {
+    let placement: ToolbarItemPlacement
+    @ViewBuilder let content: () -> Content
+
+    var body: some ToolbarContent {
+        if #available(iOS 26, *) {
+            ToolbarItem(placement: placement) { content() }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: placement) { content() }
+        }
+    }
+}
+
+/// Custom back button matching the web header (plain arrow icon, pops to root).
 struct BackToRootButton: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
