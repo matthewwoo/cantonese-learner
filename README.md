@@ -63,6 +63,12 @@ Learn Cantonese through flashcards and AI conversations.
 SUPABASE_PROJECT_ID=<project-ref> npm run types:gen
 ```
 
+## iOS app
+
+A native SwiftUI client lives in [`ios/`](./ios) — same Supabase project and
+`/api/*` routes (Bearer-token auth). See [`ios/README.md`](./ios/README.md) for
+setup (XcodeGen + `Config/Secrets.xcconfig`).
+
 ## Architecture
 
 - **CRUD goes straight to Supabase** from the client (`src/lib/data/`),
