@@ -43,8 +43,12 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  // API routes authenticate themselves (cookie session or `Authorization: Bearer`
+  // from native clients) and return 401 — never redirect them to the sign-in page.
   const isPublic =
-    pathname === '/' || PUBLIC_PATHS.some((p) => pathname.startsWith(p))
+    pathname === '/' ||
+    pathname.startsWith('/api/') ||
+    PUBLIC_PATHS.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
