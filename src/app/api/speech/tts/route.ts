@@ -1,58 +1,87 @@
 // src/app/api/speech/tts/route.ts
 // Cantonese text-to-speech endpoint.
 //
-// Fish Audio (S2 family) is the only provider. Its voice is a marketplace
-// model set via FISH_AUDIO_VOICE_ID.
+// MiniMax Speech-02 (T2A v2) is the only provider. We pass
+// `language_boost: "Chinese,Yue"`, which forces Cantonese pronunciation even
+// for Standard Written Chinese (書面語) — so synthesis doesn't depend on the
+// text being colloquial 口語 the way it did with the previous Fish Audio
+// provider (which inferred language from the text and read 書面語 in Mandarin).
 //
-// Caveat worth knowing: Fish's /v1/tts takes no language parameter — it infers
-// pronunciation from the text, and the reference voice supplies timbre, not
-// dialect. Standard Written Chinese (書面語) is character-identical to Mandarin,
-// so it gets read in Mandarin. Keeping article text in colloquial Cantonese
-// (口語 — 嘅/係/佢/咗/喺) is what keeps synthesis Cantonese; see the article
-// translation prompt in /api/articles.
+// Voice comes from MINIMAX_VOICE_ID (built-in Cantonese presets:
+// Cantonese_GentleLady, Cantonese_podacast_host_1 [sic]; or a cloned voice id).
+// Model from MINIMAX_TTS_MODEL (speech-02-hd default; speech-02-turbo is
+// cheaper/faster).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteClient } from '@/lib/supabase/server';
 
 interface TTSRequest {
   text: string;
-  voice?: string; // Fish reference id; optional, defaults to FISH_AUDIO_VOICE_ID
+  voice?: string; // MiniMax voice_id; optional, defaults to MINIMAX_VOICE_ID
   speed?: number; // 0.25 to 4.0 (1.0 = normal)
   format?: 'mp3';
 }
 
-/** Fish Audio synthesis. Returns MP3 bytes or throws. */
-async function synthesizeWithFish(
+interface MiniMaxT2AResponse {
+  data?: { audio?: string; status?: number };
+  extra_info?: { audio_length?: number }; // ms
+  base_resp?: { status_code?: number; status_msg?: string };
+}
+
+const DEFAULT_VOICE = 'Cantonese_GentleLady';
+
+/** MiniMax Speech-02 synthesis. Returns MP3 bytes + reported duration, or throws. */
+async function synthesizeWithMiniMax(
   text: string,
   speed: number,
   requestedVoice?: string
-): Promise<ArrayBuffer> {
-  const apiKey = process.env.FISH_AUDIO_API_KEY;
+): Promise<{ audio: Buffer; voice: string; durationSec?: number }> {
+  const apiKey = process.env.MINIMAX_API_KEY;
   if (!apiKey) {
-    throw new Error('No TTS provider configured (FISH_AUDIO_API_KEY)');
+    throw new Error('No TTS provider configured (MINIMAX_API_KEY)');
   }
+  const voiceId = requestedVoice || process.env.MINIMAX_VOICE_ID || DEFAULT_VOICE;
 
-  const response = await fetch('https://api.fish.audio/v1/tts', {
+  const response = await fetch('https://api.minimax.io/v1/t2a_v2', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      model: process.env.FISH_AUDIO_MODEL || 's2.1-pro-free',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      model: process.env.MINIMAX_TTS_MODEL || 'speech-02-hd',
       text,
-      reference_id: requestedVoice || process.env.FISH_AUDIO_VOICE_ID || undefined,
-      format: 'mp3',
-      // Fish supports 0.5–2.0; clamp our wider range
-      prosody: { speed: Math.min(2, Math.max(0.5, speed)), volume: 0 },
+      language_boost: 'Chinese,Yue',
+      voice_setting: {
+        voice_id: voiceId,
+        // MiniMax supports 0.5–2.0; clamp our wider range
+        speed: Math.min(2, Math.max(0.5, speed)),
+        vol: 1.0,
+        pitch: 0,
+      },
+      audio_setting: { format: 'mp3', sample_rate: 32000, bitrate: 128000, channel: 1 },
+      output_format: 'hex',
     }),
   });
 
   if (!response.ok) {
     const detail = await response.text().catch(() => response.statusText);
-    throw new Error(`Fish Audio TTS error ${response.status}: ${detail.slice(0, 200)}`);
+    throw new Error(`MiniMax TTS HTTP ${response.status}: ${detail.slice(0, 200)}`);
   }
-  return response.arrayBuffer();
+
+  const json = (await response.json()) as MiniMaxT2AResponse;
+  if (json.base_resp?.status_code !== 0 || !json.data?.audio) {
+    throw new Error(
+      `MiniMax TTS error ${json.base_resp?.status_code}: ${json.base_resp?.status_msg || 'no audio'}`
+    );
+  }
+
+  const audioLengthMs = json.extra_info?.audio_length;
+  return {
+    audio: Buffer.from(json.data.audio, 'hex'),
+    voice: voiceId,
+    durationSec: audioLengthMs ? Math.ceil(audioLengthMs / 1000) : undefined,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -86,22 +115,22 @@ export async function POST(request: NextRequest) {
     }
 
     const trimmed = text.trim();
-    const audioBuffer = await synthesizeWithFish(trimmed, speed, body.voice);
+    const result = await synthesizeWithMiniMax(trimmed, speed, body.voice);
 
     // Same response contract the client consumes
-    const base64Audio = Buffer.from(audioBuffer).toString('base64');
-    const dataUrl = `data:audio/mp3;base64,${base64Audio}`;
+    const dataUrl = `data:audio/mp3;base64,${result.audio.toString('base64')}`;
 
-    // Rough duration estimate (~4 chars/sec for Cantonese at normal speed)
-    const estimatedDuration = Math.ceil(trimmed.length / 4 / speed);
+    // Provider-reported duration when available; otherwise a rough estimate
+    // (~4 chars/sec for Cantonese at normal speed).
+    const duration = result.durationSec ?? Math.ceil(trimmed.length / 4 / speed);
 
     return NextResponse.json({
       success: true,
       audioData: dataUrl,
-      duration: estimatedDuration,
+      duration,
       text: trimmed,
-      voice: `fish:${process.env.FISH_AUDIO_VOICE_ID || 'default'}`,
-      provider: 'fish-audio',
+      voice: `minimax:${result.voice}`,
+      provider: 'minimax',
       speed,
       format: 'mp3',
     });

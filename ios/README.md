@@ -3,7 +3,7 @@
 Native iOS client for the Cantonese Learner app. It talks to the **same Supabase
 project** (auth + tables, protected by RLS) as the web app, and calls the deployed
 Next.js **`/api/*` routes** for everything that needs server-side secrets (AI chat,
-Whisper STT, Fish Audio TTS, translation, deck/article generation) using
+Whisper STT, MiniMax TTS, translation, deck/article generation) using
 `Authorization: Bearer <supabase access token>`.
 
 ```

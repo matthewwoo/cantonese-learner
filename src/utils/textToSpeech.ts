@@ -2,7 +2,7 @@
 // Text-to-speech utility for Cantonese pronunciation.
 //
 // Preference order:
-//   1. Server TTS (/api/speech/tts -> Fish Audio) — natural, consistent
+//   1. Server TTS (/api/speech/tts -> MiniMax Speech-02) — natural, consistent
 //      Cantonese on every device.
 //   2. Web Speech API — offline fallback using whatever zh-HK voice the OS has.
 //
@@ -16,7 +16,7 @@ interface TTSOptions {
   pitch?: number
   volume?: number
   lang?: string
-  voice?: string // Fish Audio reference id (overrides FISH_AUDIO_VOICE_ID)
+  voice?: string // MiniMax voice_id (overrides MINIMAX_VOICE_ID)
 }
 
 class TextToSpeechService {
@@ -140,7 +140,7 @@ class TextToSpeechService {
   }
 
   /**
-   * Speak text via the server (Fish Audio).
+   * Speak text via the server (MiniMax).
    * Resolves when playback finishes. Throws `ServerTTSError` when synthesis
    * failed (fallback to Web Speech is sensible) and `PlaybackBlocked` when
    * the browser refused autoplay (fallback would just overlap later audio).
@@ -204,7 +204,7 @@ class TextToSpeechService {
   }
 
   // Speak Chinese text with Cantonese pronunciation.
-  // Tries the Fish Audio-backed server endpoint first; falls back to the
+  // Tries the MiniMax-backed server endpoint first; falls back to the
   // browser's Web Speech API only when the server itself is unavailable.
   async speakCantonese(text: string, options: TTSOptions = {}): Promise<void> {
     if (!text || text.trim() === '') {

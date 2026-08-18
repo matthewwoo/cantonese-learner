@@ -168,8 +168,9 @@ async function translateWithService(
   
   if (googleApiKey) {
     // Google Translate has no Cantonese target — zh-TW gives Standard Written
-    // Chinese (Mandarin in Traditional characters). Articles produced this way
-    // will read aloud in Mandarin, since Fish Audio infers language from text.
+    // Chinese (Mandarin in Traditional characters). That is the wrong study
+    // material for a Cantonese app even though MiniMax TTS (language_boost
+    // Chinese,Yue) will still voice it in Cantonese.
     // Prefer OPENAI_API_KEY for article translation.
     console.warn(
       'Falling back to Google Translate: output will be Standard Written Chinese, NOT Cantonese. Set OPENAI_API_KEY for Cantonese translation.'
@@ -233,10 +234,10 @@ async function translateWithOpenAI(
 
   // Asking for "Traditional Chinese" yields Standard Written Chinese — Mandarin
   // grammar and vocabulary that merely uses Traditional characters. That is the
-  // wrong study material for a Cantonese app, and it also makes TTS drift:
-  // Fish Audio has no language parameter and infers pronunciation from the text,
-  // so Mandarin-shaped text gets read aloud in Mandarin. Naming the colloquial
-  // markers explicitly is what makes the output unambiguously Cantonese.
+  // wrong study material for a Cantonese app. (TTS is now MiniMax with
+  // language_boost "Chinese,Yue", so 書面語 is at least voiced in Cantonese —
+  // but learners should still be reading 口語.) Naming the colloquial markers
+  // explicitly is what makes the output unambiguously Cantonese.
   const cantoneseSystemPrompt = `You are a professional translator specialising in Cantonese (粵語 / 廣東話) as spoken in Hong Kong.
 
 Translate the following text from ${sourceLang} to ${targetLang}.
