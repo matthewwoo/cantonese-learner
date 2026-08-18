@@ -32,23 +32,42 @@ import {
 import type { SentenceCard } from "@/utils/sentenceProcessor"
 
 export interface ArticleAudioPlayerHandle {
-  /** Pause playback (e.g. when the user taps a bubble to hear it alone). */
+  /** Pause playback (e.g. when the user opens the vocabulary dialog). */
   pause: () => void
+  /**
+   * Move the read-aloud position to `index`. Tapping the block that is already
+   * playing pauses instead, so a bubble doubles as a play/pause target; any
+   * other block becomes the new start point and the sequence carries on from
+   * there.
+   */
+  toggleBlock: (index: number) => void
 }
 
 interface ArticleAudioPlayerProps {
   sentences: SentenceCard[]
   /** Called with the index being read, or null when playback stops/ends. */
   onActiveBlockChange?: (index: number | null) => void
+  /** Called whenever playback starts or stops, so bubbles can mirror the state. */
+  onPlayingChange?: (isPlaying: boolean) => void
   className?: string
 }
 
 function PlayerInner(
-  { sentences, onActiveBlockChange, className }: ArticleAudioPlayerProps,
+  {
+    sentences,
+    onActiveBlockChange,
+    onPlayingChange,
+    className,
+  }: ArticleAudioPlayerProps,
   ref: React.Ref<ArticleAudioPlayerHandle>
 ) {
   const api = useAudioPlayer()
   const [isFetching, setIsFetching] = useState(false)
+  // Playback state read from the media element's own events rather than
+  // api.isPlaying, which the provider syncs on requestAnimationFrame and so
+  // goes stale whenever the browser throttles rAF (background tab, hidden
+  // pane). The bar icon and the per-bubble icons both hang off this.
+  const [isPlaying, setIsPlaying] = useState(false)
   // Data URLs per block index, cached for replays and prefetched one ahead.
   // Safe to key on index alone only because synthesis speed is a constant — if
   // the speed control is ever wired to re-synthesize, key on {index, speed}
@@ -61,6 +80,11 @@ function PlayerInner(
   // state) because the provider syncs its state via requestAnimationFrame,
   // which browsers pause in background tabs — sequencing must not depend on it.
   const currentIndexRef = useRef<number | null>(null)
+  // Bumped by every playBlock call. A block tapped mid-playback has to fetch
+  // its clip, and the previous clip's "ended" handler can fire during that
+  // await and queue up the *next* block — the token lets the losing call bail
+  // instead of both racing to load audio.
+  const playTokenRef = useRef(0)
 
   const fetchBlockAudio = useCallback(
     (index: number): Promise<string | null> => {
@@ -102,9 +126,15 @@ function PlayerInner(
     async (index: number) => {
       if (index < 0 || index >= sentences.length) return
 
+      const token = ++playTokenRef.current
+      const wasLoaded = currentIndexRef.current === index
+
       sequenceActive.current = true
       setIsFetching(true)
       const src = await fetchBlockAudio(index)
+      // A newer playBlock started while we awaited — let it own the player
+      // (including the fetching flag) rather than fighting over the element.
+      if (token !== playTokenRef.current) return
       setIsFetching(false)
 
       if (!src) {
@@ -119,6 +149,10 @@ function PlayerInner(
       currentIndexRef.current = index
       onActiveBlockChange?.(index)
       try {
+        // playBlock always means "play this block from its start", but the
+        // provider's play() short-circuits to a bare resume when the clip is
+        // already loaded — rewind so re-tapping a paused block replays it.
+        if (wasLoaded && api.ref.current) api.ref.current.currentTime = 0
         await api.play({ id: index, src })
       } catch {
         // Autoplay restrictions or interrupted load — stop cleanly
@@ -154,6 +188,28 @@ function PlayerInner(
     return () => el.removeEventListener("ended", handleEnded)
   }, [api.ref, playBlock, onActiveBlockChange, sentences.length])
 
+  // Track play/pause off the element, and mirror it up to the page so each
+  // bubble can show the right icon.
+  useEffect(() => {
+    const el = api.ref.current
+    if (!el) return
+
+    const sync = () => setIsPlaying(!el.paused)
+    el.addEventListener("play", sync)
+    el.addEventListener("pause", sync)
+    el.addEventListener("ended", sync)
+    sync()
+    return () => {
+      el.removeEventListener("play", sync)
+      el.removeEventListener("pause", sync)
+      el.removeEventListener("ended", sync)
+    }
+  }, [api.ref])
+
+  useEffect(() => {
+    onPlayingChange?.(isPlaying)
+  }, [isPlaying, onPlayingChange])
+
   const handleToggle = () => {
     // Read playback state straight off the element — provider state lags in
     // background tabs (it syncs on requestAnimationFrame).
@@ -176,10 +232,23 @@ function PlayerInner(
     ref,
     () => ({
       pause: () => {
-        if (api.isPlaying) void api.pause()
+        // Element state, not provider state — the latter lags a frame.
+        if (api.ref.current && !api.ref.current.paused) void api.pause()
+      },
+      toggleBlock: (index: number) => {
+        const el = api.ref.current
+        const isCurrent = currentIndexRef.current === index
+        if (isCurrent && el && !el.paused) {
+          void api.pause()
+          return
+        }
+        // Silence the outgoing clip before the new one's fetch, so the old
+        // block doesn't keep reading over the tap.
+        if (el && !el.paused) void api.pause()
+        void playBlock(index)
       },
     }),
-    [api]
+    [api, playBlock]
   )
 
   return (
@@ -196,11 +265,11 @@ function PlayerInner(
           className="rounded-full shrink-0"
           onClick={handleToggle}
           disabled={isFetching || sentences.length === 0}
-          aria-label={api.isPlaying ? "Pause reading" : "Read article aloud"}
+          aria-label={isPlaying ? "Pause reading" : "Read article aloud"}
         >
           {isFetching ? (
             <span className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-          ) : api.isPlaying ? (
+          ) : isPlaying ? (
             <Pause />
           ) : (
             <Play />
