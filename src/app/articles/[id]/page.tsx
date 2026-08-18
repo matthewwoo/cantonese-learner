@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { speakCantonese, stopSpeech } from '@/utils/textToSpeech';
@@ -61,6 +61,7 @@ export default function ArticleReadingPage() {
 
   // Read-aloud: index of the block currently being read (null = not playing)
   const [activeBlock, setActiveBlock] = useState<number | null>(null);
+  const [isPlayerPlaying, setIsPlayerPlaying] = useState(false);
   const playerRef = useRef<ArticleAudioPlayerHandle | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
 
@@ -74,14 +75,28 @@ export default function ArticleReadingPage() {
   }, []);
 
   // Highlight + scroll the block being read into view
-  const handleActiveBlockChange = (index: number | null) => {
+  const handleActiveBlockChange = useCallback((index: number | null) => {
     setActiveBlock(index);
-    if (index !== null) {
-      document
-        .getElementById(`sentence-${index}`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (index === null) return;
+
+    const el = document.getElementById(`sentence-${index}`);
+    if (!el) return;
+
+    // Only scroll when the block isn't already comfortably on screen. Without
+    // this, tapping a visible bubble to set the start point would yank the
+    // page to re-centre it — the reader stays put and only follows along when
+    // sequential playback runs off the bottom. Margins clear the header and
+    // the player bar + bottom nav.
+    const rect = el.getBoundingClientRect();
+    const inView = rect.top >= 72 && rect.bottom <= window.innerHeight - 160;
+    if (!inView) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  };
+  }, []);
+
+  const handlePlayingChange = useCallback((playing: boolean) => {
+    setIsPlayerPlaying(playing);
+  }, []);
 
   // Load article data
   useEffect(() => {
@@ -256,8 +271,6 @@ export default function ArticleReadingPage() {
             <div
               key={idx}
               id={`sentence-${idx}`}
-              // Tapping a bubble plays it alone — pause the read-aloud first
-              onClickCapture={() => playerRef.current?.pause()}
               className={cn(
                 'rounded-lg transition-all duration-300',
                 activeBlock === idx &&
@@ -273,6 +286,11 @@ export default function ArticleReadingPage() {
                   timestamp: new Date(),
                 }}
                 showTranslation={showTranslation}
+                // Tapping a bubble moves the read-aloud start point here and
+                // carries on through the rest of the article, instead of
+                // firing a one-off TTS clip the player knows nothing about.
+                onPlayRequest={() => playerRef.current?.toggleBlock(idx)}
+                isPlaying={isPlayerPlaying && activeBlock === idx}
               />
             </div>
           ))}
@@ -284,6 +302,7 @@ export default function ArticleReadingPage() {
         ref={playerRef}
         sentences={sentences}
         onActiveBlockChange={handleActiveBlockChange}
+        onPlayingChange={handlePlayingChange}
         className="bottom-[84px] border-b"
       />
 
@@ -337,37 +356,6 @@ export default function ArticleReadingPage() {
           </Button>
         </DialogContent>
       </Dialog>
-
-      {/* Floating action buttons (kept clear of the player bar + nav) */}
-      <div className="fixed bottom-40 right-8 flex flex-col gap-3">
-        {/* Back to top */}
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="w-12 h-12 bg-card rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
-          title="Back to top"
-        >
-          <svg className="w-6 h-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-          </svg>
-        </button>
-        
-        {/* Fullscreen mode */}
-        <button
-          onClick={() => {
-            if (document.fullscreenElement) {
-              document.exitFullscreen();
-            } else {
-              document.documentElement.requestFullscreen();
-            }
-          }}
-          className="w-12 h-12 bg-card rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
-          title="Fullscreen mode"
-        >
-          <svg className="w-6 h-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-          </svg>
-        </button>
-      </div>
     </div>
   );
 }

@@ -17,10 +17,23 @@ interface ChatMessageProps {
     translation?: string
   }
   showTranslation: boolean
+  /**
+   * Hand playback to the parent instead of the bubble's own TTS. The article
+   * reader passes this so tapping a bubble moves the read-aloud player's
+   * position rather than firing a second, unrelated audio stream.
+   */
+  onPlayRequest?: () => void
+  /** Playing state to render, for parents that own playback via onPlayRequest. */
+  isPlaying?: boolean
 }
 
 // React functional component - the modern way to create components
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({
+  message,
+  showTranslation,
+  onPlayRequest,
+  isPlaying,
+}) => {
   // Destructure the message properties for easier access
   const { role, content, translation } = message
   
@@ -166,11 +179,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
     }
   }
 
-  // Make entire message bubble tappable/clickable to start/stop TTS
+  // When the parent owns playback, mirror its state instead of the local one.
+  const playbackActive = onPlayRequest ? !!isPlaying : isSpeaking
+
+  const triggerPlayback = () => {
+    if (onPlayRequest) {
+      onPlayRequest()
+      return
+    }
+    void handleSpeak()
+  }
+
+  // Make entire message bubble tappable/clickable to start/stop playback
   const handleContainerClick = () => {
     if (!ttsSupported) return
     if (isDragging) return
-    void handleSpeak()
+    triggerPlayback()
   }
 
   // The bubble shows English only when a translation exists (or while one is
@@ -203,12 +227,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showTranslation }) =
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={isSpeaking ? 'Stop pronunciation' : 'Play pronunciation'}
+                aria-label={playbackActive ? 'Stop pronunciation' : 'Play pronunciation'}
                 className="rounded-full text-muted-foreground hover:bg-transparent focus:bg-transparent"
-                onClick={(e) => { e.stopPropagation(); void handleSpeak() }}
-                title={isSpeaking ? 'Stop pronunciation' : 'Listen'}
+                onClick={(e) => { e.stopPropagation(); triggerPlayback() }}
+                title={playbackActive ? 'Stop pronunciation' : 'Listen'}
               >
-                <span className="text-[14px]">{isSpeaking ? '⏸' : '▶'}</span>
+                <span className="text-[14px]">{playbackActive ? '⏸' : '▶'}</span>
               </Button>
             )}
             <div
