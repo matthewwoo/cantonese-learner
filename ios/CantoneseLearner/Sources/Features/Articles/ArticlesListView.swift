@@ -183,7 +183,7 @@ struct NewArticleView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     FieldLabel("Article URL")
                     HStack(spacing: 8) {
-                        TextField("https://example.com/article", text: $url)
+                        TextField(text: $url, prompt: Text(verbatim: "https://example.com/article")) { Text("Article URL") }
                             .textFieldStyle(AppTextFieldStyle(height: 44))
                             .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                         Button { Task { await fetch() } } label: { Text(fetching ? "Fetching…" : "Fetch") }
