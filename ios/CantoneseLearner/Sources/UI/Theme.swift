@@ -36,7 +36,6 @@ extension Color {
     static let deckBlush = adaptive(light: 0xfdd3d0, dark: 0x5f2b28)
     static let bubbleAssistant = adaptive(light: 0xefefef, dark: 0x2e2a27)
     static let bubbleUser = adaptive(light: 0xdff5e8, dark: 0x1e4d2b)
-    static let tabIcon = Color(hex: 0x8C8B89)
 
     // Study "Got it right" button
     static let green50 = Color(hex: 0xf0fdf4)
@@ -113,7 +112,6 @@ struct AppButtonStyle: ButtonStyle {
             .padding(.horizontal, 20)
             .foregroundStyle(foreground)
             .background(background, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous).stroke(border, lineWidth: 1))
             .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.5)
             .offset(y: configuration.isPressed ? 1 : 0)
             .contentShape(Rectangle())
@@ -138,13 +136,6 @@ struct AppButtonStyle: ButtonStyle {
         case .success: return .green50
         }
     }
-    private var border: Color {
-        switch variant {
-        case .outline: return .appBorder
-        case .success: return .green200
-        default: return .clear
-        }
-    }
 }
 
 extension ButtonStyle where Self == AppButtonStyle {
@@ -154,7 +145,7 @@ extension ButtonStyle where Self == AppButtonStyle {
     }
 }
 
-/// Round 40pt outline icon button used in the header.
+/// Plain 40pt icon button used in the header (no background or outline).
 struct RoundIconButtonStyle: ButtonStyle {
     var size: CGFloat = 40
     func makeBody(configuration: Configuration) -> some View {
@@ -162,8 +153,7 @@ struct RoundIconButtonStyle: ButtonStyle {
             .font(.system(size: 16, weight: .medium))
             .foregroundStyle(Color.appMutedForeground)
             .frame(width: size, height: size)
-            .background(Color.appBackground, in: Circle())
-            .overlay(Circle().stroke(Color.appBorder, lineWidth: 1))
+            .contentShape(Circle())
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }

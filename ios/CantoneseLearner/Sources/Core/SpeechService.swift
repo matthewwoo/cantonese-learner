@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 import Observation
 
-/// Cantonese TTS — server (Fish Audio via /api/speech/tts) with `AVSpeechSynthesizer` zh-HK fallback.
+/// Cantonese TTS — server (MiniMax via /api/speech/tts) with `AVSpeechSynthesizer` zh-HK fallback.
 /// Mirrors the generation-token cancellation semantics of `src/utils/textToSpeech.ts`.
 @Observable
 @MainActor

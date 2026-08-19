@@ -40,7 +40,7 @@ struct StudyView: View {
         .pageBackground()
         .appHeader()
         .navigationBarBackButtonHidden()
-        .toolbar { ToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
+        .toolbar { HeaderToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
         .task { await start() }
         .onDisappear { SpeechService.shared.stop() }
     }
@@ -64,8 +64,8 @@ struct StudyView: View {
         do {
             _ = try await StudyRepo.recordResponse(studyCardID: card.id, quality: quality, responseTimeMs: ms)
             switch quality {
-            case .easy: feedback = "Perfect! 完美! That was easy!"
-            case .good: feedback = "Good job! 好! You got it right!"
+            case .easy: feedback = "Perfect! That was easy!"
+            case .good: feedback = "Good job! You got it right!"
             case .hard: feedback = "Correct but difficult. Keep practicing!"
             case .incorrect: feedback = "Not quite right. You'll get it next time!"
             case .blackout: feedback = "No worries! Learning takes time."

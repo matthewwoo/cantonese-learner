@@ -141,7 +141,7 @@ struct ArticleReaderView: View {
         .pageBackground()
         .appHeader()
         .navigationBarBackButtonHidden()
-        .toolbar { ToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
+        .toolbar { HeaderToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
         .task { await load() }
         .onDisappear {
             player.stop()
@@ -173,22 +173,15 @@ struct ArticleReaderView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 8) {
-                        Text(a.title).font(.app(24, weight: .semibold)).tracking(-0.48).lineLimit(1).zh()
-                        Spacer(minLength: 4)
-                        Text("To read").font(.app(10, weight: .medium))
-                            .padding(.horizontal, 8).frame(height: 24)
-                            .foregroundStyle(Color.appPrimaryForeground)
-                            .background(Color.appPrimary, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-                    }
-                    .padding(.bottom, 8)
+                    Text(a.title).font(.app(24, weight: .semibold)).tracking(-0.48).lineLimit(1).zh()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 8)
                     if let src = a.sourceURL, let url = URL(string: src) {
                         Link(destination: url) {
                             Text("\(url.host ?? "") - \(src)").font(.app(14)).foregroundStyle(Color.appMutedForeground).lineLimit(1)
                         }
                         .frame(height: 40)
                     }
-                    Rectangle().fill(Color.appBorder).frame(height: 1)
 
                     LazyVStack(spacing: 16) {
                         ForEach(sentences) { s in
