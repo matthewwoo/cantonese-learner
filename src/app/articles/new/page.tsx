@@ -47,6 +47,11 @@ export default function NewArticlePage() {
 
   if (!session) return null
 
+  const notifyTruncated = (maxChars?: number) => {
+    const limit = maxChars ? `${Math.round(maxChars / 1000)}k characters` : 'the length limit'
+    toast.warning(`This article is long — only the first ${limit} were imported.`)
+  }
+
   const fetchFromUrl = async () => {
     if (!articleUrl) {
       toast.error('Please enter an article URL')
@@ -63,6 +68,7 @@ export default function NewArticlePage() {
       const data = await response.json()
       setArticleTitle(data.title)
       setArticleContent(data.content)
+      if (data.truncated) notifyTruncated(data.maxChars)
     } catch (e) {
       console.error(e)
       toast.error('Unable to fetch article from this URL')
@@ -102,6 +108,7 @@ export default function NewArticlePage() {
           content = fetchData.content
           setArticleTitle(title)
           setArticleContent(content)
+          if (fetchData.truncated) notifyTruncated(fetchData.maxChars)
         } catch {
           toast.error('Unable to fetch content from URL. Please enter content manually.')
           setIsSubmitting(false)

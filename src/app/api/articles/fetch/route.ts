@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { MAX_ARTICLE_CHARS, capParagraphs } from '@/lib/articles/cap';
 
 // Validation schema
 const fetchArticleSchema = z.object({
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       const html = await response.text();
 
       // Parse HTML and extract article content
-      const articleContent = extractArticleContent(html);
+      const { content: articleContent, truncated } = extractArticleContent(html);
 
       // Try to extract title
       const title = extractTitle(html) || 'Untitled Article';
@@ -66,6 +67,8 @@ export async function POST(request: NextRequest) {
         title,
         content: articleContent,
         url,
+        truncated,
+        maxChars: MAX_ARTICLE_CHARS,
       });
     } catch (error) {
       clearTimeout(timeoutId);
@@ -110,7 +113,7 @@ export async function POST(request: NextRequest) {
  * Extract main article content from HTML
  * Uses multiple heuristic methods to extract paragraph text
  */
-function extractArticleContent(html: string): string {
+function extractArticleContent(html: string): { content: string; truncated: boolean } {
   // Remove script and style tags
   let content = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
   content = content.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
@@ -170,10 +173,9 @@ function extractArticleContent(html: string): string {
   // Clean up and filter paragraphs
   const cleanedParagraphs = paragraphs
     .map(p => p.trim())
-    .filter(p => p.length > 20 && !p.match(/^(menu|navigation|search|login|sign|cookie|privacy|terms)/i))
-    .slice(0, 50); // Limit to first 50 paragraphs to avoid too much content
-  
-  return cleanedParagraphs.join('\n\n');
+    .filter(p => p.length > 20 && !p.match(/^(menu|navigation|search|login|sign|cookie|privacy|terms)/i));
+
+  return capParagraphs(cleanedParagraphs, MAX_ARTICLE_CHARS);
 }
 
 /**
