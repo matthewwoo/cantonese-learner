@@ -22,11 +22,8 @@ export interface ProcessedArticle {
  */
 export function splitChineseIntoSentences(chineseText: string): string[] {
   // Chinese sentence endings: 。！？； (period, exclamation, question mark, semicolon)
-  const sentenceEndings = /[。！？；]/g;
-  
-  // Split by sentence endings and filter out empty strings
-  const sentences = chineseText
-    .split(sentenceEndings)
+  // Each match is a run of text followed by its terminating punctuation (kept).
+  const sentences = (chineseText.match(/[^。！？；]+[。！？；]*/g) ?? [])
     .map(sentence => sentence.trim())
     .filter(sentence => sentence.length > 0);
   
@@ -38,11 +35,8 @@ export function splitChineseIntoSentences(chineseText: string): string[] {
  */
 export function splitEnglishIntoSentences(englishText: string): string[] {
   // English sentence endings: . ! ? ;
-  const sentenceEndings = /[.!?;]/g;
-  
-  // Split by sentence endings and filter out empty strings
-  const sentences = englishText
-    .split(sentenceEndings)
+  // Each match is a run of text followed by its terminating punctuation (kept).
+  const sentences = (englishText.match(/[^.!?;]+[.!?;]*/g) ?? [])
     .map(sentence => sentence.trim())
     .filter(sentence => sentence.length > 0);
   
@@ -50,30 +44,43 @@ export function splitEnglishIntoSentences(englishText: string): string[] {
 }
 
 /**
- * Process article content into sentence cards
+ * Process article content into sentence cards.
+ *
+ * `originalContent[i]` and `translatedContent[i]` are already a matched pair
+ * (the API translates the article line by line), so pairing happens *within*
+ * each line. Re-splitting the whole article and pairing by global index let a
+ * single stray split (an abbreviation like "Dr.", a decimal, an LLM merging
+ * two sentences) shift every card after it by one.
+ *
+ * Within a line, sentences are paired only when both sides split into the
+ * same number of sentences; otherwise the whole line becomes one card, so a
+ * mismatch can never leak past its own paragraph.
  */
 export function processArticleIntoSentences(
   originalContent: string[],
   translatedContent: string[]
 ): ProcessedArticle {
-  // Combine all paragraphs into single text
-  const fullChineseText = translatedContent.join('\n');
-  const fullEnglishText = originalContent.join('\n');
-  
-  // Split into sentences
-  const chineseSentences = splitChineseIntoSentences(fullChineseText);
-  const englishSentences = splitEnglishIntoSentences(fullEnglishText);
-  
-  // Create sentence cards
   const sentences: SentenceCard[] = [];
-  const maxSentences = Math.min(chineseSentences.length, englishSentences.length);
-  
-  for (let i = 0; i < maxSentences; i++) {
-    sentences.push({
-      chinese: chineseSentences[i],
-      english: englishSentences[i],
-      cardIndex: i,
-    });
+  const lineCount = Math.min(originalContent.length, translatedContent.length);
+
+  for (let i = 0; i < lineCount; i++) {
+    const english = originalContent[i].trim();
+    const chinese = translatedContent[i].trim();
+    if (!chinese && !english) continue;
+
+    const chineseSentences = splitChineseIntoSentences(chinese);
+    const englishSentences = splitEnglishIntoSentences(english);
+    const aligned =
+      chineseSentences.length > 1 &&
+      chineseSentences.length === englishSentences.length;
+
+    const pairs = aligned
+      ? chineseSentences.map((zh, j) => ({ chinese: zh, english: englishSentences[j] }))
+      : [{ chinese, english }];
+
+    for (const pair of pairs) {
+      sentences.push({ ...pair, cardIndex: sentences.length });
+    }
   }
   
   // Calculate difficulty based on sentence length and complexity
