@@ -42,19 +42,29 @@ const ENGLISH_ABBREVIATIONS = new Set([
  * Split English text into sentences.
  *
  * A boundary is a run of .!?; (plus closing quotes/brackets) followed by
- * whitespace or end of text — so decimals ("3.5"), URLs and "e.g." mid-word
- * never split — and not preceded by a known abbreviation or a single-letter
- * initial ("Dr.", "J. Smith", "U.S.").
+ * whitespace, end of text, or a glued capital letter ("hardware.The") — so
+ * decimals ("3.5"), URLs and "e.g." mid-word never split — and not preceded
+ * by a known abbreviation or a single-letter initial ("Dr.", "J. Smith", "U.S.").
  */
 export function splitEnglishIntoSentences(englishText: string): string[] {
   const sentences: string[] = [];
-  const boundary = /[.!?;]+["'”’)\]]*(?=\s|$)/g;
+  const terminatorRun = /[.!?;]+["'”’)\]]*/g;
   let start = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = boundary.exec(englishText)) !== null) {
+  while ((match = terminatorRun.exec(englishText)) !== null) {
     const end = match.index + match[0].length;
-    if (match[0].startsWith('.') && !match[0].includes('!') && !match[0].includes('?')) {
+    const next = englishText[end];
+    const prev = englishText[match.index - 1];
+    const atBoundary =
+      next === undefined ||
+      /\s/.test(next) ||
+      // Terminator glued to the next capitalised sentence with no space
+      // ("hardware.The") — scraped content often loses paragraph breaks.
+      (/[A-Z]/.test(next) && prev !== undefined && /[a-z"'”’)\]]/.test(prev));
+    if (!atBoundary) continue;
+
+    if (!/[!?]/.test(match[0])) {
       // Look at the word before the period.
       const before = englishText.slice(start, match.index);
       const word = (before.match(/(\S+)$/)?.[1] ?? '').toLowerCase();

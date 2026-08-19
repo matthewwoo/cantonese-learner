@@ -126,8 +126,7 @@ function extractArticleContent(html: string): string {
   const articleMatch = articleRegex.exec(content);
   
   if (articleMatch) {
-    const articleContent = stripHtmlTags(articleMatch[2]);
-    const lines = articleContent.split('\n').filter(line => line.trim().length > 20);
+    const lines = htmlToLines(articleMatch[2]).filter(line => line.length > 20);
     paragraphs.push(...lines);
   }
   
@@ -163,8 +162,7 @@ function extractArticleContent(html: string): string {
     const bodyMatch = bodyRegex.exec(content);
     
     if (bodyMatch) {
-      const bodyContent = stripHtmlTags(bodyMatch[1]);
-      const lines = bodyContent.split('\n').filter(line => line.trim().length > 30);
+      const lines = htmlToLines(bodyMatch[1]).filter(line => line.length > 30);
       paragraphs.push(...lines);
     }
   }
@@ -233,6 +231,22 @@ function extractTitle(html: string): string | null {
 /**
  * Remove HTML tags
  */
+/**
+ * Convert an HTML fragment into one text line per block-level element.
+ * `stripHtmlTags` collapses newlines, so paragraph boundaries must be
+ * re-introduced from the markup first — otherwise minified HTML (most
+ * sites) comes out as one giant line with paragraphs glued together.
+ */
+function htmlToLines(html: string): string[] {
+  const withBreaks = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|h[1-6]|li|blockquote|section|article|main|tr|figcaption|pre|dd|dt)\s*>/gi, '\n');
+  return withBreaks
+    .split('\n')
+    .map(line => stripHtmlTags(line))
+    .filter(line => line.length > 0);
+}
+
 function stripHtmlTags(html: string): string {
   return html
     .replace(/<[^>]*>/g, '') // Remove all HTML tags

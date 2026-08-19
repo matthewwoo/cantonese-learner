@@ -46,9 +46,9 @@ enum SentenceProcessor {
     }
 
     /// A boundary is a run of .!?; (plus closing quotes/brackets) followed by
-    /// whitespace or end of text — so decimals ("3.5"), URLs and "e.g." mid-word
-    /// never split — and not preceded by a known abbreviation or a single-letter
-    /// initial ("Dr.", "J. Smith", "U.S.").
+    /// whitespace, end of text, or a glued capital letter ("hardware.The") — so
+    /// decimals ("3.5"), URLs and "e.g." mid-word never split — and not preceded
+    /// by a known abbreviation or a single-letter initial ("Dr.", "J. Smith", "U.S.").
     static func splitEnglish(_ text: String) -> [String] {
         let chars = Array(text)
         var out: [String] = []
@@ -63,7 +63,12 @@ enum SentenceProcessor {
                 i += 1
             }
             while i < chars.count, englishClosers.contains(chars[i]) { i += 1 }
-            let atBoundary = i >= chars.count || chars[i].isWhitespace
+            // Also accept a terminator glued to the next capitalised sentence with
+            // no space ("hardware.The") — scraped content often loses paragraph breaks.
+            let prev: Character? = termStart > 0 ? chars[termStart - 1] : nil
+            let gluedCapital = i < chars.count && chars[i].isUppercase && chars[i].isLetter
+                && (prev.map { $0.isLowercase && $0.isLetter || englishClosers.contains($0) } ?? false)
+            let atBoundary = i >= chars.count || chars[i].isWhitespace || gluedCapital
             guard atBoundary else { continue }
             if onlyPeriods {
                 // Look at the word before the period.
