@@ -247,9 +247,16 @@ struct NewArticleView: View {
             let res = try await APIClient.fetchArticle(url: u)
             title = res.title
             content = res.content
+            notifyIfTruncated(res)
         } catch {
             toasts.error("Unable to fetch article from this URL")
         }
+    }
+
+    private func notifyIfTruncated(_ res: APIClient.FetchArticleResponse) {
+        guard res.truncated == true else { return }
+        let limit = res.maxChars.map { "\($0 / 1000)k characters" } ?? "the length limit"
+        toasts.show("This article is long — only the first \(limit) were imported.")
     }
 
     private func create() async {
@@ -261,7 +268,11 @@ struct NewArticleView: View {
         creating = true
         defer { creating = false }
         if c.isEmpty {
-            do { c = try await APIClient.fetchArticle(url: u).content } catch {
+            do {
+                let res = try await APIClient.fetchArticle(url: u)
+                c = res.content
+                notifyIfTruncated(res)
+            } catch {
                 toasts.error("Unable to fetch content from URL. Please enter content manually."); return
             }
         }

@@ -134,7 +134,14 @@ enum APIClient {
     // MARK: Articles
 
     struct FetchArticleRequest: Encodable { let url: String }
-    struct FetchArticleResponse: Decodable { let title: String; let content: String; let url: String? }
+    struct FetchArticleResponse: Decodable {
+        let title: String
+        let content: String
+        let url: String?
+        /// True when the server dropped trailing paragraphs to stay under `maxChars`.
+        let truncated: Bool?
+        let maxChars: Int?
+    }
     static func fetchArticle(url: String) async throws -> FetchArticleResponse {
         try await post("api/articles/fetch", body: FetchArticleRequest(url: url))
     }
