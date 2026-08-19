@@ -18,29 +18,113 @@ export interface ProcessedArticle {
 }
 
 /**
- * Split Chinese text into sentences using punctuation
+ * Split Chinese text into sentences using punctuation.
+ * A sentence ends at 。！？； plus any closing quotes/brackets that follow.
  */
 export function splitChineseIntoSentences(chineseText: string): string[] {
-  // Chinese sentence endings: 。！？； (period, exclamation, question mark, semicolon)
-  // Each match is a run of text followed by its terminating punctuation (kept).
-  const sentences = (chineseText.match(/[^。！？；]+[。！？；]*/g) ?? [])
+  const sentences = (chineseText.match(/[^。！？；]+[。！？；]*[」』”’）》〉]*/g) ?? [])
     .map(sentence => sentence.trim())
     .filter(sentence => sentence.length > 0);
   
   return sentences;
 }
 
+// Tokens that end in "." without ending a sentence. Single capital letters
+// (initials, "U.S.") are handled separately.
+const ENGLISH_ABBREVIATIONS = new Set([
+  'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'st', 'mt', 'vs', 'etc', 'no',
+  'inc', 'ltd', 'co', 'corp', 'fig', 'approx', 'gov', 'sen', 'rep', 'gen',
+  'col', 'capt', 'lt', 'sgt', 'hon', 'rev', 'jan', 'feb', 'mar', 'apr', 'jun',
+  'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec', 'e.g', 'i.e', 'u.s', 'u.k',
+]);
+
 /**
- * Split English text into sentences
+ * Split English text into sentences.
+ *
+ * A boundary is a run of .!?; (plus closing quotes/brackets) followed by
+ * whitespace or end of text — so decimals ("3.5"), URLs and "e.g." mid-word
+ * never split — and not preceded by a known abbreviation or a single-letter
+ * initial ("Dr.", "J. Smith", "U.S.").
  */
 export function splitEnglishIntoSentences(englishText: string): string[] {
-  // English sentence endings: . ! ? ;
-  // Each match is a run of text followed by its terminating punctuation (kept).
-  const sentences = (englishText.match(/[^.!?;]+[.!?;]*/g) ?? [])
-    .map(sentence => sentence.trim())
-    .filter(sentence => sentence.length > 0);
-  
-  return sentences;
+  const sentences: string[] = [];
+  const boundary = /[.!?;]+["'”’)\]]*(?=\s|$)/g;
+  let start = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = boundary.exec(englishText)) !== null) {
+    const end = match.index + match[0].length;
+    if (match[0].startsWith('.') && !match[0].includes('!') && !match[0].includes('?')) {
+      // Look at the word before the period.
+      const before = englishText.slice(start, match.index);
+      const word = (before.match(/(\S+)$/)?.[1] ?? '').toLowerCase();
+      const isInitial = /^[a-z]$/.test(word) || /^(?:[a-z]\.)+[a-z]$/.test(word);
+      if (ENGLISH_ABBREVIATIONS.has(word) || isInitial) {
+        continue;
+      }
+    }
+    sentences.push(englishText.slice(start, end));
+    start = end;
+  }
+  if (start < englishText.length) sentences.push(englishText.slice(start));
+
+  return sentences.map(s => s.trim()).filter(s => s.length > 0);
+}
+
+/**
+ * Merge `longer` into `shorter.length` consecutive groups whose cumulative
+ * character share tracks `shorter`'s, so the two sides can be paired 1:1.
+ * Monotonic and bounded to the line it's called on.
+ */
+function groupByLengthShare(longer: string[], shorter: string[], joiner: string): string[] {
+  const total = (xs: string[]) => xs.reduce((n, x) => n + x.length, 0);
+  const longTotal = total(longer) || 1;
+  const shortTotal = total(shorter) || 1;
+  const groups: string[] = [];
+  let li = 0;
+  let shortCum = 0;
+  let longCum = 0;
+
+  for (let si = 0; si < shorter.length; si++) {
+    shortCum += shorter[si].length;
+    const target = shortCum / shortTotal;
+    const remainingGroups = shorter.length - si - 1;
+    const group = [longer[li]];
+    longCum += longer[li].length;
+    li++;
+    // Keep absorbing while the next item's midpoint still falls before the
+    // target share, leaving at least one item per remaining group.
+    while (li < longer.length - remainingGroups) {
+      const mid = (longCum + longer[li].length / 2) / longTotal;
+      if (mid >= target) break;
+      group.push(longer[li]);
+      longCum += longer[li].length;
+      li++;
+    }
+    groups.push(group.join(joiner));
+  }
+  // The last group absorbs anything left.
+  if (li < longer.length) {
+    groups[groups.length - 1] = [groups[groups.length - 1], ...longer.slice(li)].join(joiner);
+  }
+  return groups;
+}
+
+/**
+ * Pair one line's Chinese and English sentences. Equal counts pair 1:1;
+ * otherwise the longer side is merged down to the shorter by length share.
+ */
+function pairLine(chinese: string, english: string): { chinese: string; english: string }[] {
+  const zh = splitChineseIntoSentences(chinese);
+  const en = splitEnglishIntoSentences(english);
+  if (zh.length === 0 || en.length === 0) return [{ chinese, english }];
+  if (zh.length === en.length) return zh.map((c, j) => ({ chinese: c, english: en[j] }));
+  if (zh.length > en.length) {
+    const merged = groupByLengthShare(zh, en, '');
+    return merged.map((c, j) => ({ chinese: c, english: en[j] }));
+  }
+  const merged = groupByLengthShare(en, zh, ' ');
+  return zh.map((c, j) => ({ chinese: c, english: merged[j] }));
 }
 
 /**
@@ -52,9 +136,9 @@ export function splitEnglishIntoSentences(englishText: string): string[] {
  * single stray split (an abbreviation like "Dr.", a decimal, an LLM merging
  * two sentences) shift every card after it by one.
  *
- * Within a line, sentences are paired only when both sides split into the
- * same number of sentences; otherwise the whole line becomes one card, so a
- * mismatch can never leak past its own paragraph.
+ * Within a line, sentences pair 1:1 when both sides agree on the count, and
+ * otherwise the longer side is merged down by length share — so any residual
+ * drift stays inside its own paragraph.
  */
 export function processArticleIntoSentences(
   originalContent: string[],
@@ -68,17 +152,7 @@ export function processArticleIntoSentences(
     const chinese = translatedContent[i].trim();
     if (!chinese && !english) continue;
 
-    const chineseSentences = splitChineseIntoSentences(chinese);
-    const englishSentences = splitEnglishIntoSentences(english);
-    const aligned =
-      chineseSentences.length > 1 &&
-      chineseSentences.length === englishSentences.length;
-
-    const pairs = aligned
-      ? chineseSentences.map((zh, j) => ({ chinese: zh, english: englishSentences[j] }))
-      : [{ chinese, english }];
-
-    for (const pair of pairs) {
+    for (const pair of pairLine(chinese, english)) {
       sentences.push({ ...pair, cardIndex: sentences.length });
     }
   }
