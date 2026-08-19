@@ -54,14 +54,20 @@ final class SpeechService: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerD
         generation += 1
         let gen = generation
         isLoading = true
+        // Only the fetch is "loading"; playback is `isSpeaking`. Clear on every exit path for
+        // this generation (a newer speak()/stop() already reset it).
         defer { if gen == generation { isLoading = false } }
 
         do {
             let data = try await audio(for: trimmed, rate: rate)
             guard gen == generation else { return }
-            await play(data: data, rate: 1.0)
+            isLoading = false
+            // NOTE: don't go through `play(data:)` — it calls stop() and bumps `generation`,
+            // which would make this call's `gen` stale and leave state out of sync.
+            await play(data: data, rate: 1.0, generation: gen)
         } catch {
             guard gen == generation else { return }
+            isLoading = false
             // Server TTS failed → fall back to on-device zh-HK voice for this call only.
             await speakWithSystemVoice(trimmed, rate: rate)
         }
@@ -73,7 +79,11 @@ final class SpeechService: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerD
     func play(data: Data, rate: Float = 1.0) async {
         stop()
         generation += 1
-        let gen = generation
+        await play(data: data, rate: rate, generation: generation)
+    }
+
+    /// Plays within an already-claimed generation (no stop()/bump).
+    private func play(data: Data, rate: Float, generation gen: Int) async {
         Self.configureAudioSession()
         do {
             let p = try AVAudioPlayer(data: data)
@@ -111,6 +121,7 @@ final class SpeechService: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerD
         player = nil
         if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
         isSpeaking = false
+        isLoading = false   // an in-flight speak() is now a stale generation and won't clear this itself
         finishContinuation?.resume()
         finishContinuation = nil
     }
