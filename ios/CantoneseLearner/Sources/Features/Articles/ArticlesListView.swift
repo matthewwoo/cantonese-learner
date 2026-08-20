@@ -10,7 +10,6 @@ enum ArticleRoute: Hashable {
 enum ArticleFilter: String, CaseIterable, Identifiable {
     case inbox = "Inbox"
     case archive = "Archive"
-    case all = "All"
     var id: String { rawValue }
 }
 
@@ -57,7 +56,6 @@ struct ArticlesListView: View {
         switch filter {
         case .inbox: return model.articles.filter { !$0.isArchived }
         case .archive: return model.articles.filter(\.isArchived)
-        case .all: return model.articles
         }
     }
 
@@ -162,7 +160,7 @@ struct ArticlesListView: View {
                 .font(.app(16, weight: .medium))
             Text(filter == .archive
                  ? "Archive a read from its ⋯ menu to keep your inbox tidy."
-                 : "Switch to All or Archive to revisit past reads.")
+                 : "Switch to Archive to revisit past reads.")
                 .font(.app(14)).foregroundStyle(Color.appMutedForeground)
                 .multilineTextAlignment(.center)
         }
