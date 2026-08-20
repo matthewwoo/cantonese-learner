@@ -85,6 +85,7 @@ private struct ArticleSummaryRow: Decodable {
     let source_url: String?
     let status: String?
     let error_message: String?
+    let archived_at: Date?
     let created_at: Date
     let updated_at: Date
 }
@@ -332,13 +333,24 @@ enum ArticlesRepo {
     static func list() async throws -> [ArticleSummary] {
         let rows: [ArticleSummaryRow] = try await supabase
             .from("articles")
-            .select("id, title, source_url, status, error_message, created_at, updated_at")
+            .select("id, title, source_url, status, error_message, archived_at, created_at, updated_at")
             .order("created_at", ascending: false)
             .execute().value
         return rows.map {
             ArticleSummary(id: $0.id, title: $0.title, sourceURL: $0.source_url, status: GenerationStatus(raw: $0.status),
-                           errorMessage: $0.error_message, createdAt: $0.created_at, updatedAt: $0.updated_at)
+                           errorMessage: $0.error_message, archivedAt: $0.archived_at,
+                           createdAt: $0.created_at, updatedAt: $0.updated_at)
         }
+    }
+
+    /// Archive is an explicit null/timestamp write: an Encodable struct with an
+    /// optional field would drop the nil key and make unarchive a no-op.
+    static func setArchived(id: UUID, archived: Bool) async throws {
+        let value: AnyJSON = archived ? .string(ISO8601.string(Date())) : .null
+        try await supabase.from("articles")
+            .update(["archived_at": value])
+            .eq("id", value: id)
+            .execute()
     }
 
     static func getWithSession(userID: UUID, articleID: UUID) async throws -> (ArticleDetail, ReadingSession)? {

@@ -261,6 +261,7 @@ export type Database = {
           sentence_count: number | null
           status: string
           error_message: string | null
+          archived_at: string | null
           created_at: string
           updated_at: string
         }
@@ -278,6 +279,7 @@ export type Database = {
           sentence_count?: number | null
           status?: string
           error_message?: string | null
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -295,6 +297,7 @@ export type Database = {
           sentence_count?: number | null
           status?: string
           error_message?: string | null
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }

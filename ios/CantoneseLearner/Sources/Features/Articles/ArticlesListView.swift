@@ -1,8 +1,17 @@
 import SwiftUI
+import PhotosUI
+import UIKit
 
 enum ArticleRoute: Hashable {
     case new
     case reader(id: UUID)
+}
+
+enum ArticleFilter: String, CaseIterable, Identifiable {
+    case inbox = "Inbox"
+    case archive = "Archive"
+    case all = "All"
+    var id: String { rawValue }
 }
 
 @Observable
@@ -36,18 +45,43 @@ struct ArticlesListView: View {
     @Environment(ToastCenter.self) private var toasts
     @State private var model = ArticlesListModel()
     @State private var pendingDelete: ArticleSummary?
+    @State private var filter: ArticleFilter = .inbox
+    @State private var showPhotoPicker = false
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var ocrRunning = false
+    @State private var ocrTitle = ""
+    @State private var ocrContent = ""
+    @State private var showOCRForm = false
+
+    private var filteredArticles: [ArticleSummary] {
+        switch filter {
+        case .inbox: return model.articles.filter { !$0.isArchived }
+        case .archive: return model.articles.filter(\.isArchived)
+        case .all: return model.articles
+        }
+    }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            // Shown whenever any reads exist — even if the current filter is
+            // empty — so a fully archived inbox never strands the user.
+            if model.loaded && !model.articles.isEmpty {
+                filterBar
+            }
             if !model.loaded {
                 EmojiLoadingView(emoji: "📖", label: "Loading articles...")
             } else if model.articles.isEmpty {
                 ScrollView { emptyState.padding(16).padding(.top, 24) }
+            } else if filteredArticles.isEmpty {
+                ScrollView { filterEmptyState.padding(16).padding(.top, 24) }
+                    .refreshable { await model.load(toasts: toasts) }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 24) {
-                        ForEach(model.articles) { a in
-                            ArticleCard(article: a) { pendingDelete = a }
+                        ForEach(filteredArticles) { a in
+                            ArticleCard(article: a,
+                                        onToggleArchive: { Task { await toggleArchive(a) } },
+                                        onDelete: { pendingDelete = a })
                         }
                     }
                     .padding(.horizontal, 16).padding(.vertical, 24)
@@ -58,14 +92,38 @@ struct ArticlesListView: View {
         }
         .pageBackground()
         .appHeader {
-            NavigationLink(value: ArticleRoute.new) { Image(systemName: "plus") }
-                .buttonStyle(RoundIconButtonStyle())
-                .accessibilityLabel("Add article")
+            Menu {
+                NavigationLink(value: ArticleRoute.new) { Label("Add via link", systemImage: "link") }
+                Button { showPhotoPicker = true } label: { Label("Add via camera", systemImage: "camera") }
+            } label: {
+                // Menu can't take RoundIconButtonStyle (ButtonStyle only applies
+                // to Button), so its styling is replicated inline.
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color.appMutedForeground)
+                    .frame(width: 40, height: 40)
+                    .contentShape(Circle())
+            }
+            .accessibilityLabel("Add read")
         }
         .navigationDestination(for: ArticleRoute.self) { route in
             switch route {
             case .new: NewArticleView()
             case .reader(let id): ArticleReaderView(articleID: id)
+            }
+        }
+        .navigationDestination(isPresented: $showOCRForm) {
+            NewArticleView(prefillTitle: ocrTitle, prefillContent: ocrContent)
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems,
+                      maxSelectionCount: 4, matching: .images)
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await runOCR(items) }
+        }
+        .overlay {
+            if ocrRunning {
+                EmojiLoadingView(emoji: "📷", label: "Reading your photos…")
             }
         }
         .task { await model.load(silent: model.loaded, toasts: toasts) }
@@ -79,6 +137,40 @@ struct ArticlesListView: View {
         } message: { Text("Are you sure you want to delete this article?") }
     }
 
+    private var filterBar: some View {
+        HStack(spacing: 4) {
+            ForEach(ArticleFilter.allCases) { f in
+                Button { filter = f } label: {
+                    Text(f.rawValue)
+                        .font(.app(14, weight: filter == f ? .semibold : .regular))
+                        .foregroundStyle(filter == f ? Color.appForeground : Color.appMutedForeground)
+                        .padding(.horizontal, 14).padding(.vertical, 6)
+                        .background(filter == f ? Color.appCard : .clear, in: Capsule())
+                }
+            }
+        }
+        .padding(4)
+        .background(Color.white.opacity(0.5), in: Capsule())
+        .overlay(Capsule().stroke(Color.appBorder))
+        .padding(.top, 12)
+    }
+
+    private var filterEmptyState: some View {
+        VStack(spacing: 8) {
+            Text(filter == .archive ? "🗄️" : "🎉").font(.system(size: 44)).padding(.bottom, 8)
+            Text(filter == .archive ? "No archived reads yet" : "Inbox zero — nothing left to read")
+                .font(.app(16, weight: .medium))
+            Text(filter == .archive
+                 ? "Archive a read from its ⋯ menu to keep your inbox tidy."
+                 : "Switch to All or Archive to revisit past reads.")
+                .font(.app(14)).foregroundStyle(Color.appMutedForeground)
+                .multilineTextAlignment(.center)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity)
+        .card()
+    }
+
     private var emptyState: some View {
         VStack(spacing: 0) {
             Text("📖").font(.system(size: 60))
@@ -90,7 +182,7 @@ struct ArticlesListView: View {
                 .font(.app(16)).foregroundStyle(Color.appMutedForeground)
                 .multilineTextAlignment(.center)
                 .padding(.top, 8).padding(.bottom, 24)
-            NavigationLink(value: ArticleRoute.new) { Text("Add article").padding(.horizontal, 12) }
+            NavigationLink(value: ArticleRoute.new) { Text("Add read").padding(.horizontal, 12) }
                 .buttonStyle(.app(.primary))
         }
         .padding(32)
@@ -106,10 +198,78 @@ struct ArticlesListView: View {
             toasts.error("Unable to delete article")
         }
     }
+
+    private func toggleArchive(_ a: ArticleSummary) async {
+        do {
+            try await ArticlesRepo.setArchived(id: a.id, archived: !a.isArchived)
+            await model.load(silent: true, toasts: toasts)
+        } catch {
+            toasts.error(a.isArchived ? "Unable to unarchive read" : "Unable to archive read")
+        }
+    }
+
+    // MARK: Add via camera (photo library → OCR)
+
+    private func runOCR(_ items: [PhotosPickerItem]) async {
+        ocrRunning = true
+        // Clearing the selection is required: picking the same photos again
+        // would otherwise not fire onChange.
+        defer { ocrRunning = false; photoItems = [] }
+        var images: [UIImage] = []
+        for item in items {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                toasts.error("Couldn't load one of those photos")
+                return
+            }
+            images.append(image)
+        }
+        guard let payload = encodeForUpload(images) else {
+            toasts.error("Those photos are too large — try fewer pages")
+            return
+        }
+        do {
+            let res = try await APIClient.ocrArticle(images: payload)
+            ocrTitle = res.title ?? ""
+            ocrContent = res.content
+            showOCRForm = true
+        } catch {
+            toasts.error("Couldn't read text from these photos")
+        }
+    }
+
+    /// Vercel caps request bodies at ~4.5 MB and base64 inflates by 4/3, so the
+    /// JPEGs must sum to well under that. Try a readable size first, then a
+    /// smaller pass before giving up.
+    private func encodeForUpload(_ images: [UIImage]) -> [Data]? {
+        let maxBase64Bytes = 3_300_000
+        for (side, quality) in [(CGFloat(1600), 0.6), (CGFloat(1200), 0.45)] {
+            let jpegs = images.compactMap { $0.downscaled(maxSide: side).jpegData(compressionQuality: quality) }
+            guard jpegs.count == images.count else { return nil }
+            if jpegs.reduce(0, { $0 + ($1.count * 4 + 2) / 3 }) <= maxBase64Bytes { return jpegs }
+        }
+        return nil
+    }
+}
+
+private extension UIImage {
+    /// Downscale so the longest side is at most `maxSide`. Re-rendering (even
+    /// at scale 1) also normalizes HEIC/orientation and strips EXIF.
+    func downscaled(maxSide: CGFloat) -> UIImage {
+        let longest = max(size.width, size.height)
+        let scale = min(1, maxSide / max(longest, 1))
+        let target = CGSize(width: size.width * scale, height: size.height * scale)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            draw(in: CGRect(origin: .zero, size: target))
+        }
+    }
 }
 
 struct ArticleCard: View {
     let article: ArticleSummary
+    let onToggleArchive: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
@@ -128,13 +288,21 @@ struct ArticleCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
         .overlay(alignment: .topTrailing) {
-            Button(action: onDelete) {
-                Image(systemName: "trash").font(.system(size: 14))
+            Menu {
+                Button(action: onToggleArchive) {
+                    Label(article.isArchived ? "Unarchive" : "Archive",
+                          systemImage: article.isArchived ? "tray.and.arrow.up" : "archivebox")
+                }
+                Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.appMutedForeground)
                     .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
             .padding(8)
-            .accessibilityLabel("Delete article")
+            .accessibilityLabel("Read options")
         }
     }
 
@@ -164,6 +332,11 @@ struct NewArticleView: View {
     @State private var fetching = false
     @State private var creating = false
 
+    init(prefillTitle: String = "", prefillContent: String = "") {
+        _title = State(initialValue: prefillTitle)
+        _content = State(initialValue: prefillContent)
+    }
+
     private var wordCount: Int { content.split(whereSeparator: { $0.isWhitespace }).count }
     private var canCreate: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -174,7 +347,7 @@ struct NewArticleView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Add new article").font(.app(20, weight: .semibold))
+                    Text("Add a new read").font(.app(20, weight: .semibold))
                     Text("Paste a URL or enter content below. We'll translate it to Cantonese in the background — your article appears in the list right away.")
                         .font(.app(14)).foregroundStyle(Color.appMutedForeground)
                 }

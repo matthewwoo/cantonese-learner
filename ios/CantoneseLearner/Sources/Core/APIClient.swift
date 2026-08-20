@@ -151,4 +151,12 @@ enum APIClient {
     static func createArticle(title: String, content: String, url: String?) async throws -> UUID {
         try await post("api/articles", body: CreateArticleRequest(title: title, content: content, url: url), as: CreateArticleResponse.self).articleId
     }
+
+    struct OCRArticleRequest: Encodable { let images: [String] }
+    struct OCRArticleResponse: Decodable { let success: Bool; let title: String?; let content: String }
+    /// Sends photographed pages (JPEG bytes, in reading order) for OCR.
+    /// English text comes back translated to Traditional Chinese; Chinese text verbatim.
+    static func ocrArticle(images: [Data]) async throws -> OCRArticleResponse {
+        try await post("api/articles/ocr", body: OCRArticleRequest(images: images.map { $0.base64EncodedString() }))
+    }
 }

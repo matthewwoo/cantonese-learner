@@ -101,9 +101,11 @@ struct ArticleSummary: Identifiable, Hashable, Sendable {
     let sourceURL: String?
     let status: GenerationStatus
     let errorMessage: String?
+    let archivedAt: Date?
     let createdAt: Date
     let updatedAt: Date
     var displayStatus: GenerationStatus { GenerationStatus.display(status: status, createdAt: createdAt) }
+    var isArchived: Bool { archivedAt != nil }
 }
 
 struct WordDefinition: Codable, Hashable, Sendable {
