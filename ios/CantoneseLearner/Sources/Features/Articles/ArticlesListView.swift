@@ -149,7 +149,6 @@ struct ArticlesListView: View {
         }
         .padding(4)
         .background(Color.white.opacity(0.5), in: Capsule())
-        .overlay(Capsule().stroke(Color.appBorder))
         .padding(.top, 12)
     }
 
