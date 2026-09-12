@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 @Observable
@@ -17,12 +18,32 @@ final class ChatModel {
 
     func send(_ text: String, toasts: ToastCenter) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !thinking else { return }
-        messages.append(ChatMessage(role: .user, content: trimmed))
+        guard !trimmed.isEmpty else { return }
+        await perform(text: trimmed, images: [], toasts: toasts)
+    }
+
+    /// Up to this many photos per message (matches the API cap).
+    static let maxPhotos = 4
+
+    /// Photo turn: the tutor describes the scene and teaches any Chinese or
+    /// English text in it. The bubble shows the photos; the server stores "[Photo]".
+    func send(photos: [UIImage], toasts: ToastCenter) async {
+        let batch = Array(photos.prefix(Self.maxPhotos))
+        guard !batch.isEmpty else { return }
+        guard let jpegs = ImageUpload.encode(batch) else {
+            toasts.error(batch.count == 1 ? "That photo is too large to send" : "Those photos are too large — try fewer")
+            return
+        }
+        await perform(text: "", images: jpegs, toasts: toasts)
+    }
+
+    private func perform(text: String, images: [Data], toasts: ToastCenter) async {
+        guard !thinking else { return }
+        messages.append(ChatMessage(role: .user, content: text, images: images))
         thinking = true
         defer { thinking = false }
         do {
-            let res = try await APIClient.chat(message: trimmed, sessionID: sessionID)
+            let res = try await APIClient.chat(message: text, sessionID: sessionID, images: images)
             sessionID = res.sessionId
             let reply = ChatMessage(role: .assistant, content: res.message, translation: res.translation)
             messages.append(reply)
@@ -39,12 +60,32 @@ final class ChatModel {
 struct ChatView: View {
     @Environment(ToastCenter.self) private var toasts
     @State private var model = ChatModel()
+    @State private var showPhotoSourceDialog = false
+    @State private var showCamera = false
+    @State private var showPhotoPicker = false
+    @State private var photoItems: [PhotosPickerItem] = []
 
     var body: some View {
         messageList
             .safeAreaInset(edge: .bottom) {
-                VoicePill(disabled: model.thinking) { transcript in
-                    Task { await model.send(transcript, toasts: toasts) }
+                HStack(spacing: 12) {
+                    VoicePill(disabled: model.thinking) { transcript in
+                        Task { await model.send(transcript, toasts: toasts) }
+                    }
+                    // Same card-on-capsule look as the voice pill beside it.
+                    Button { pickPhoto() } label: {
+                        Image(systemName: "camera")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundStyle(Color.appForeground)
+                            .frame(width: 48, height: 48)
+                            .background(Color.appCard, in: Circle())
+                            .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.thinking)
+                    .opacity(model.thinking ? 0.6 : 1)
+                    .accessibilityLabel("Send a photo")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -52,12 +93,44 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity)
             }
             .pageBackground()
+            .confirmationDialog("Send a photo", isPresented: $showPhotoSourceDialog, titleVisibility: .hidden) {
+                Button("Take Photo") { showCamera = true }
+                Button("Choose from Library") { showPhotoPicker = true }
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPicker { image in Task { await model.send(photos: [image], toasts: toasts) } }
+                    .ignoresSafeArea()
+            }
+            .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems,
+                          maxSelectionCount: ChatModel.maxPhotos, matching: .images)
+            .onChange(of: photoItems) { _, items in
+                guard !items.isEmpty else { return }
+                // Clear so re-picking the same photos fires onChange again.
+                photoItems = []
+                Task {
+                    var images: [UIImage] = []
+                    for item in items {
+                        guard let data = try? await item.loadTransferable(type: Data.self),
+                              let image = UIImage(data: data) else {
+                            toasts.error("Couldn't load one of those photos")
+                            return
+                        }
+                        images.append(image)
+                    }
+                    await model.send(photos: images, toasts: toasts)
+                }
+            }
         .appHeader {
             Button { model.reset() } label: { Image(systemName: "plus") }
                 .buttonStyle(RoundIconButtonStyle())
                 .accessibilityLabel("Start new chat")
         }
         .onDisappear { SpeechService.shared.stop() }
+    }
+
+    /// Camera when the device has one; the simulator only has the library.
+    private func pickPhoto() {
+        if CameraPicker.isAvailable { showPhotoSourceDialog = true } else { showPhotoPicker = true }
     }
 
     private var messageList: some View {
@@ -125,20 +198,27 @@ struct ChatBubble: View {
                 }
                 .accessibilityLabel(speakingThis && speech.isSpeaking ? "Stop pronunciation" : "Play pronunciation")
 
-                Group {
-                    if showTranslation {
-                        if translating {
-                            Text("Translating…").foregroundStyle(Color.appMutedForeground)
-                        } else {
-                            Text(message.translation ?? "")
+                VStack(alignment: .leading, spacing: 8) {
+                    if !message.images.isEmpty {
+                        PhotoStrip(images: message.images)
+                    }
+                    if !message.content.isEmpty {
+                        Group {
+                            if showTranslation {
+                                if translating {
+                                    Text("Translating…").foregroundStyle(Color.appMutedForeground)
+                                } else {
+                                    Text(message.translation ?? "")
+                                }
+                            } else {
+                                Text(message.content).zh()
+                            }
                         }
-                    } else {
-                        Text(message.content).zh()
+                        .font(.app(14))
+                        .foregroundStyle(Color.appForeground)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .font(.app(14))
-                .foregroundStyle(Color.appForeground)
-                .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
             .background(isUser ? Color.appCard : Color.bubbleUser, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
@@ -164,6 +244,7 @@ struct ChatBubble: View {
 
     private func toggleSpeech() async {
         if let onTapOverride { onTapOverride(); return }
+        guard !message.content.isEmpty else { return }
         if speakingThis && speech.isSpeaking { speech.stop(); speakingThis = false; return }
         speakingThis = true
         let text = ChineseText.runs(in: message.content)
@@ -172,6 +253,7 @@ struct ChatBubble: View {
     }
 
     private func reveal() async {
+        guard !message.content.isEmpty else { return }
         showTranslation = true
         if message.translation == nil {
             translating = true
@@ -183,6 +265,35 @@ struct ChatBubble: View {
                 toasts.error("Unable to fetch translation")
                 showTranslation = false
             }
+        }
+    }
+}
+
+/// Photos attached to a user turn: one large image, or a 2-up grid for several.
+struct PhotoStrip: View {
+    let images: [Data]
+
+    var body: some View {
+        let photos = images.compactMap { UIImage(data: $0) }
+        if photos.count == 1, let only = photos.first {
+            Image(uiImage: only)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 240, maxHeight: 240)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                .accessibilityLabel("Photo you sent")
+        } else {
+            LazyVGrid(columns: [GridItem(.fixed(116), spacing: 8), GridItem(.fixed(116), spacing: 8)], spacing: 8) {
+                ForEach(Array(photos.enumerated()), id: \.offset) { i, photo in
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 116, height: 116)
+                        .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                        .accessibilityLabel("Photo \(i + 1) of \(photos.count) you sent")
+                }
+            }
+            .frame(width: 240, alignment: .leading)
         }
     }
 }
@@ -309,7 +420,9 @@ struct LiveWaveformView: View {
                     var level = CGFloat(levels[i]) * 1.6
                     if processing {
                         let x = Double(i) / Double(count)
-                        level = CGFloat(0.35 + 0.25 * sin(t * 4 + x * 12) + 0.15 * sin(t * 6.5 + x * 5))
+                        let wave1: Double = 0.25 * sin(t * 4 + x * 12)
+                        let wave2: Double = 0.15 * sin(t * 6.5 + x * 5)
+                        level = CGFloat(0.35 + wave1 + wave2)
                     }
                     let h = max(3, min(size.height, level * size.height * 0.8))
                     let x = startX + CGFloat(i) * (barW + gap)

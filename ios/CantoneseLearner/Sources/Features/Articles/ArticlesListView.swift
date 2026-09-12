@@ -3,7 +3,8 @@ import PhotosUI
 import UIKit
 
 enum ArticleRoute: Hashable {
-    case new
+    /// `url` prefills the form (Share Extension hand-off) and fetches on appear.
+    case new(url: String? = nil)
     case reader(id: UUID)
 }
 
@@ -93,7 +94,7 @@ struct ArticlesListView: View {
         .pageBackground()
         .appHeader {
             Menu {
-                NavigationLink(value: ArticleRoute.new) { Label("Add via link", systemImage: "link") }
+                NavigationLink(value: ArticleRoute.new()) { Label("Add via link", systemImage: "link") }
                 Button { showPhotoPicker = true } label: { Label("Add via camera", systemImage: "camera") }
             } label: {
                 // Menu can't take RoundIconButtonStyle (ButtonStyle only applies
@@ -108,7 +109,7 @@ struct ArticlesListView: View {
         }
         .navigationDestination(for: ArticleRoute.self) { route in
             switch route {
-            case .new: NewArticleView()
+            case .new(let url): NewArticleView(prefillURL: url ?? "")
             case .reader(let id): ArticleReaderView(articleID: id)
             }
         }
@@ -182,7 +183,7 @@ struct ArticlesListView: View {
                 .font(.app(16)).foregroundStyle(Color.appMutedForeground)
                 .multilineTextAlignment(.center)
                 .padding(.top, 8).padding(.bottom, 24)
-            NavigationLink(value: ArticleRoute.new) { Text("Add read").padding(.horizontal, 12) }
+            NavigationLink(value: ArticleRoute.new()) { Text("Add read").padding(.horizontal, 12) }
                 .buttonStyle(.app(.primary))
         }
         .padding(32)
@@ -224,7 +225,7 @@ struct ArticlesListView: View {
             }
             images.append(image)
         }
-        guard let payload = encodeForUpload(images) else {
+        guard let payload = ImageUpload.encode(images) else {
             toasts.error("Those photos are too large — try fewer pages")
             return
         }
@@ -235,34 +236,6 @@ struct ArticlesListView: View {
             showOCRForm = true
         } catch {
             toasts.error("Couldn't read text from these photos")
-        }
-    }
-
-    /// Vercel caps request bodies at ~4.5 MB and base64 inflates by 4/3, so the
-    /// JPEGs must sum to well under that. Try a readable size first, then a
-    /// smaller pass before giving up.
-    private func encodeForUpload(_ images: [UIImage]) -> [Data]? {
-        let maxBase64Bytes = 3_300_000
-        for (side, quality) in [(CGFloat(1600), 0.6), (CGFloat(1200), 0.45)] {
-            let jpegs = images.compactMap { $0.downscaled(maxSide: side).jpegData(compressionQuality: quality) }
-            guard jpegs.count == images.count else { return nil }
-            if jpegs.reduce(0, { $0 + ($1.count * 4 + 2) / 3 }) <= maxBase64Bytes { return jpegs }
-        }
-        return nil
-    }
-}
-
-private extension UIImage {
-    /// Downscale so the longest side is at most `maxSide`. Re-rendering (even
-    /// at scale 1) also normalizes HEIC/orientation and strips EXIF.
-    func downscaled(maxSide: CGFloat) -> UIImage {
-        let longest = max(size.width, size.height)
-        let scale = min(1, maxSide / max(longest, 1))
-        let target = CGSize(width: size.width * scale, height: size.height * scale)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
-            draw(in: CGRect(origin: .zero, size: target))
         }
     }
 }
@@ -332,7 +305,8 @@ struct NewArticleView: View {
     @State private var fetching = false
     @State private var creating = false
 
-    init(prefillTitle: String = "", prefillContent: String = "") {
+    init(prefillURL: String = "", prefillTitle: String = "", prefillContent: String = "") {
+        _url = State(initialValue: prefillURL)
         _title = State(initialValue: prefillTitle)
         _content = State(initialValue: prefillContent)
     }
@@ -409,6 +383,10 @@ struct NewArticleView: View {
         .appHeader()
         .navigationBarBackButtonHidden()
         .toolbar { HeaderToolbarItem(placement: .topBarLeading) { BackToRootButton() } }
+        // Arrived from the share sheet with a URL: fetch straight away.
+        .task {
+            if !url.isEmpty && title.isEmpty && content.isEmpty { await fetch() }
+        }
     }
 
     private func fetch() async {

@@ -147,10 +147,13 @@ struct ChatMessage: Identifiable, Equatable, Sendable {
     let role: Role
     var content: String
     var translation: String?
+    /// JPEG bytes of photos the user sent (shown in the bubble; not persisted).
+    let images: [Data]
     let createdAt: Date
 
-    init(id: UUID = UUID(), role: Role, content: String, translation: String? = nil, createdAt: Date = Date()) {
-        self.id = id; self.role = role; self.content = content; self.translation = translation; self.createdAt = createdAt
+    init(id: UUID = UUID(), role: Role, content: String, translation: String? = nil, images: [Data] = [], createdAt: Date = Date()) {
+        self.id = id; self.role = role; self.content = content; self.translation = translation
+        self.images = images; self.createdAt = createdAt
     }
 }
 

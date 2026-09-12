@@ -18,6 +18,7 @@ interface Message {
   content: string
   timestamp: Date
   translation?: string // For showing English translations
+  imageUrls?: string[] // Data URLs of photos the user sent
 }
 
 interface ChatSession {
@@ -67,9 +68,14 @@ function ChatPageContent() {
   }, [messages])
 
   // ============ FUNCTION: SEND MESSAGE TO AI ============
-  const sendMessage = async (messageContent: string) => {
-    // Don't send empty messages
-    if (!messageContent.trim()) return
+  // A turn is spoken text, a photo, or both. For a photo the tutor describes
+  // the scene and teaches any Chinese/English text in it.
+  const sendMessage = async (
+    messageContent: string,
+    photos: { base64: string; previewUrl: string }[] = []
+  ) => {
+    // Don't send empty turns
+    if (!messageContent.trim() && photos.length === 0) return
 
     // Clear any previous errors
     setError(null)
@@ -80,6 +86,7 @@ function ChatPageContent() {
       id: Date.now().toString(),
       role: 'user',
       content: messageContent,
+      imageUrls: photos.length ? photos.map(p => p.previewUrl) : undefined,
       timestamp: new Date()
     }
     setMessages(prev => [...prev, userMessage])
@@ -93,6 +100,7 @@ function ChatPageContent() {
         },
         body: JSON.stringify({
           message: messageContent,
+          images: photos.length ? photos.map(p => p.base64) : undefined,
           sessionId: currentSession?.id,
           theme: selectedTheme,
           targetWords: currentSession?.targetWords || []
@@ -220,7 +228,11 @@ function ChatPageContent() {
 
       {/* Chat input - floating above bottom nav */}
       <div className="fixed left-1/2 bottom-[86px] -translate-x-1/2 w-full max-w-[480px] z-30">
-        <ChatInput onSendMessage={sendMessage} disabled={isLoading} />
+        <ChatInput
+          onSendMessage={sendMessage}
+          onSendPhotos={(photos) => sendMessage('', photos)}
+          disabled={isLoading}
+        />
       </div>
 
       {/* Bottom navigation removed - using global BottomNav */}

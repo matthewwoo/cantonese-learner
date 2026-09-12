@@ -14,6 +14,8 @@ enum AppTab: Hashable, CaseIterable {
 /// App shell: native `TabView` (system Liquid Glass bar on iOS 26, standard bar on iOS 17/18)
 /// with a NavigationStack per tab. We never draw the bar ourselves — see DESIGN.md.
 struct MainTabView: View {
+    @Environment(SharedReadInbox.self) private var sharedReads
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab: AppTab = .home
     @State private var toasts = ToastCenter()
     @State private var homePath = NavigationPath()
@@ -41,6 +43,20 @@ struct MainTabView: View {
         .toastOverlay()
         .environment(toasts)
         .tint(Color.appForeground)
+        // Share Extension hand-off: drain the queue whenever we come to the
+        // foreground (covers the case where the deep link didn't fire), and
+        // open the new-read form for whatever was shared.
+        .onAppear { sharedReads.refresh() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { sharedReads.refresh() }
+        }
+        .onChange(of: sharedReads.pending, initial: true) { _, url in
+            guard let url else { return }
+            sharedReads.pending = nil
+            tab = .read
+            readPath = NavigationPath()
+            readPath.append(ArticleRoute.new(url: url.absoluteString))
+        }
     }
 }
 

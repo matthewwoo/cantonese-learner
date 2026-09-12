@@ -15,6 +15,7 @@ interface ChatMessageProps {
     content: string
     timestamp: Date
     translation?: string
+    imageUrls?: string[]
   }
   showTranslation: boolean
   /**
@@ -35,7 +36,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   isPlaying,
 }) => {
   // Destructure the message properties for easier access
-  const { role, content, translation } = message
+  const { role, content, translation, imageUrls } = message
   
   // Determine if this is a user message or AI message
   const isUser = role === 'user'
@@ -194,6 +195,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   const handleContainerClick = () => {
     if (!ttsSupported) return
     if (isDragging) return
+    if (!content) return // photo-only bubble: nothing to read aloud
     triggerPlayback()
   }
 
@@ -221,6 +223,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         style={{ transform: touchDeltaX !== 0 ? `translateX(${Math.max(Math.min(touchDeltaX, 16), -16)}px)` : undefined }}
       >
         <div className="px-4 py-3">
+          {imageUrls && imageUrls.length > 0 && (
+            <div className={`flex flex-wrap gap-2 ${content ? 'mb-2' : ''}`}>
+              {imageUrls.map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element -- local data URL, not an optimizable asset
+                <img
+                  key={i}
+                  src={url}
+                  alt={imageUrls.length > 1 ? `Photo ${i + 1} of ${imageUrls.length} you sent` : 'Photo you sent'}
+                  className={imageUrls.length > 1
+                    ? 'h-28 w-28 rounded-sm object-cover'
+                    : 'max-h-60 max-w-full rounded-sm object-contain'}
+                />
+              ))}
+            </div>
+          )}
+          {content && (
           <div className="flex items-start gap-3">
             {ttsSupported && (
               <Button
@@ -242,7 +260,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
               {displayedText}
             </div>
           </div>
-          
+          )}
         </div>
       </div>
       {/* Decorative dots under bubbles */}

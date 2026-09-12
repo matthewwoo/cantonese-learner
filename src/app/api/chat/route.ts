@@ -1,22 +1,53 @@
 // src/app/api/chat/route.ts
 // API endpoint for AI chat functionality
 // This handles communication between our frontend and AI services (OpenAI/Claude)
+//
+// A turn is either spoken text, a photo, or both. Photos arrive as a base64
+// JPEG and go to a vision model; the tutor describes the scene and teaches
+// any Chinese or English text it finds. Only the text side of a turn is
+// persisted — the image itself is not stored, so history sees "[Photo]".
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteClient } from '@/lib/supabase/server'
+import OpenAI from 'openai'
 
-// Define the structure of a chat message
+// Define the structure of a chat message. Content is plain text for history
+// and a part list for the current turn when a photo is attached.
+type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; base64: string }
+
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
-  content: string
+  content: string | ContentPart[]
 }
 
 // Define the request body structure
 interface ChatRequest {
-  message: string
+  message?: string
   sessionId?: string
   theme?: string
   targetWords?: string[]
+  /** base64-encoded JPEGs, without the data: prefix (in the order to read them) */
+  images?: string[]
+  /** Legacy single-photo field; folded into `images`. */
+  image?: string
+}
+
+// The client budgets its upload under Vercel's 4.5 MB body cap; this is the
+// server-side backstop (same as articles/ocr).
+const MAX_IMAGES_BASE64_BYTES = 3_800_000
+const MAX_IMAGES_PER_TURN = 4
+
+/** What gets stored (and shown in history) for a photo-only turn. */
+const PHOTO_PLACEHOLDER = '[Photo]'
+
+let openaiClient: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return openaiClient
 }
 
 export async function POST(request: NextRequest) {
@@ -26,9 +57,10 @@ export async function POST(request: NextRequest) {
     // 1. AUTHENTICATION CHECK
     // Always verify the user is logged in before processing chat requests
     const supabase = await createRouteClient(request)
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (!user) {
+      console.warn('Chat API: auth rejected:', authError?.message ?? 'no user')
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -38,16 +70,27 @@ export async function POST(request: NextRequest) {
     // 2. PARSE REQUEST DATA
     // Extract the chat message and session info from the request
     const body: ChatRequest = await request.json()
-    const { message, sessionId, theme, targetWords } = body
-    console.log('Chat API: Request body parsed:', { message: message?.substring(0, 50) + '...', sessionId, theme })
+    const { sessionId, theme, targetWords } = body
+    const message = (body.message ?? '').trim()
+    const images = [
+      ...(Array.isArray(body.images) ? body.images : []),
+      ...(typeof body.image === 'string' ? [body.image] : []),
+    ].filter((s): s is string => typeof s === 'string' && s.length > 0)
+    console.log('Chat API: Request body parsed:', { message: message.substring(0, 50) + '...', sessionId, theme, images: images.length })
 
-    // Basic validation - make sure we have a message to process
-    if (!message?.trim()) {
+    // Basic validation - a turn needs either words or a photo
+    if (!message && images.length === 0) {
       console.log('Chat API: Message validation failed - empty message')
       return NextResponse.json(
-        { error: 'Message is required' },
+        { error: 'Message or image is required' },
         { status: 400 }
       )
+    }
+    if (images.length > MAX_IMAGES_PER_TURN) {
+      return NextResponse.json({ error: `At most ${MAX_IMAGES_PER_TURN} photos per message` }, { status: 400 })
+    }
+    if (images.reduce((n, s) => n + s.length, 0) > MAX_IMAGES_BASE64_BYTES) {
+      return NextResponse.json({ error: 'Images too large' }, { status: 413 })
     }
 
     // 3. GET OR CREATE CHAT SESSION
@@ -90,10 +133,29 @@ export async function POST(request: NextRequest) {
 
     // 4. BUILD CONVERSATION CONTEXT
     // Create the conversation history for the AI to understand context
+    const photoNote =
+      images.length === 1
+        ? 'a photo'
+        : `${images.length} photos, in order`
+    const userTurn: ChatMessage = images.length > 0
+      ? {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: message
+                ? `${message}\n\n[The user attached ${photoNote}. Follow the photo instructions.]`
+                : `[The user sent ${photoNote} without saying anything. Follow the photo instructions.]`,
+            },
+            ...images.map(base64 => ({ type: 'image' as const, base64 })),
+          ],
+        }
+      : { role: 'user', content: message }
+
     const conversationHistory: ChatMessage[] = [
       {
         role: 'system',
-        content: createSystemPrompt(chatSession.theme, (chatSession.target_words as string[]) || [])
+        content: createSystemPrompt()
       },
       // Add previous messages from this chat session
       ...chatSession.messages.map(msg => ({
@@ -101,10 +163,7 @@ export async function POST(request: NextRequest) {
         content: msg.content
       })),
       // Add the new user message
-      {
-        role: 'user',
-        content: message
-      }
+      userTurn,
     ]
     console.log('Chat API: Conversation history built with', conversationHistory.length, 'messages')
 
@@ -126,7 +185,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         chat_session_id: chatSession.id,
         role: 'user',
-        content: message,
+        content: message || (images.length > 1 ? `[${images.length} photos]` : PHOTO_PLACEHOLDER),
       },
       {
         user_id: user.id,
@@ -161,13 +220,11 @@ export async function POST(request: NextRequest) {
 }
 
 // HELPER FUNCTION: Create system prompt for AI
-function createSystemPrompt(theme: string, targetWords: string[]): string {
+function createSystemPrompt(): string {
   return `你是一個廣東話導師 (You are a Cantonese language tutor). 
 
 Your role:
 - Help the user practice Cantonese conversation
-- Focus on the theme: "${theme}"
-- Encourage use of these target words: ${targetWords.join(', ')}
 - Respond primarily in Traditional Chinese (繁體中文)
 - Provide helpful corrections and suggestions
 - Keep conversations engaging and educational
@@ -176,15 +233,30 @@ Guidelines:
 - Use natural, colloquial Cantonese expressions
 - When the user makes mistakes, gently correct them
 - Ask follow-up questions to keep the conversation flowing
-- If the user uses any target words, acknowledge and reinforce their usage
 - Mix Chinese and English explanations when helpful for learning
+- If the user uses an English word (for example because they don't know the Cantonese), acknowledge that English word and teach them how to say it in Cantonese. Give the Cantonese word in the Chinese part of your response, and put the English word it corresponds to in parentheses right after it, e.g. 「蘋果」(apple). Then continue the conversation using the Cantonese word
+
+Photos:
+The user is a parent learning Cantonese so they can speak it with their young child. When the user sends one or more photos:
+- First describe what is going on in the photo(s) in natural, spoken Cantonese, the way a parent might narrate it to their child. If there are several photos, treat them as one scene or sequence and go through them in order
+- If the photo contains Chinese text, transcribe it in Traditional characters and tell the user how to say it out loud in Cantonese. If the written form is formal or Mandarin-style, also give the colloquial Cantonese way of saying it
+- If the photo contains English text, do NOT copy the English into your Chinese sentences. Instead give the natural spoken Cantonese a parent would actually say to their child, then put the original English in parentheses right after it, e.g. 快啲洗手啦 (Please wash your hands)
+- Pick out one to three useful words or phrases from the photo and teach each one in the 「詞語」(English) format, e.g. 「洗手」(wash hands), so the user can reuse them
+- Do not mention that you are an AI or describe the image technically; talk about it like a tutor sitting next to them
 
 IMPORTANT: Format your responses as follows:
 - Write your main response in Traditional Chinese (繁體中文)
 - If you include English translations or explanations, put them in parentheses like this: (English translation here)
-- Keep the Chinese content and English content clearly separated
+- Keep the Chinese content and English content clearly separated: never put Chinese inside parentheses, and never put English outside of parentheses
+- Use plain ASCII parentheses ( ) for the English, never full-width （ ）
 
-Start the conversation with a friendly greeting related to the theme "${theme}".`
+Start the conversation with a friendly greeting.`
+}
+
+// Text-only view of a message, for providers/paths that cannot take images.
+function textOf(content: ChatMessage['content']): string {
+  if (typeof content === 'string') return content
+  return content.map(p => (p.type === 'text' ? p.text : '')).join('\n').trim()
 }
 
 // HELPER FUNCTION: Call AI service (OpenAI/Claude)
@@ -199,32 +271,37 @@ async function callAIService(messages: ChatMessage[]): Promise<string> {
     // For now, we'll use a mock response if no API key is configured
     if (!openaiApiKey && !anthropicApiKey) {
       console.warn('AI Service: No AI API key configured - using mock response')
-      return generateMockResponse(messages[messages.length - 1].content)
+      return generateMockResponse(textOf(messages[messages.length - 1].content))
     }
 
   // Option 1: OpenAI Integration
+  // gpt-4o accepts images, which photo turns need; it is also a better
+  // Cantonese speaker than the gpt-3.5-turbo this route started on.
   if (openaiApiKey) {
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo', // or 'gpt-4' for better quality
-          messages: messages,
-          max_tokens: 500,
-          temperature: 0.7, // Slightly creative but focused responses
+      const response = await getOpenAI().chat.completions.create({
+        model: 'gpt-4o',
+        messages: messages.map(msg => {
+          if (typeof msg.content === 'string') {
+            return { role: msg.role, content: msg.content }
+          }
+          return {
+            role: 'user' as const,
+            content: msg.content.map(part =>
+              part.type === 'text'
+                ? { type: 'text' as const, text: part.text }
+                : {
+                    type: 'image_url' as const,
+                    image_url: { url: `data:image/jpeg;base64,${part.base64}`, detail: 'high' as const },
+                  }
+            ),
+          }
         }),
+        max_tokens: 700,
+        temperature: 0.7, // Slightly creative but focused responses
       })
 
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`)
-      }
-
-      const data = await response.json()
-      return data.choices[0]?.message?.content || 'Sorry, I could not generate a response.'
+      return response.choices[0]?.message?.content || 'Sorry, I could not generate a response.'
     } catch (error) {
       console.error('OpenAI API error:', error)
       throw error
@@ -243,9 +320,25 @@ async function callAIService(messages: ChatMessage[]): Promise<string> {
         },
         body: JSON.stringify({
           model: 'claude-3-sonnet-20240229',
-          max_tokens: 500,
-          messages: messages.filter(msg => msg.role !== 'system'), // Claude handles system message differently
-          system: messages.find(msg => msg.role === 'system')?.content || '',
+          max_tokens: 700,
+          // Claude handles the system message separately
+          messages: messages
+            .filter(msg => msg.role !== 'system')
+            .map(msg => ({
+              role: msg.role,
+              content:
+                typeof msg.content === 'string'
+                  ? msg.content
+                  : msg.content.map(part =>
+                      part.type === 'text'
+                        ? { type: 'text', text: part.text }
+                        : {
+                            type: 'image',
+                            source: { type: 'base64', media_type: 'image/jpeg', data: part.base64 },
+                          }
+                    ),
+            })),
+          system: textOf(messages.find(msg => msg.role === 'system')?.content ?? ''),
         }),
       })
 
@@ -266,7 +359,7 @@ async function callAIService(messages: ChatMessage[]): Promise<string> {
     console.error('AI Service error:', error)
     // Fallback to mock response if AI service fails
     console.log('AI Service: Falling back to mock response due to error')
-    return generateMockResponse(messages[messages.length - 1].content)
+    return generateMockResponse(textOf(messages[messages.length - 1].content))
   }
 }
 

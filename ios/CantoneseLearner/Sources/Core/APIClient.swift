@@ -69,6 +69,8 @@ enum APIClient {
         let sessionId: UUID?
         let theme: String
         let targetWords: [String]
+        /// base64 JPEGs, in order; the tutor describes them and teaches any text in them.
+        let images: [String]?
     }
     struct ChatResponse: Decodable {
         let success: Bool
@@ -77,8 +79,9 @@ enum APIClient {
         let translation: String?
         let theme: String?
     }
-    static func chat(message: String, sessionID: UUID?, theme: String = "daily_conversation", targetWords: [String] = []) async throws -> ChatResponse {
-        try await post("api/chat", body: ChatRequest(message: message, sessionId: sessionID, theme: theme, targetWords: targetWords))
+    static func chat(message: String, sessionID: UUID?, images: [Data] = [], theme: String = "daily_conversation", targetWords: [String] = []) async throws -> ChatResponse {
+        try await post("api/chat", body: ChatRequest(message: message, sessionId: sessionID, theme: theme, targetWords: targetWords,
+                                                     images: images.isEmpty ? nil : images.map { $0.base64EncodedString() }))
     }
 
     // MARK: Translate (chat bubble)

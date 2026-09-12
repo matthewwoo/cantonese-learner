@@ -8,7 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		03220D9A160147D9CCF2A13D /* DeckListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C07D74849D002F2DE0EA757C /* DeckListView.swift */; };
+		04AEF73734AD976C6BC63B3F /* SharedReadInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A11E46D60D81B58E61F1993 /* SharedReadInbox.swift */; };
 		04D46E99DC8B417A6B48BAC3 /* AuthViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F802BFE2652714256F0A80 /* AuthViews.swift */; };
+		08A0C2517E6BCDE0D87A88F0 /* SharedReadQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCF90015FEF9D06D5AC8CC7 /* SharedReadQueue.swift */; };
+		103C6F0DA48FD8E692EA3939 /* ImageUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C6E16E2BEB7A38816279844 /* ImageUpload.swift */; };
 		3BF3376935AE5DB73568DDB3 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83A2E2F88DE2216C414A6F3F /* MainTabView.swift */; };
 		3C422F2ED9E939F6EAF8E489 /* ArticlesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84C9AA4B9C0A8275452BA5A0 /* ArticlesListView.swift */; };
 		3C6342CA7F1BF6A9E8CDD231 /* PracticeDays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37895B420B6241703A147543 /* PracticeDays.swift */; };
@@ -18,31 +21,64 @@
 		56DA60CC96977C60D265C68F /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BAB2FAD9A324D3AC79D290F /* SupabaseClient.swift */; };
 		6266AA1422B41F41A98E20AA /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066DA2EE160A24F39CB3D2A2 /* SessionStore.swift */; };
 		63657E41C9E18A6FBDE6B9B5 /* VoiceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF11312AD004C5A53418B14F /* VoiceRecorder.swift */; };
+		693F36651C40D0109B361AEA /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F9D86E6EF3CDA388F3BDA6A /* CameraPicker.swift */; };
 		73885834366851802B2179B7 /* SentenceProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE0E11C750669B25A1F294C /* SentenceProcessor.swift */; };
 		8255D955ABE6FDCEDEE91B8D /* Repositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058D83DAE4E3BBFD6A868EE8 /* Repositories.swift */; };
 		8452F191B4624DB1057DF5E7 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 58B70436086ECBF0A5A9B206 /* Supabase */; };
 		874225319266F0936ECC0450 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05E10D19E7A0CCD32D84803 /* HomeView.swift */; };
+		89F15CB09BF551236D8DBB01 /* ShareSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E18E5CF05720211B76157ECE /* ShareSheetView.swift */; };
 		8E563782F9DBA50EE9913F15 /* ArticleReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688BAADEB5FCE1A3303D7D4E /* ArticleReaderView.swift */; };
 		92A86485A684FB0F6896E6F5 /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 942B6D69A34CF2C3DFC843F1 /* SpeechService.swift */; };
 		97105F8C540D0F33E0EFA38E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FD8B3BFCB5FF233D4CF9DEE /* Assets.xcassets */; };
+		A66D09D64E8589765599FC63 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3B885CD8E57F81B6EF6E67 /* ShareViewController.swift */; };
 		B33647E2310355927E1F7BEE /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DD7166C6AA5E6D278653497 /* Theme.swift */; };
 		C22089EC54A31E468D5602B9 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E930D0EF763EB1AF587B25 /* ChatView.swift */; };
 		CED3C58D94B65E340616D255 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 285156845C98C36D8921D4C5 /* APIClient.swift */; };
 		E15E3D7F2D332390AEDEA274 /* SM2.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD347C382071774E8FD476EA /* SM2.swift */; };
+		E39051C22D7E8891DBAA1E7D /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0ADC325873E152CA753362F /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		EBB1AB5E7AB7A1EC15901D31 /* SharedReadQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCF90015FEF9D06D5AC8CC7 /* SharedReadQueue.swift */; };
 		FD47AD569FF6BE08F91D4835 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20CB86612BF90FBCE12B9DD /* AppConfig.swift */; };
 		FDF3A070A3827105947B0838 /* StudyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2205DD982B396C0D69240FCD /* StudyView.swift */; };
 		FE190E5C3E866F2670DEA915 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8165E94AB10BA228BD05DB /* RootView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		341BC0D0FC15CCDB6AA9D2F1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9CCD8429CC5F3CC23169FFF9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EB071B0D57EED7BE87B4483A;
+			remoteInfo = ShareExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		DD186A5FD08E21FA8B557550 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E39051C22D7E8891DBAA1E7D /* ShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		00F802BFE2652714256F0A80 /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
 		058D83DAE4E3BBFD6A868EE8 /* Repositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repositories.swift; sourceTree = "<group>"; };
 		066DA2EE160A24F39CB3D2A2 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		06E930D0EF763EB1AF587B25 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		0F9D86E6EF3CDA388F3BDA6A /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
+		1C6E16E2BEB7A38816279844 /* ImageUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageUpload.swift; sourceTree = "<group>"; };
 		1FF65D3CF47CE308178FBDDB /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		2205DD982B396C0D69240FCD /* StudyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyView.swift; sourceTree = "<group>"; };
 		285156845C98C36D8921D4C5 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		37895B420B6241703A147543 /* PracticeDays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeDays.swift; sourceTree = "<group>"; };
+		3A11E46D60D81B58E61F1993 /* SharedReadInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedReadInbox.swift; sourceTree = "<group>"; };
+		484DE4F8BE163551A74409AA /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		4DD7166C6AA5E6D278653497 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4EE0E11C750669B25A1F294C /* SentenceProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceProcessor.swift; sourceTree = "<group>"; };
 		4FD8B3BFCB5FF233D4CF9DEE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -52,15 +88,20 @@
 		83A2E2F88DE2216C414A6F3F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		84C9AA4B9C0A8275452BA5A0 /* ArticlesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticlesListView.swift; sourceTree = "<group>"; };
 		8934D2F800D0B41AA9B4D0DA /* CantoneseLearnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CantoneseLearnerApp.swift; sourceTree = "<group>"; };
+		8F3B885CD8E57F81B6EF6E67 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		942B6D69A34CF2C3DFC843F1 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		9C8165E94AB10BA228BD05DB /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		AC29C95B722178A7E8B0550B /* CantoneseLearner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CantoneseLearner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C07D74849D002F2DE0EA757C /* DeckListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckListView.swift; sourceTree = "<group>"; };
 		CD347C382071774E8FD476EA /* SM2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2.swift; sourceTree = "<group>"; };
+		D0ADC325873E152CA753362F /* ShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF11312AD004C5A53418B14F /* VoiceRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorder.swift; sourceTree = "<group>"; };
 		E05E10D19E7A0CCD32D84803 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		E18E5CF05720211B76157ECE /* ShareSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheetView.swift; sourceTree = "<group>"; };
 		EEA2B2C0F4CA3DCF6F5BD130 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		F20CB86612BF90FBCE12B9DD /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		F7ECF63F7E271DB7274A5BC2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FFCF90015FEF9D06D5AC8CC7 /* SharedReadQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedReadQueue.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,15 +127,28 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		121C1AEF0A56C20C77C2B98F /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				F7ECF63F7E271DB7274A5BC2 /* Info.plist */,
+				484DE4F8BE163551A74409AA /* ShareExtension.entitlements */,
+				E18E5CF05720211B76157ECE /* ShareSheetView.swift */,
+				8F3B885CD8E57F81B6EF6E67 /* ShareViewController.swift */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
 		3EA96E1B3C740B80DF72E6B6 /* Core */ = {
 			isa = PBXGroup;
 			children = (
 				285156845C98C36D8921D4C5 /* APIClient.swift */,
+				1C6E16E2BEB7A38816279844 /* ImageUpload.swift */,
 				1FF65D3CF47CE308178FBDDB /* Models.swift */,
 				37895B420B6241703A147543 /* PracticeDays.swift */,
 				058D83DAE4E3BBFD6A868EE8 /* Repositories.swift */,
 				4EE0E11C750669B25A1F294C /* SentenceProcessor.swift */,
 				066DA2EE160A24F39CB3D2A2 /* SessionStore.swift */,
+				3A11E46D60D81B58E61F1993 /* SharedReadInbox.swift */,
 				CD347C382071774E8FD476EA /* SM2.swift */,
 				942B6D69A34CF2C3DFC843F1 /* SpeechService.swift */,
 				7BAB2FAD9A324D3AC79D290F /* SupabaseClient.swift */,
@@ -147,6 +201,14 @@
 			path = Flashcards;
 			sourceTree = "<group>";
 		};
+		7DBC31FD183221A0D1D57C6A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				FFCF90015FEF9D06D5AC8CC7 /* SharedReadQueue.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		806241BC8273A2676547F0EB /* Features */ = {
 			isa = PBXGroup;
 			children = (
@@ -182,6 +244,7 @@
 			isa = PBXGroup;
 			children = (
 				AC29C95B722178A7E8B0550B /* CantoneseLearner.app */,
+				D0ADC325873E152CA753362F /* ShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -191,6 +254,8 @@
 			children = (
 				550106EA2171190C062D4A84 /* CantoneseLearner */,
 				BBBAA69E9F05AB1CF0F890B3 /* Config */,
+				7DBC31FD183221A0D1D57C6A /* Shared */,
+				121C1AEF0A56C20C77C2B98F /* ShareExtension */,
 				9C3BFB8F9C0D01F946ED5F57 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -206,6 +271,7 @@
 		C51978FAD28BB0C747B0CA1D /* Chat */ = {
 			isa = PBXGroup;
 			children = (
+				0F9D86E6EF3CDA388F3BDA6A /* CameraPicker.swift */,
 				06E930D0EF763EB1AF587B25 /* ChatView.swift */,
 			);
 			path = Chat;
@@ -237,10 +303,12 @@
 				D27AEE428247D94B955E1249 /* Sources */,
 				496F6E703AC490DDCB46C6E3 /* Resources */,
 				B499D1022513285669D43391 /* Frameworks */,
+				DD186A5FD08E21FA8B557550 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AEA6652FD6079663736AF509 /* PBXTargetDependency */,
 			);
 			name = CantoneseLearner;
 			packageProductDependencies = (
@@ -249,6 +317,23 @@
 			productName = CantoneseLearner;
 			productReference = AC29C95B722178A7E8B0550B /* CantoneseLearner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		EB071B0D57EED7BE87B4483A /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 434B74F8DFD452ADDCE6332C /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				91882BC7886FDD74869ACA6B /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			packageProductDependencies = (
+			);
+			productName = ShareExtension;
+			productReference = D0ADC325873E152CA753362F /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -260,6 +345,10 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					57005DA5019A9E1780F568AC = {
+						DevelopmentTeam = NZZN6UPW7H;
+						ProvisioningStyle = Automatic;
+					};
+					EB071B0D57EED7BE87B4483A = {
 						DevelopmentTeam = NZZN6UPW7H;
 						ProvisioningStyle = Automatic;
 					};
@@ -283,6 +372,7 @@
 			projectRoot = "";
 			targets = (
 				57005DA5019A9E1780F568AC /* CantoneseLearner */,
+				EB071B0D57EED7BE87B4483A /* ShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -299,6 +389,16 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		91882BC7886FDD74869ACA6B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				89F15CB09BF551236D8DBB01 /* ShareSheetView.swift in Sources */,
+				A66D09D64E8589765599FC63 /* ShareViewController.swift in Sources */,
+				EBB1AB5E7AB7A1EC15901D31 /* SharedReadQueue.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D27AEE428247D94B955E1249 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -308,11 +408,13 @@
 				8E563782F9DBA50EE9913F15 /* ArticleReaderView.swift in Sources */,
 				3C422F2ED9E939F6EAF8E489 /* ArticlesListView.swift in Sources */,
 				04D46E99DC8B417A6B48BAC3 /* AuthViews.swift in Sources */,
+				693F36651C40D0109B361AEA /* CameraPicker.swift in Sources */,
 				52C14C10F45468FBBF37C533 /* CantoneseLearnerApp.swift in Sources */,
 				C22089EC54A31E468D5602B9 /* ChatView.swift in Sources */,
 				5170FD41485C3BEDF2F230BD /* CreateDeckView.swift in Sources */,
 				03220D9A160147D9CCF2A13D /* DeckListView.swift in Sources */,
 				874225319266F0936ECC0450 /* HomeView.swift in Sources */,
+				103C6F0DA48FD8E692EA3939 /* ImageUpload.swift in Sources */,
 				3BF3376935AE5DB73568DDB3 /* MainTabView.swift in Sources */,
 				40EF34B0A18B7CA269384F7D /* Models.swift in Sources */,
 				3C6342CA7F1BF6A9E8CDD231 /* PracticeDays.swift in Sources */,
@@ -321,6 +423,8 @@
 				E15E3D7F2D332390AEDEA274 /* SM2.swift in Sources */,
 				73885834366851802B2179B7 /* SentenceProcessor.swift in Sources */,
 				6266AA1422B41F41A98E20AA /* SessionStore.swift in Sources */,
+				04AEF73734AD976C6BC63B3F /* SharedReadInbox.swift in Sources */,
+				08A0C2517E6BCDE0D87A88F0 /* SharedReadQueue.swift in Sources */,
 				92A86485A684FB0F6896E6F5 /* SpeechService.swift in Sources */,
 				FDF3A070A3827105947B0838 /* StudyView.swift in Sources */,
 				56DA60CC96977C60D265C68F /* SupabaseClient.swift in Sources */,
@@ -330,6 +434,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AEA6652FD6079663736AF509 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EB071B0D57EED7BE87B4483A /* ShareExtension */;
+			targetProxy = 341BC0D0FC15CCDB6AA9D2F1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		282E84416E4BB63030483844 /* Release */ = {
@@ -376,6 +488,28 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.matthewwoo.CantoneseLearner;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		5F9220CDD177FB8B595D98B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = NZZN6UPW7H;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matthewwoo.CantoneseLearner.ShareExtension;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.10;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -446,6 +580,28 @@
 			};
 			name = Debug;
 		};
+		CAB1F23EAA89F826B003BA71 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = NZZN6UPW7H;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matthewwoo.CantoneseLearner.ShareExtension;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		CADAF59C086D8633375E2CC4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EEA2B2C0F4CA3DCF6F5BD130 /* Secrets.xcconfig */;
@@ -511,6 +667,15 @@
 			buildConfigurations = (
 				310A460CAD9A3D14C4351016 /* Debug */,
 				282E84416E4BB63030483844 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		434B74F8DFD452ADDCE6332C /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F9220CDD177FB8B595D98B8 /* Debug */,
+				CAB1F23EAA89F826B003BA71 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -35,8 +35,15 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Cantonese Learner uses the microphone so you can speak to the AI tutor and have your speech transcribed.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cantonese Learner uses the camera so you can send the AI tutor a photo to talk about.</string>
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SupabaseURL</key>

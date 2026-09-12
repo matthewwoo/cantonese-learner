@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 import withPWA from "@ducanh2912/next-pwa";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Pin the project root to this checkout. Without it Next picks the nearest
+  // ancestor with a lockfile, which for a git worktree is the main checkout.
+  outputFileTracingRoot: process.cwd(),
 };
 
 export default withPWA({

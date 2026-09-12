@@ -23,9 +23,11 @@ targets:
     sources:
       - path: CantoneseLearner/Sources
       - path: CantoneseLearner/Resources
+      - path: Shared
     dependencies:
       - package: Supabase
         product: Supabase
+      - target: ShareExtension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.matthewwoo.CantoneseLearner
@@ -50,9 +52,13 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSMicrophoneUsageDescription: Cantonese Learner uses the microphone so you can speak to the AI tutor and have your speech transcribed.
+        NSCameraUsageDescription: Cantonese Learner uses the camera so you can send the AI tutor a photo to talk about.
         UIBackgroundModes:
           - audio
         ITSAppUsesNonExemptEncryption: false
+        # Lets the simulator/device talk to a plain-http dev server (API_BASE_URL=http://localhost:3000).
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         SupabaseURL: $(SUPABASE_URL)
         SupabaseAnonKey: $(SUPABASE_ANON_KEY)
         APIBaseURL: $(API_BASE_URL)
@@ -60,3 +66,35 @@ targets:
           - CFBundleURLName: com.matthewwoo.CantoneseLearner
             CFBundleURLSchemes:
               - cantonese
+
+  # Share-sheet target: "Cantonese" in Safari's share menu queues the page URL
+  # for the app (see Shared/SharedReadQueue.swift).
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.matthewwoo.CantoneseLearner.ShareExtension
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.10"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+        DEVELOPMENT_TEAM: NZZN6UPW7H
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Cantonese
+        CFBundleName: Cantonese Share
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsText: true
