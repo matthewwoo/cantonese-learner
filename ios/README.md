@@ -22,7 +22,13 @@ ios/
     │   └── Features/   # Shell (tab bar + header), Auth, Home, Flashcards
     │                   # (list / create / detail / study), Chat, Articles
     └── Resources/Assets.xcassets   # AppIcon, HeaderLogo, AppLogo, Tab* icons
+├── Shared/                      # Compiled into app + extension (App Group queue)
+└── ShareExtension/              # "Cantonese" in the iOS share sheet → queues a
+                                 # page URL and deep-links to the new-read form
 ```
+
+Both targets join the App Group `group.com.matthewwoo.CantoneseLearner`; it must
+exist on the App ID in the developer portal (Xcode's automatic signing adds it).
 
 ## Setup
 

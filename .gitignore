@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# deps kept out of iCloud sync (see ios/README / memory)
+node_modules.nosync/
 /.pnp
 .pnp.*
 .yarn/*
