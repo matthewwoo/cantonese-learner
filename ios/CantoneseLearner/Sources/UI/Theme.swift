@@ -85,6 +85,7 @@ struct CardBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(color, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .compositingGroup() // flatten so the shadow hits the card edge only, not every subview (e.g. form fields)
             .shadow(color: shadow ? .black.opacity(0.12) : .clear, radius: 1.5, x: 0, y: 1)
     }
 }
