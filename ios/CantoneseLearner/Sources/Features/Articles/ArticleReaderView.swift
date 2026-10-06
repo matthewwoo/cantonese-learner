@@ -1,4 +1,13 @@
 import SwiftUI
+import UIKit
+
+extension ArticleSourcePage {
+    var uiImage: UIImage? {
+        guard let image, image.hasPrefix("data:image/jpeg;base64,"),
+              let data = Data(base64Encoded: String(image.dropFirst("data:image/jpeg;base64,".count))) else { return nil }
+        return UIImage(data: data)
+    }
+}
 
 /// Sequential per-sentence TTS player (mirrors components/articles/article-audio-player.tsx).
 @Observable
@@ -37,6 +46,7 @@ final class ArticlePlayer {
         ticker?.cancel()
         speech.stop()
         isPlaying = false
+        isFetching = false
         activeIndex = nil
         currentTime = 0
         duration = 0
@@ -67,6 +77,10 @@ final class ArticlePlayer {
         startTicker()
         while i < sentences.count, token == runToken {
             activeIndex = i
+            if sentences[i].chinese.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                i += 1
+                continue
+            }
             isFetching = true
             var data: Data?
             do {
@@ -80,8 +94,9 @@ final class ArticlePlayer {
                 print("ArticlePlayer: TTS failed for sentence \(i): \(error)")
                 onError?("Unable to synthesize audio for this block: \(error.localizedDescription)")
             }
+            guard token == runToken else { return }
             isFetching = false
-            guard token == runToken, let data else { break }
+            guard let data else { break }
             isPlaying = true
             // Resolves when the clip finishes (a pause keeps it pending until resumed) or is stopped.
             await speech.play(data: data, rate: rate)
@@ -110,9 +125,11 @@ final class ArticlePlayer {
 
 struct ArticleReaderView: View {
     let articleID: UUID
+    private let previewArticle: ArticleDetail?
     @Environment(SessionStore.self) private var session
     @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var article: ArticleDetail?
     @State private var reading: ReadingSession?
@@ -123,6 +140,12 @@ struct ArticleReaderView: View {
     @State private var furthest = 0
     @State private var visible: Set<Int> = []
     @State private var progressTask: Task<Void, Never>?
+    @State private var selectedPage = 0
+
+    init(articleID: UUID, previewArticle: ArticleDetail? = nil) {
+        self.articleID = articleID
+        self.previewArticle = previewArticle
+    }
 
     var body: some View {
         Group {
@@ -154,11 +177,15 @@ struct ArticleReaderView: View {
 
     private func readerBody(_ a: ArticleDetail) -> some View {
         VStack(spacing: 0) {
-            sentenceList(a)
+            if a.isPhotoBook { photoBook(a) } else { sentenceList(a) }
             ArticlePlayerBar(player: player)
         }
         .onAppear {
             player.sentences = sentences
+            if a.isPhotoBook {
+                player.activeIndex = selectedPage
+                furthest = max(furthest, selectedPage + 1)
+            }
             player.onError = { toasts.error($0) }
             progressTask = Task {
                 while !Task.isCancelled {
@@ -167,6 +194,66 @@ struct ArticleReaderView: View {
                 }
             }
         }
+    }
+
+    private func photoBook(_ a: ArticleDetail) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(a.title).font(.app(24, weight: .semibold)).tracking(-0.48).zh().lineLimit(1)
+                Spacer(minLength: 8)
+                Text("Page \(selectedPage + 1) of \(a.sourcePages.count)")
+                    .font(.app(12)).foregroundStyle(Color.appMutedForeground)
+                    .accessibilityLabel("Page \(selectedPage + 1) of \(a.sourcePages.count)")
+            }
+            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 14)
+
+            TabView(selection: $selectedPage) {
+                ForEach(a.sourcePages.indices, id: \.self) { index in
+                    PhotoBookPage(page: a.sourcePages[index], translation: sentences[index].chinese,
+                                  pageNumber: index + 1,
+                                  isPlaying: player.activeIndex == index && player.isPlaying,
+                                  onPlay: { player.toggleBlock(index) })
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            HStack(spacing: 12) {
+                Button { changePage(to: selectedPage - 1) } label: {
+                    Label("Previous", systemImage: "chevron.left").font(.app(13))
+                        .frame(minHeight: 44)
+                }
+                .disabled(selectedPage == 0)
+                Spacer(minLength: 4)
+                Text("\(selectedPage + 1) / \(a.sourcePages.count)")
+                    .font(.app(12)).monospacedDigit().foregroundStyle(Color.appMutedForeground)
+                    .accessibilityHidden(true)
+                Spacer(minLength: 4)
+                Button { changePage(to: selectedPage + 1) } label: {
+                    HStack(spacing: 4) { Text("Next page"); Image(systemName: "chevron.right") }
+                        .font(.app(13)).frame(minHeight: 44)
+                }
+                .disabled(selectedPage == a.sourcePages.count - 1)
+            }
+            .foregroundStyle(Color.appForeground)
+            .padding(.horizontal, 20).padding(.bottom, 8)
+        }
+        .frame(maxWidth: 480).frame(maxWidth: .infinity)
+        .onChange(of: selectedPage) {
+            furthest = max(furthest, selectedPage + 1)
+            if player.activeIndex != selectedPage {
+                player.stop()
+                player.activeIndex = selectedPage
+            }
+        }
+        .onChange(of: player.activeIndex) {
+            if let index = player.activeIndex, index != selectedPage { changePage(to: index) }
+        }
+    }
+
+    private func changePage(to index: Int) {
+        guard let article, article.sourcePages.indices.contains(index) else { return }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { selectedPage = index }
     }
 
     private func sentenceList(_ a: ArticleDetail) -> some View {
@@ -232,6 +319,16 @@ struct ArticleReaderView: View {
     // MARK: Data
 
     private func load() async {
+        #if DEBUG
+        if let a = previewArticle {
+            article = a
+            sentences = a.sourcePages.enumerated().map { index, page in
+                SentencePair(index: index, chinese: a.translatedContent[index], english: page.text)
+            }
+            loading = false
+            return
+        }
+        #endif
         guard let uid = session.userID else { return }
         do {
             guard let (a, r) = try await ArticlesRepo.getWithSession(userID: uid, articleID: articleID) else {
@@ -240,7 +337,16 @@ struct ArticleReaderView: View {
             article = a
             reading = r
             furthest = r.currentPosition
-            sentences = SentenceProcessor.process(original: a.originalContent, translated: a.translatedContent)
+            if a.isPhotoBook {
+                // Keep each physical page intact, including blank/illustration pages.
+                sentences = a.sourcePages.enumerated().map { index, page in
+                    SentencePair(index: index, chinese: a.translatedContent.indices.contains(index) ? a.translatedContent[index] : "",
+                                 english: page.text)
+                }
+                selectedPage = min(max(0, r.currentPosition - 1), a.sourcePages.count - 1)
+            } else {
+                sentences = SentenceProcessor.process(original: a.originalContent, translated: a.translatedContent)
+            }
             loading = false
         } catch {
             toasts.error("Unable to load article")
@@ -251,6 +357,67 @@ struct ArticleReaderView: View {
     private func saveProgress() async {
         guard let r = reading, furthest > r.currentPosition else { return }
         try? await ArticlesRepo.updateProgress(sessionID: r.id, position: furthest)
+    }
+}
+
+/// The whole page lives inside the horizontal pager; vertical scrolling and
+/// the English toggle never replace the photo or capture a horizontal swipe.
+private struct PhotoBookPage: View {
+    let page: ArticleSourcePage
+    let translation: String
+    let pageNumber: Int
+    let isPlaying: Bool
+    let onPlay: () -> Void
+    @State private var showEnglish = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    if let image = page.uiImage {
+                        let ratio = image.size.width / max(image.size.height, 1)
+                        let height = min((geometry.size.width - 40) / ratio, max(180, geometry.size.height - 230))
+                        Image(uiImage: image).resizable().scaledToFit()
+                            .frame(width: height * ratio, height: height)
+                            .clipShape(RoundedRectangle(cornerRadius: Radius.lg))
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("Photo of page \(pageNumber)")
+                    } else {
+                        Label("Page photo unavailable", systemImage: "photo")
+                            .foregroundStyle(Color.appMutedForeground).frame(maxWidth: .infinity, minHeight: 160)
+                    }
+                    if !translation.isEmpty {
+                        Button(action: onPlay) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("廣東話").font(.app(12)).foregroundStyle(Color.appMutedForeground)
+                                    Spacer()
+                                    Image(systemName: isPlaying ? "pause.fill" : "speaker.wave.2")
+                                        .font(.system(size: 12)).foregroundStyle(Color.appMutedForeground)
+                                }
+                                Text(translation).font(.app(25)).zh().multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(20).foregroundStyle(Color.appForeground)
+                            .background(Color.bubbleUser, in: RoundedRectangle(cornerRadius: Radius.lg))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(isPlaying ? "Pause" : "Read") page \(pageNumber): \(translation)")
+                    }
+                    if !page.text.isEmpty {
+                        Button { showEnglish.toggle() } label: {
+                            HStack { Text(showEnglish ? "Hide original text" : "Show original text"); Spacer(); Image(systemName: showEnglish ? "chevron.up" : "chevron.down") }
+                                .font(.app(13)).foregroundStyle(Color.appMutedForeground).frame(minHeight: 44)
+                        }
+                        .accessibilityValue(showEnglish ? "Expanded" : "Collapsed")
+                        if showEnglish {
+                            Text(page.text).font(.app(16)).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20).padding(.bottom, 16)
+            }
+        }
     }
 }
 

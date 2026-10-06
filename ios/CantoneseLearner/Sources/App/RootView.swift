@@ -7,6 +7,8 @@ struct RootView: View {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-preview-card") {
             DebugCardPreview()
+        } else if ProcessInfo.processInfo.arguments.contains("--ui-preview-book") {
+            DebugBookPreview()
         } else {
             content
         }
@@ -32,6 +34,35 @@ struct RootView: View {
 }
 
 #if DEBUG
+/// Local fixture only: exercise the real reader without OCR or remote writes.
+private struct DebugBookPreview: View {
+    private struct Fixture: Decodable {
+        let title: String
+        let pages: [ArticleSourcePage]
+        let translations: [String]
+    }
+    @State private var toasts = ToastCenter()
+    private var article: ArticleDetail? {
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("book-reader-fixture.json")
+        guard let data = try? Data(contentsOf: url), let fixture = try? JSONDecoder().decode(Fixture.self, from: data),
+              !fixture.pages.isEmpty, fixture.pages.count == fixture.translations.count else { return nil }
+        return ArticleDetail(id: UUID(), title: fixture.title, sourceURL: nil, status: .ready, errorMessage: nil,
+                             createdAt: Date(), originalContent: fixture.pages.map(\.text),
+                             translatedContent: fixture.translations, wordDefinitions: [:], sourcePages: fixture.pages)
+    }
+    var body: some View {
+        NavigationStack {
+            if let article {
+                ArticleReaderView(articleID: article.id, previewArticle: article)
+            } else {
+                Text("Install book-reader-fixture.json in the app's Documents folder.")
+            }
+        }
+        .environment(toasts)
+    }
+}
+
 /// `--ui-preview-card`: study card + article player bar without any data (simulator layout checks).
 private struct DebugCardPreview: View {
     @State private var toasts = ToastCenter()

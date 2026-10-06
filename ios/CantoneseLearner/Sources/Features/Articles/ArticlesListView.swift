@@ -52,6 +52,7 @@ struct ArticlesListView: View {
     @State private var ocrRunning = false
     @State private var ocrTitle = ""
     @State private var ocrContent = ""
+    @State private var ocrPages: [ArticleSourcePage] = []
     @State private var showOCRForm = false
 
     private var filteredArticles: [ArticleSummary] {
@@ -114,10 +115,10 @@ struct ArticlesListView: View {
             }
         }
         .navigationDestination(isPresented: $showOCRForm) {
-            NewArticleView(prefillTitle: ocrTitle, prefillContent: ocrContent)
+            NewArticleView(prefillTitle: ocrTitle, prefillContent: ocrContent, preserveParagraphs: true, prefillPages: ocrPages)
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems,
-                      maxSelectionCount: 4, matching: .images)
+                      maxSelectionCount: 10, selectionBehavior: .ordered, matching: .images)
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
             Task { await runOCR(items) }
@@ -231,8 +232,15 @@ struct ArticlesListView: View {
         }
         do {
             let res = try await APIClient.ocrArticle(images: payload)
+            guard res.pages.count == payload.count else {
+                toasts.error("Couldn't match the text to these photos. Please try again.")
+                return
+            }
             ocrTitle = res.title ?? ""
             ocrContent = res.content
+            ocrPages = zip(res.pages, payload).map { text, image in
+                ArticleSourcePage(text: text, image: "data:image/jpeg;base64,\(image.base64EncodedString())")
+            }
             showOCRForm = true
         } catch {
             toasts.error("Couldn't read text from these photos")
@@ -304,17 +312,23 @@ struct NewArticleView: View {
     @State private var content = ""
     @State private var fetching = false
     @State private var creating = false
+    @State private var photoPages: [ArticleSourcePage]
+    private let preserveParagraphs: Bool
 
-    init(prefillURL: String = "", prefillTitle: String = "", prefillContent: String = "") {
+    init(prefillURL: String = "", prefillTitle: String = "", prefillContent: String = "", preserveParagraphs: Bool = false, prefillPages: [ArticleSourcePage] = []) {
         _url = State(initialValue: prefillURL)
         _title = State(initialValue: prefillTitle)
         _content = State(initialValue: prefillContent)
+        self.preserveParagraphs = preserveParagraphs
+        _photoPages = State(initialValue: prefillPages)
     }
 
     private var wordCount: Int { content.split(whereSeparator: { $0.isWhitespace }).count }
     private var canCreate: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
-        (!content.trimmingCharacters(in: .whitespaces).isEmpty || !url.trimmingCharacters(in: .whitespaces).isEmpty)
+        (photoPages.isEmpty
+         ? (!content.trimmingCharacters(in: .whitespaces).isEmpty || !url.trimmingCharacters(in: .whitespaces).isEmpty)
+         : photoPages.contains { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
     }
 
     var body: some View {
@@ -322,46 +336,73 @@ struct NewArticleView: View {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Add a new read").font(.app(20, weight: .semibold))
-                    Text("Paste a URL or enter content below. We'll translate it to Cantonese in the background — your article appears in the list right away.")
+                    Text(photoPages.isEmpty
+                         ? "Paste a URL or enter content below. We'll translate it to Cantonese in the background — your article appears in the list right away."
+                         : "Check the text for each photo. We'll keep the pages in this order and translate them to Cantonese.")
                         .font(.app(14)).foregroundStyle(Color.appMutedForeground)
                 }
                 .padding(.bottom, 4)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    FieldLabel("Article URL")
-                    HStack(spacing: 8) {
-                        TextField("https://example.com/article", text: $url)
-                            .textFieldStyle(AppTextFieldStyle(height: 44))
-                            .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                        Button { Task { await fetch() } } label: { Text(fetching ? "Fetching…" : "Fetch") }
-                            .buttonStyle(.app(.primary))
-                            .disabled(fetching || url.trimmingCharacters(in: .whitespaces).isEmpty)
+                if photoPages.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        FieldLabel("Article URL")
+                        HStack(spacing: 8) {
+                            TextField("https://example.com/article", text: $url)
+                                .textFieldStyle(AppTextFieldStyle(height: 44))
+                                .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                            Button { Task { await fetch() } } label: { Text(fetching ? "Fetching…" : "Fetch") }
+                                .buttonStyle(.app(.primary))
+                                .disabled(fetching || url.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     FieldLabel("Title *")
                     TextField("Enter article title", text: $title).textFieldStyle(AppTextFieldStyle(height: 44))
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    FieldLabel("Content *")
-                    TextEditor(text: $content)
-                        .font(.app(16))
-                        .scrollContentBackground(.hidden)
-                        .padding(8)
-                        .frame(minHeight: 192, maxHeight: 384)
-                        .background(Color.appCard, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous).stroke(Color.appBorder))
-                        .overlay(alignment: .topLeading) {
-                            if content.isEmpty {
-                                Text("Paste or type English article content...")
-                                    .font(.app(16)).foregroundStyle(Color.appMutedForeground.opacity(0.6))
-                                    .padding(.horizontal, 13).padding(.vertical, 16)
-                                    .allowsHitTesting(false)
+                if photoPages.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        FieldLabel("Content *")
+                        TextEditor(text: $content)
+                            .font(.app(16))
+                            .scrollContentBackground(.hidden)
+                            .padding(8)
+                            .frame(minHeight: 192, maxHeight: 384)
+                            .background(Color.appCard, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous).stroke(Color.appBorder))
+                            .overlay(alignment: .topLeading) {
+                                if content.isEmpty {
+                                    Text("Paste or type English article content...")
+                                        .font(.app(16)).foregroundStyle(Color.appMutedForeground.opacity(0.6))
+                                        .padding(.horizontal, 13).padding(.vertical, 16)
+                                        .allowsHitTesting(false)
+                                }
                             }
+                        if wordCount > 0 {
+                            Text("\(wordCount) words — scroll inside the box to read the rest. Trim anything you don't want translated.")
+                                .font(.app(12)).foregroundStyle(Color.appMutedForeground)
                         }
-                    if wordCount > 0 {
-                        Text("\(wordCount) words — scroll inside the box to read the rest. Trim anything you don't want translated.")
-                            .font(.app(12)).foregroundStyle(Color.appMutedForeground)
+                    }
+                } else {
+                    ForEach(photoPages.indices, id: \.self) { index in
+                        VStack(alignment: .leading, spacing: 8) {
+                            FieldLabel("Page \(index + 1)")
+                            if let image = photoPages[index].uiImage {
+                                Image(uiImage: image).resizable().scaledToFit()
+                                    .frame(maxHeight: 180)
+                                    .clipShape(RoundedRectangle(cornerRadius: Radius.sm))
+                                    .accessibilityLabel("Photo of page \(index + 1)")
+                            }
+                            TextEditor(text: Binding(
+                                get: { photoPages[index].text },
+                                set: { photoPages[index] = ArticleSourcePage(text: $0, image: photoPages[index].image) }
+                            ))
+                            .font(.app(16)).scrollContentBackground(.hidden).padding(8)
+                            .frame(minHeight: 120)
+                            .background(Color.appCard, in: RoundedRectangle(cornerRadius: Radius.sm))
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Color.appBorder))
+                            .accessibilityLabel("Text for page \(index + 1)")
+                        }
                     }
                 }
                 HStack(spacing: 12) {
@@ -412,7 +453,8 @@ struct NewArticleView: View {
 
     private func create() async {
         let t = title.trimmingCharacters(in: .whitespaces)
-        var c = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        var c = (photoPages.isEmpty ? content : photoPages.map(\.text).joined(separator: "\n\n"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let u = url.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { toasts.error("Please fill in article title"); return }
         guard !c.isEmpty || !u.isEmpty else { toasts.error("Please provide either article content or a URL"); return }
@@ -428,7 +470,9 @@ struct NewArticleView: View {
             }
         }
         do {
-            _ = try await APIClient.createArticle(title: t, content: c, url: u.isEmpty ? nil : u)
+            _ = try await APIClient.createArticle(title: t, content: c, url: u.isEmpty ? nil : u,
+                                                   preserveParagraphs: preserveParagraphs,
+                                                   pages: photoPages.isEmpty ? nil : photoPages)
             dismiss()
         } catch {
             toasts.error("Unable to create article")

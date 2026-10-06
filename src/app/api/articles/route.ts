@@ -8,6 +8,11 @@ const createArticleSchema = z.object({
   url: z.string().url().optional(),
   title: z.string().min(1),
   content: z.string().min(1),
+  preserveParagraphs: z.boolean().optional().default(false),
+  pages: z.array(z.object({
+    text: z.string().max(100_000),
+    image: z.string().regex(/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/),
+  })).min(1).max(10).optional(),
 });
 
 // NOTE: listing/reading/deleting articles happens client-side via
@@ -39,11 +44,25 @@ export async function POST(request: NextRequest) {
 
     // Parse request content
     const body = await request.json();
+    if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 4_200_000) {
+      return NextResponse.json({ error: 'Article upload too large' }, { status: 413 });
+    }
     const validatedData = createArticleSchema.parse(body);
+    if (validatedData.pages) {
+      if (!validatedData.pages.some(page => page.text.trim().length > 0)) {
+        return NextResponse.json({ error: 'At least one page needs text' }, { status: 400 });
+      }
+      if (validatedData.pages.reduce((sum, page) => sum + page.image.length, 0) > 3_800_000) {
+        return NextResponse.json({ error: 'Images too large' }, { status: 413 });
+      }
+    }
 
-    // Split content into paragraphs or sentences
-    const lines = validatedData.content
-      .split('\n')
+    // OCR separates photographed pages with blank lines. Keep verse lines on
+    // the same page together so fragments retain their meaning in translation.
+    // Existing URL/text imports continue to use their original line boundaries.
+    const lines = validatedData.pages?.map(page => page.text) ?? validatedData.content
+      .replace(/\r\n/g, '\n')
+      .split(validatedData.preserveParagraphs ? /\n[ \t]*\n+/ : '\n')
       .filter(line => line.trim().length > 0);
 
     // Reserve the row up front, untranslated. This is what the articles list
@@ -55,7 +74,10 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         title: validatedData.title,
         source_url: validatedData.url ?? null,
-        original_content: lines,
+        // Existing text reads store string[]. Photo reads store {text,image}[]
+        // in the same JSONB column: one bounded JPEG per page, protected by
+        // article owner RLS and deleted along with the article. No public URLs.
+        original_content: validatedData.pages ?? lines,
         translated_content: [],
         word_definitions: {},
         status: 'pending',
