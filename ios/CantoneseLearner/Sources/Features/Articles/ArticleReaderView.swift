@@ -385,7 +385,6 @@ private struct PhotoBookPage: View {
                         Button(action: onPlay) {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
-                                    Text("廣東話").font(.app(12)).foregroundStyle(Color.appMutedForeground)
                                     Spacer()
                                     Image(systemName: isPlaying ? "pause.fill" : "speaker.wave.2")
                                         .font(.system(size: 12)).foregroundStyle(Color.appMutedForeground)
