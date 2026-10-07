@@ -198,14 +198,9 @@ struct ArticleReaderView: View {
 
     private func photoBook(_ a: ArticleDetail) -> some View {
         VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(a.title).font(.app(24, weight: .semibold)).tracking(-0.48).zh().lineLimit(1)
-                Spacer(minLength: 8)
-                Text("Page \(selectedPage + 1) of \(a.sourcePages.count)")
-                    .font(.app(12)).foregroundStyle(Color.appMutedForeground)
-                    .accessibilityLabel("Page \(selectedPage + 1) of \(a.sourcePages.count)")
-            }
-            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 14)
+            Text(a.title).font(.app(24, weight: .semibold)).tracking(-0.48).zh().lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 14)
 
             TabView(selection: $selectedPage) {
                 ForEach(a.sourcePages.indices, id: \.self) { index in
@@ -227,7 +222,7 @@ struct ArticleReaderView: View {
                 Spacer(minLength: 4)
                 Text("\(selectedPage + 1) / \(a.sourcePages.count)")
                     .font(.app(12)).monospacedDigit().foregroundStyle(Color.appMutedForeground)
-                    .accessibilityHidden(true)
+                    .accessibilityLabel("Page \(selectedPage + 1) of \(a.sourcePages.count)")
                 Spacer(minLength: 4)
                 Button { changePage(to: selectedPage + 1) } label: {
                     HStack(spacing: 4) { Text("Next page"); Image(systemName: "chevron.right") }
