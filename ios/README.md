@@ -51,6 +51,27 @@ exist on the App ID in the developer portal (Xcode's automatic signing adds it).
 
 Swift Package dependency: [`supabase-swift`](https://github.com/supabase/supabase-swift) (resolved automatically).
 
+### Running in the simulator from the command line
+
+Start the web API with `npm run dev` in `cantonese-app/`, boot an iPhone simulator,
+then run the following from `ios/` (replace `iPhone 17` with your simulator's name):
+
+```bash
+xcodebuild -project CantoneseLearner.xcodeproj -scheme CantoneseLearner \
+  -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath /tmp/cantonese-learner-ios-build \
+  CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+  'API_BASE_URL=http:/$()/127.0.0.1:3000' build
+xcrun simctl install booted /tmp/cantonese-learner-ios-build/Build/Products/Debug-iphonesimulator/CantoneseLearner.app
+xcrun simctl launch booted com.matthewwoo.CantoneseLearner
+```
+
+Keep code signing enabled even for simulator builds. Supabase stores its session
+in the Keychain, which requires the app's signing entitlements. Disabling signing
+can make sign-in appear successful while chat fails with `Auth session missing.`
+If that happens, rebuild with signing enabled and sign in again; the unsigned
+build could not save the session.
+
 ## How it maps to the web app
 
 | Web | iOS |
@@ -86,6 +107,31 @@ Behavioural parity notes:
   on leave, and only moves forward.
 - Deck/article creation posts to `/api/flashcards/generate` / `/api/articles`
   and the lists poll every 4 s while rows are `pending`.
+- **Read → Add via camera** accepts up to 10 photos, numbered in selection
+  order. Select book pages in reading order. OCR retains the printed source
+  text; creation translates each photographed page as a complete passage so
+  verse lines retain their context. The confirmation form shows each photo with
+  its editable source text. The reader shows the photo above its translation;
+  swipe horizontally or tap Previous/Next to turn pages. The title and audio
+  bar stay in place, playback follows the current page, and original text has
+  its own toggle. The combined image upload still has a size limit.
+
+  New photo reads retain bounded JPEG data alongside each page's source text
+  in `articles.original_content` (`{text,image}[]`); text/link reads keep their
+  existing `string[]` format. Both formats decode in the native reader and the
+  web text mapper. Photos have the same owner-only RLS protection as the article
+  and are removed with it. No database migration is required. Older imports
+  discarded photos and need to be imported again to use the photo reader.
+
+Book-import regression checks (from `cantonese-app/`):
+
+```bash
+node --test tests/*.test.cjs
+swiftc -module-cache-path /tmp/cantonese-swift-module-cache \
+  ios/CantoneseLearner/Sources/Core/Models.swift tests/main.swift \
+  -o /tmp/cantonese-article-model-tests
+/tmp/cantonese-article-model-tests
+```
 
 ## Web-side change required
 
@@ -98,6 +144,10 @@ Deploy the web app for the iOS client to work against production.
 
 - `--ui-preview` — render the signed-in shell without a session (empty states).
 - `--ui-preview-card` — render the study card, chat bubbles and player bar.
+- `--ui-preview-book` — open the real photo reader using a local
+  `Documents/book-reader-fixture.json` (`title`, `pages: [{text,image}]`,
+  `translations: [string]`). Page and translation counts must match. This
+  preview performs no OCR, article creation, or progress writes.
 
 ```bash
 xcrun simctl launch booted com.matthewwoo.CantoneseLearner --ui-preview

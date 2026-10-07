@@ -124,7 +124,30 @@ struct ArticleDetail: Sendable {
     let originalContent: [String]
     let translatedContent: [String]
     let wordDefinitions: [String: WordDefinition]
+    var sourcePages: [ArticleSourcePage] = []
+    var isPhotoBook: Bool { sourcePages.contains { $0.image != nil } }
     var displayStatus: GenerationStatus { GenerationStatus.display(status: status, createdAt: createdAt) }
+}
+
+/// The existing JSONB column accepts both legacy strings and photographed pages.
+struct ArticleSourcePage: Codable, Sendable {
+    let text: String
+    let image: String?
+
+    init(text: String, image: String? = nil) {
+        self.text = text
+        self.image = image
+    }
+
+    init(from decoder: Decoder) throws {
+        if let text = try? decoder.singleValueContainer().decode(String.self) {
+            self.init(text: text)
+        } else {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(text: try container.decode(String.self, forKey: .text),
+                      image: try container.decodeIfPresent(String.self, forKey: .image))
+        }
+    }
 }
 
 struct ReadingSession: Sendable {

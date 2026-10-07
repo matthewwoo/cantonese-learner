@@ -1,11 +1,10 @@
 // POST /api/articles/ocr — extract article text from photographed pages.
 //
-// The iOS app's "Add via camera" flow sends 1–4 JPEG pages (base64, in reading
-// order). OpenAI vision reads them in a single call so paragraphs split across
-// page boundaries stitch back together and the suggested title reflects the
-// whole piece. English text comes back translated to Traditional Chinese;
-// Chinese text is transcribed verbatim. The client prefills the new-read form
-// with the result — creation still goes through POST /api/articles.
+// The iOS app's "Add via camera" flow sends 1–10 JPEG pages (base64, in reading
+// order). OpenAI vision reads them in a single call so the suggested title reflects the
+// whole piece. Source text is transcribed verbatim so the reader can keep the
+// original alongside its Cantonese translation. The client prefills the new-read
+// form with the result — translation and creation go through POST /api/articles.
 import { NextRequest, NextResponse } from "next/server"
 import { createRouteClient } from "@/lib/supabase/server"
 import { z } from "zod"
@@ -21,7 +20,7 @@ function getOpenAI(): OpenAI {
 
 const bodySchema = z.object({
   // base64-encoded JPEGs, in the order the pages should be read
-  images: z.array(z.string().min(1)).min(1).max(4),
+  images: z.array(z.string().min(1)).min(1).max(10),
 })
 
 // The client budgets its upload under Vercel's 4.5 MB body cap; this is the
@@ -37,19 +36,19 @@ const MODEL_CANDIDATES = [
   { model: "gpt-4o-mini", reasoning: false },
 ] as const
 
-const SYSTEM_PROMPT = `You are an OCR and translation assistant for a Cantonese reading app.
-The user sends photos of an article's pages, in reading order.
+const SYSTEM_PROMPT = `You are an OCR assistant for a Cantonese reading app.
+The user sends photos of an article or book's pages, in reading order.
 
-Extract ALL body text across the photos, in reading order, then:
-- If the text is English, translate it to Traditional Chinese.
-- If the text is already Chinese, transcribe it VERBATIM in Traditional characters exactly as printed — do not rephrase or translate it.
-- If it mixes languages, apply the rule per passage.
-- Separate paragraphs with a blank line. Preserve the original paragraph structure.
+Extract ALL body text across the photos, in reading order:
+- Transcribe the source text VERBATIM in its original language and characters, including punctuation. Do not translate or rephrase it: a later step creates the Cantonese translation, and needs the original text.
+- If it mixes languages, preserve each passage exactly as printed.
+- Return a pages array with EXACTLY one string per photo, in the same order. Keep paragraphs and verse line breaks inside that page's string. Never merge text from different photos.
+- Use an empty string for a page without body text, so every photo keeps its place. Do not omit short passages or invent text for pages that are not shown.
 - Skip page numbers, running headers/footers, watermarks, and unrelated ads or captions.
 - Suggest a short title in Traditional Chinese (at most 15 characters): use the printed headline if there is one, otherwise summarize.
 
 Respond with STRICT JSON and nothing else:
-{"title": "...", "content": "..."}`
+{"title": "...", "pages": ["verbatim text from photo 1", "verbatim text from photo 2"]}`
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,7 +88,7 @@ export async function POST(request: NextRequest) {
       },
     ]
 
-    let result: { title?: string; content?: string } | null = null
+    let result: { title?: string; pages: string[] } | null = null
     let usedModel: string | null = null
     const failures: string[] = []
 
@@ -120,8 +119,10 @@ export async function POST(request: NextRequest) {
 
         const jsonText = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")
         const parsedJson = JSON.parse(jsonText)
-        if (typeof parsedJson.content !== "string" || parsedJson.content.trim().length === 0) {
-          failures.push(`${candidate.model}: no content in response`)
+        if (!Array.isArray(parsedJson.pages) || parsedJson.pages.length !== images.length ||
+            !parsedJson.pages.every((page: unknown) => typeof page === 'string') ||
+            !parsedJson.pages.some((page: string) => page.trim().length > 0)) {
+          failures.push(`${candidate.model}: missing or mismatched page text`)
           continue
         }
 
@@ -148,7 +149,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       title: typeof result.title === "string" ? result.title.trim() : null,
-      content: result.content!.trim(),
+      pages: result.pages.map(page => page.trim()),
+      // Keep the combined field for older app builds.
+      content: result.pages.join('\n\n').trim(),
     })
   } catch (error) {
     console.error("Failed to OCR article photos:", error)
