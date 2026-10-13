@@ -97,7 +97,7 @@ private struct ArticleDetailRow: Decodable {
     let status: String?
     let error_message: String?
     let created_at: Date
-    let original_content: [String]?
+    let original_content: [ArticleSourcePage]?
     let translated_content: [String]?
     let word_definitions: [String: WordDefinition]?
 }
@@ -372,9 +372,10 @@ enum ArticlesRepo {
         }
         let article = ArticleDetail(id: row.id, title: row.title, sourceURL: row.source_url,
                                     status: GenerationStatus(raw: row.status), errorMessage: row.error_message,
-                                    createdAt: row.created_at, originalContent: row.original_content ?? [],
+                                    createdAt: row.created_at, originalContent: (row.original_content ?? []).map(\.text),
                                     translatedContent: row.translated_content ?? [],
-                                    wordDefinitions: row.word_definitions ?? [:])
+                                    wordDefinitions: row.word_definitions ?? [:],
+                                    sourcePages: row.original_content ?? [])
         return (article, session!.model)
     }
 

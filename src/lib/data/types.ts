@@ -158,7 +158,12 @@ export function mapArticleSummary(row: ArticleRow): ArticleSummary {
 export function mapArticleDetail(row: ArticleRow): ArticleDetail {
   return {
     ...mapArticleSummary(row),
-    originalContent: row.original_content,
+    // Photo imports use ordered {text,image} pages; legacy imports are strings.
+    // Keep text-only web consumers compatible with both formats.
+    originalContent: Array.isArray(row.original_content)
+      ? row.original_content.map(page => typeof page === 'string' ? page :
+          page && typeof page === 'object' && !Array.isArray(page) && typeof page.text === 'string' ? page.text : '')
+      : [],
     translatedContent: row.translated_content,
     wordDefinitions: row.word_definitions,
     sentences: row.sentences,
